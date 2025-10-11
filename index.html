@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DHIS2 Management Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #0d1117 0%, #1a1f26 100%);
+            color: #e6edf3;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 50px;
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease-out;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #2ea043, #58a6ff, #7c3aed);
+        }
+
+        .logo-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            gap: 20px;
+        }
+
+        .logo-box {
+            width: 120px;
+            height: 120px;
+            background: #21262d;
+            border: 2px solid #30363d;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .logo-box:hover {
+            border-color: #58a6ff;
+            background: rgba(88, 166, 255, 0.05);
+            transform: scale(1.05);
+        }
+
+        .logo-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #58a6ff;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: #8b949e;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #e6edf3;
+            font-size: 14px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 14px 16px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #58a6ff 0%, #388bfd 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(88, 166, 255, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .main-content {
+            display: none;
+            padding: 20px;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .main-content.show {
+            display: block;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #161b22 0%, #1a1f26 100%);
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 42px;
+            font-weight: 700;
+            color: #58a6ff;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            color: #8b949e;
+            font-size: 18px;
+        }
+
+        .logout-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(22, 27, 34, 0.95);
+            color: #8b949e;
+            border: 1px solid #30363d;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .logout-btn:hover {
+            background: #30363d;
+            border-color: #58a6ff;
+            color: #e6edf3;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #161b22 0%, #1a1f26 100%);
+            border: 2px solid #30363d;
+            border-radius: 12px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #2ea043, #58a6ff, #7c3aed);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: #58a6ff;
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(88, 166, 255, 0.3);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #58a6ff;
+            margin-bottom: 10px;
+        }
+
+        .card-description {
+            color: #8b949e;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 40px 20px;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+            position: relative;
+            margin: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideInUp 0.3s ease-out;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #30363d;
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #58a6ff;
+        }
+
+        .close-btn {
+            background: transparent;
+            color: #8b949e;
+            border: none;
+            font-size: 32px;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: #30363d;
+            color: #e6edf3;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin-bottom: 0;
+            font-weight: normal;
+        }
+
+        .period-selector {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .period-type-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .period-tab {
+            padding: 10px 20px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #8b949e;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .period-tab.active {
+            background: #58a6ff;
+            color: #ffffff;
+            border-color: #58a6ff;
+        }
+
+        .period-tab:hover {
+            border-color: #58a6ff;
+        }
+
+        .period-inputs {
+            display: none;
+        }
+
+        .period-inputs.active {
+            display: block;
+        }
+
+        .progress-section {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-section.show {
+            display: block;
+        }
+
+        .progress-bar {
+            background: #161b22;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #2ea043, #58a6ff, #7c3aed);
+            height: 100%;
+            transition: width 0.3s ease;
+            animation: progressPulse 2s ease-in-out infinite;
+        }
+
+        .log-container {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #2ea043;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 2px solid #30363d;
+            padding-left: 10px;
+        }
+
+        .log-entry.error {
+            color: #f85149;
+            border-left-color: #f85149;
+        }
+
+        .log-entry.success {
+            color: #2ea043;
+            border-left-color: #2ea043;
+        }
+
+        .log-entry.info {
+            color: #58a6ff;
+            border-left-color: #58a6ff;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #161b22;
+            border: 1px solid #30363d;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 3000;
+            animation: slideInDown 0.3s ease-out;
+            min-width: 300px;
+            text-align: center;
+        }
+
+        .notification.show {
+            display: block;
+        }
+
+        .notification.success {
+            border-left: 4px solid #2ea043;
+        }
+
+        .notification.error {
+            border-left: 4px solid #f85149;
+        }
+
+        .notification.info {
+            border-left: 4px solid #58a6ff;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -20px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        @keyframes progressPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        @media (max-width: 768px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 28px;
+            }
+
+            .modal-content {
+                padding: 25px;
+            }
+
+            .logout-btn {
+                position: static;
+                margin-bottom: 20px;
+                width: 100%;
+            }
+        }
+
+        .dataset-checkbox-list {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .dataset-item {
+            padding: 12px;
+            margin: 5px 0;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dataset-item:hover {
+            background: #21262d;
+            border-color: #58a6ff;
+            transform: translateX(3px);
+        }
+
+        .dataset-item.selected {
+            background: rgba(88, 166, 255, 0.15);
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3);
+        }
+
+        .dataset-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #58a6ff;
+        }
+
+        .dataset-name {
+            flex: 1;
+            color: #e6edf3;
+            font-size: 14px;
+        }
+
+        .dataset-item.selected .dataset-name {
+            color: #58a6ff;
+            font-weight: 600;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 10px 12px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 14px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        .search-box::placeholder {
+            color: #6e7681;
+        }
+
+        .selection-summary {
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid #58a6ff;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-top: 10px;
+            color: #58a6ff;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .org-unit-item {
+            padding: 5px 10px;
+            margin: 2px 0;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+            user-select: none;
+        }
+
+        .org-unit-item:hover {
+            background: #30363d;
+        }
+
+        .org-unit-item.selected {
+            background: rgba(88, 166, 255, 0.2);
+            border-left: 3px solid #58a6ff;
+        }
+
+        .org-unit-toggle {
+            display: inline-block;
+            width: 20px;
+            cursor: pointer;
+            color: #58a6ff;
+            font-weight: bold;
+        }
+
+        .org-unit-checkbox {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .org-unit-children {
+            margin-left: 25px;
+            display: none;
+        }
+
+        .org-unit-children.expanded {
+            display: block;
+        }
+
+        .org-unit-label {
+            color: #e6edf3;
+        }
+
+        .org-unit-level-1 { font-weight: 700; font-size: 15px; }
+        .org-unit-level-2 { font-weight: 600; font-size: 14px; }
+        .org-unit-level-3 { font-weight: 500; font-size: 13px; }
+
+        .required {
+            color: #f85149;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #8b949e;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card">
+            <div class="logo-container">
+                <div class="logo-box">
+                    <img src="NMCP.png" alt="NMCP Logo" class="logo-img" onerror="this.style.display='none'">
+                </div>
+                <div class="logo-box">
+                    <img src="ICF-SL.jpg" alt="ICF-SL Logo" class="logo-img" onerror="this.style.display='none'">
+                </div>
+            </div>
+
+            <div class="login-header">
+                <h1>🚀 DHIS2 Management Suite</h1>
+                <p>Professional DHIS2 Administration Tool</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">DHIS2 Instance URL <span class="required">*</span></label>
+                    <input type="url" class="form-input" id="instanceUrl" placeholder="https://your-instance.dhis2.org" required>
+                    <div class="help-text">Full URL including https://</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Username <span class="required">*</span></label>
+                    <input type="text" class="form-input" id="username" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password <span class="required">*</span></label>
+                    <input type="password" class="form-input" id="password" required>
+                </div>
+
+                <button type="submit" class="btn-primary">Connect to DHIS2</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <button class="logout-btn" id="logoutBtn">Logout</button>
+
+        <div class="container">
+            <div class="header">
+                <h1>⚡ DHIS2 Management Suite</h1>
+                <p>Comprehensive toolkit for DHIS2 administration and data management</p>
+            </div>
+
+            <div class="cards-grid">
+                <div class="card" onclick="openModal('downloadDataElements')">
+                    <span class="card-icon">📊</span>
+                    <h3 class="card-title">Download Data Elements</h3>
+                    <p class="card-description">Export data elements with full metadata and configurations</p>
+                </div>
+
+                <div class="card" onclick="openModal('downloadDatasets')">
+                    <span class="card-icon">📋</span>
+                    <h3 class="card-title">Download Datasets</h3>
+                    <p class="card-description">Export complete dataset configurations with data</p>
+                </div>
+
+                <div class="card" onclick="openModal('copyOrgUnits')">
+                    <span class="card-icon">🏢</span>
+                    <h3 class="card-title">Copy Organisation Units</h3>
+                    <p class="card-description">Transfer org units with dependencies between instances</p>
+                </div>
+
+                <div class="card" onclick="openModal('copyDataElements')">
+                    <span class="card-icon">📊</span>
+                    <h3 class="card-title">Copy Data Elements</h3>
+                    <p class="card-description">Migrate data elements across instances</p>
+                </div>
+
+                <div class="card" onclick="openModal('copyDatasets')">
+                    <span class="card-icon">📋</span>
+                    <h3 class="card-title">Copy Datasets</h3>
+                    <p class="card-description">Transfer datasets with dependencies</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Modal Title</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+
+            <form id="modalForm">
+                <div id="modalBody"></div>
+
+                <div class="progress-section" id="progressSection">
+                    <h3 style="color: #58a6ff; margin-bottom: 15px;">Progress</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="log-container" id="logContainer"></div>
+                </div>
+
+                <button type="submit" class="btn-primary" id="modalSubmit">Execute</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        const state = {
+            config: null,
+            isLoggedIn: false
+        };
+
+        function getPeriodSelector() {
+            return `
+                <div class="period-selector">
+                    <label class="form-label">Select Period Type</label>
+                    <div class="period-type-tabs">
+                        <div class="period-tab active" onclick="selectPeriodType('monthly')">Monthly</div>
+                        <div class="period-tab" onclick="selectPeriodType('range')">Date Range</div>
+                        <div class="period-tab" onclick="selectPeriodType('quarterly')">Quarterly</div>
+                        <div class="period-tab" onclick="selectPeriodType('yearly')">Yearly</div>
+                    </div>
+
+                    <div class="period-inputs active" id="monthly-inputs">
+                        <div class="form-group">
+                            <label class="form-label">Year-Month (e.g., 2025-06)</label>
+                            <input type="month" class="form-input" name="period" required>
+                        </div>
+                    </div>
+
+                    <div class="period-inputs" id="range-inputs">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Start Month</label>
+                                <input type="month" class="form-input" name="periodStart">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Month</label>
+                                <input type="month" class="form-input" name="periodEnd">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="period-inputs" id="quarterly-inputs">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Year</label>
+                                <input type="number" class="form-input" name="year" min="2000" max="2030" value="2025">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Quarter</label>
+                                <select class="form-select" name="quarter">
+                                    <option value="Q1">Q1 (Jan-Mar)</option>
+                                    <option value="Q2">Q2 (Apr-Jun)</option>
+                                    <option value="Q3">Q3 (Jul-Sep)</option>
+                                    <option value="Q4">Q4 (Oct-Dec)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="period-inputs" id="yearly-inputs">
+                        <div class="form-group">
+                            <label class="form-label">Year Range</label>
+                            <div class="form-row">
+                                <input type="number" class="form-input" name="startYear" min="2000" max="2030" placeholder="Start Year">
+                                <input type="number" class="form-input" name="endYear" min="2000" max="2030" placeholder="End Year">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectPeriodType(type) {
+            const tabs = document.querySelectorAll('.period-tab');
+            const inputs = document.querySelectorAll('.period-inputs');
+            
+            if (!tabs || !inputs) return;
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            inputs.forEach(input => input.classList.remove('active'));
+            
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            const targetInput = document.getElementById(`${type}-inputs`);
+            if (targetInput) {
+                targetInput.classList.add('active');
+            }
+        }
+
+        const modalConfigs = {
+            downloadDataElements: {
+                title: '📊 Download Data Elements',
+                fields: `
+                    <div class="form-group">
+                        <label class="form-label">Select Data Elements <span class="required">*</span></label>
+                        <div style="margin-bottom: 10px;">
+                            <button type="button" class="btn-primary" onclick="loadDataElements()" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                                Load Data Elements
+                            </button>
+                        </div>
+                        <select class="form-select" id="dataElementSelect" multiple size="10" style="height: 200px;" disabled>
+                            <option value="">Click "Load Data Elements" to fetch...</option>
+                        </select>
+                        <div class="help-text">Hold Ctrl/Cmd to select multiple items</div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" onclick="selectAllOptions('dataElementSelect')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllOptions('dataElementSelect')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                        </div>
+                    </div>
+                    
+                    ${getPeriodSelector()}
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="includeData" checked>
+                            <label>Include data values for selected period</label>
+                        </div>
+                    </div>
+                `
+            },
+            downloadDatasets: {
+                title: '📋 Download Datasets',
+                fields: `
+                    <div class="form-group">
+                        <label class="form-label">Select Datasets <span class="required">*</span></label>
+                        <div style="margin-bottom: 10px;">
+                            <button type="button" class="btn-primary" onclick="loadDatasetsCheckbox()" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                                Load Datasets
+                            </button>
+                        </div>
+                        
+                        <input type="text" class="search-box" id="datasetSearch" placeholder="🔍 Search datasets..." onkeyup="filterDatasets()" style="display: none;">
+                        
+                        <div class="dataset-checkbox-list" id="datasetCheckboxList">
+                            <p style="color: #8b949e; text-align: center; padding: 20px;">Click "Load Datasets" to fetch available datasets</p>
+                        </div>
+                        
+                        <div class="selection-summary" id="datasetSelectionSummary" style="display: none;">
+                            <span id="datasetSelectionCount">0 datasets selected</span>
+                        </div>
+                        
+                        <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button type="button" onclick="selectAllDatasets()" style="padding: 8px 15px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer;">✓ Select All</button>
+                            <button type="button" onclick="clearAllDatasets()" style="padding: 8px 15px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ Clear All</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Organisation Units <span class="required">*</span></label>
+                        <div style="margin-bottom: 10px;">
+                            <button type="button" class="btn-primary" onclick="loadOrgUnitsTree('downloadDatasets')" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                                Load Organisation Units
+                            </button>
+                        </div>
+                        <div style="background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 15px; max-height: 300px; overflow-y: auto;" id="orgUnitTree">
+                            <p style="color: #8b949e; text-align: center;">Click "Load Organisation Units" to fetch...</p>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" onclick="expandAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Expand All</button>
+                            <button type="button" onclick="collapseAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Collapse All</button>
+                            <button type="button" onclick="selectAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                        </div>
+                    </div>
+
+                    ${getPeriodSelector()}
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="includeDataValues" checked>
+                            <label>Include data values for selected period</label>
+                        </div>
+                    </div>
+                `
+            },
+            copyOrgUnits: {
+                title: '🏢 Copy Organisation Units',
+                fields: `
+                    <div class="form-group">
+                        <label class="form-label">Target Instance URL <span class="required">*</span></label>
+                        <input type="url" class="form-input" name="targetUrl" placeholder="https://target-instance.dhis2.org" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Target Username <span class="required">*</span></label>
+                            <input type="text" class="form-input" name="targetUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Target Password <span class="required">*</span></label>
+                            <input type="password" class="form-input" name="targetPassword" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Import Strategy</label>
+                        <select class="form-select" name="importStrategy">
+                            <option value="CREATE_AND_UPDATE">Create and Update</option>
+                            <option value="CREATE">Create Only</option>
+                            <option value="UPDATE">Update Only</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="includeAttributes" checked>
+                            <label>Include attributes (recommended - fixes E6012 error)</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="skipAttributeValues">
+                            <label>Skip attribute values (use if attributes don't exist in target)</label>
+                        </div>
+                    </div>
+                `
+            },
+            copyDataElements: {
+                title: '📊 Copy Data Elements',
+                fields: `
+                    <div class="form-group">
+                        <label class="form-label">Target Instance URL <span class="required">*</span></label>
+                        <input type="url" class="form-input" name="targetUrl" placeholder="https://target-instance.dhis2.org" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Target Username <span class="required">*</span></label>
+                            <input type="text" class="form-input" name="targetUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Target Password <span class="required">*</span></label>
+                            <input type="password" class="form-input" name="targetPassword" required>
+                        </div>
+                    </div>
+                `
+            },
+            copyDatasets: {
+                title: '📋 Copy Datasets',
+                fields: `
+                    <div class="form-group">
+                        <label class="form-label">Dataset ID <span class="required">*</span></label>
+                        <input type="text" class="form-input" name="datasetId" placeholder="e.g., abcd1234efg" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Target Instance URL <span class="required">*</span></label>
+                        <input type="url" class="form-input" name="targetUrl" placeholder="https://target-instance.dhis2.org" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Target Username <span class="required">*</span></label>
+                            <input type="text" class="form-input" name="targetUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Target Password <span class="required">*</span></label>
+                            <input type="password" class="form-input" name="targetPassword" required>
+                        </div>
+                    </div>
+                `
+            }
+        };
+
+        async function loadDataElements() {
+            try {
+                log('Fetching data elements from DHIS2...', 'info');
+                showNotification('Loading data elements...', 'info');
+                
+                const url = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&paging=false`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch data elements: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.dataElements || !Array.isArray(data.dataElements)) {
+                    showNotification('No data elements found in response', 'error');
+                    return;
+                }
+                
+                const select = document.getElementById('dataElementSelect');
+                select.innerHTML = '';
+                select.disabled = false;
+                
+                if (data.dataElements.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No data elements found in this instance';
+                    select.appendChild(option);
+                    return;
+                }
+                
+                data.dataElements.forEach(de => {
+                    const option = document.createElement('option');
+                    option.value = de.id;
+                    option.textContent = de.displayName || de.name || de.id;
+                    select.appendChild(option);
+                });
+                
+                log(`Successfully loaded ${data.dataElements.length} data elements`, 'success');
+                showNotification(`Loaded ${data.dataElements.length} data elements`, 'success');
+            } catch (error) {
+                log(`Error loading data elements: ${error.message}`, 'error');
+                showNotification(`Failed to load data elements: ${error.message}`, 'error');
+            }
+        }
+
+        let datasetsData = [];
+        let selectedDatasets = new Set();
+
+        async function loadDatasetsCheckbox() {
+            try {
+                log('Fetching datasets from DHIS2...', 'info');
+                showNotification('Loading datasets...', 'info');
+                
+                const url = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName,name,periodType&paging=false`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch datasets: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.dataSets || !Array.isArray(data.dataSets)) {
+                    showNotification('No datasets found in response', 'error');
+                    return;
+                }
+                
+                if (data.dataSets.length === 0) {
+                    document.getElementById('datasetCheckboxList').innerHTML = '<p style="color: #8b949e; text-align: center; padding: 20px;">No datasets found</p>';
+                    return;
+                }
+                
+                datasetsData = data.dataSets;
+                renderDatasetCheckboxList(datasetsData);
+                document.getElementById('datasetSearch').style.display = 'block';
+                
+                log(`Successfully loaded ${data.dataSets.length} datasets`, 'success');
+                showNotification(`Loaded ${data.dataSets.length} datasets`, 'success');
+            } catch (error) {
+                log(`Error loading datasets: ${error.message}`, 'error');
+                showNotification(`Failed to load datasets: ${error.message}`, 'error');
+            }
+        }
+
+        function renderDatasetCheckboxList(datasets) {
+            const container = document.getElementById('datasetCheckboxList');
+            container.innerHTML = '';
+            
+            if (datasets.length === 0) {
+                container.innerHTML = '<p style="color: #8b949e; text-align: center; padding: 20px;">No datasets match your search</p>';
+                return;
+            }
+            
+            datasets.forEach(ds => {
+                const item = document.createElement('div');
+                item.className = 'dataset-item';
+                item.dataset.id = ds.id;
+                if (selectedDatasets.has(ds.id)) {
+                    item.classList.add('selected');
+                }
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'dataset-checkbox';
+                checkbox.checked = selectedDatasets.has(ds.id);
+                checkbox.dataset.id = ds.id;
+                
+                checkbox.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleDatasetSelection(ds.id);
+                });
+                
+                const name = document.createElement('span');
+                name.className = 'dataset-name';
+                const periodType = ds.periodType ? ` (${ds.periodType})` : '';
+                name.textContent = (ds.displayName || ds.name || ds.id) + periodType;
+                
+                item.addEventListener('click', function(e) {
+                    if (e.target.type === 'checkbox') return;
+                    checkbox.checked = !checkbox.checked;
+                    toggleDatasetSelection(ds.id);
+                });
+                
+                item.appendChild(checkbox);
+                item.appendChild(name);
+                container.appendChild(item);
+            });
+            
+            updateDatasetSelectionSummary();
+        }
+
+        function toggleDatasetSelection(id) {
+            if (selectedDatasets.has(id)) {
+                selectedDatasets.delete(id);
+            } else {
+                selectedDatasets.add(id);
+            }
+            
+            const item = document.querySelector(`.dataset-item[data-id="${id}"]`);
+            const checkbox = item?.querySelector('.dataset-checkbox');
+            
+            if (item && checkbox) {
+                if (selectedDatasets.has(id)) {
+                    item.classList.add('selected');
+                    checkbox.checked = true;
+                } else {
+                    item.classList.remove('selected');
+                    checkbox.checked = false;
+                }
+            }
+            
+            updateDatasetSelectionSummary();
+        }
+
+        function updateDatasetSelectionSummary() {
+            const summary = document.getElementById('datasetSelectionSummary');
+            const count = document.getElementById('datasetSelectionCount');
+            
+            const numSelected = selectedDatasets.size;
+            
+            if (numSelected > 0) {
+                summary.style.display = 'block';
+                count.textContent = `${numSelected} dataset${numSelected === 1 ? '' : 's'} selected`;
+            } else {
+                summary.style.display = 'none';
+            }
+        }
+
+        function selectAllDatasets() {
+            datasetsData.forEach(ds => {
+                selectedDatasets.add(ds.id);
+            });
+            
+            document.querySelectorAll('.dataset-checkbox').forEach(cb => {
+                cb.checked = true;
+            });
+            document.querySelectorAll('.dataset-item').forEach(item => {
+                item.classList.add('selected');
+            });
+            
+            updateDatasetSelectionSummary();
+        }
+
+        function clearAllDatasets() {
+            selectedDatasets.clear();
+            
+            document.querySelectorAll('.dataset-checkbox').forEach(cb => cb.checked = false);
+            document.querySelectorAll('.dataset-item').forEach(item => item.classList.remove('selected'));
+            updateDatasetSelectionSummary();
+        }
+
+        function filterDatasets() {
+            const searchTerm = document.getElementById('datasetSearch').value.toLowerCase();
+            const items = document.querySelectorAll('.dataset-item');
+            
+            items.forEach(item => {
+                const name = item.querySelector('.dataset-name').textContent.toLowerCase();
+                if (name.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function getSelectedDatasets() {
+            return Array.from(selectedDatasets);
+        }
+
+        let orgUnitsData = [];
+        let selectedOrgUnits = new Set();
+
+        async function loadOrgUnitsTree(context) {
+            try {
+                log('Fetching organisation units hierarchy...', 'info');
+                const url = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,level,parent[id],children[id]&paging=false`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) throw new Error('Failed to fetch organisation units');
+                
+                const data = await response.json();
+                orgUnitsData = data.organisationUnits;
+                
+                const tree = buildOrgUnitTree(orgUnitsData);
+                renderOrgUnitTree(tree);
+                
+                log(`Loaded ${orgUnitsData.length} organisation units`, 'success');
+                showNotification(`Loaded ${orgUnitsData.length} organisation units`, 'success');
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                showNotification('Failed to load organisation units', 'error');
+            }
+        }
+
+        function buildOrgUnitTree(orgUnits) {
+            const orgUnitMap = {};
+            const rootUnits = [];
+            
+            orgUnits.forEach(ou => {
+                orgUnitMap[ou.id] = { ...ou, children: [] };
+            });
+            
+            orgUnits.forEach(ou => {
+                if (ou.parent && orgUnitMap[ou.parent.id]) {
+                    orgUnitMap[ou.parent.id].children.push(orgUnitMap[ou.id]);
+                } else {
+                    rootUnits.push(orgUnitMap[ou.id]);
+                }
+            });
+            
+            return rootUnits;
+        }
+
+        function renderOrgUnitTree(tree) {
+            const container = document.getElementById('orgUnitTree');
+            container.innerHTML = '';
+            
+            tree.forEach(ou => {
+                container.appendChild(createOrgUnitNode(ou));
+            });
+        }
+
+        function createOrgUnitNode(orgUnit) {
+            const div = document.createElement('div');
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.className = `org-unit-item org-unit-level-${orgUnit.level}`;
+            itemDiv.dataset.id = orgUnit.id;
+            
+            const toggle = document.createElement('span');
+            toggle.className = 'org-unit-toggle';
+            if (orgUnit.children && orgUnit.children.length > 0) {
+                toggle.textContent = '▶';
+                toggle.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleOrgUnit(orgUnit.id);
+                };
+            } else {
+                toggle.textContent = '  ';
+                toggle.style.cursor = 'default';
+            }
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'org-unit-checkbox';
+            checkbox.dataset.id = orgUnit.id;
+            checkbox.checked = selectedOrgUnits.has(orgUnit.id);
+            checkbox.onchange = (e) => {
+                e.stopPropagation();
+                toggleOrgUnitSelection(orgUnit.id, e.target.checked);
+            };
+            
+            const label = document.createElement('span');
+            label.className = 'org-unit-label';
+            label.textContent = orgUnit.displayName;
+            label.onclick = () => {
+                checkbox.checked = !checkbox.checked;
+                toggleOrgUnitSelection(orgUnit.id, checkbox.checked);
+            };
+            
+            itemDiv.appendChild(toggle);
+            itemDiv.appendChild(checkbox);
+            itemDiv.appendChild(label);
+            div.appendChild(itemDiv);
+            
+            if (orgUnit.children && orgUnit.children.length > 0) {
+                const childrenDiv = document.createElement('div');
+                childrenDiv.className = 'org-unit-children';
+                childrenDiv.id = `children-${orgUnit.id}`;
+                
+                orgUnit.children.forEach(child => {
+                    childrenDiv.appendChild(createOrgUnitNode(child));
+                });
+                
+                div.appendChild(childrenDiv);
+            }
+            
+            return div;
+        }
+
+        function toggleOrgUnit(id) {
+            const childrenDiv = document.getElementById(`children-${id}`);
+            const toggle = document.querySelector(`[data-id="${id}"] .org-unit-toggle`);
+            
+            if (childrenDiv.classList.contains('expanded')) {
+                childrenDiv.classList.remove('expanded');
+                toggle.textContent = '▶';
+            } else {
+                childrenDiv.classList.add('expanded');
+                toggle.textContent = '▼';
+            }
+        }
+
+        function toggleOrgUnitSelection(id, selected) {
+            if (selected) {
+                selectedOrgUnits.add(id);
+            } else {
+                selectedOrgUnits.delete(id);
+            }
+            
+            const item = document.querySelector(`.org-unit-item[data-id="${id}"]`);
+            if (item) {
+                if (selected) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            }
+        }
+
+        function expandAllOrgUnits() {
+            document.querySelectorAll('.org-unit-children').forEach(div => {
+                div.classList.add('expanded');
+            });
+            document.querySelectorAll('.org-unit-toggle').forEach(toggle => {
+                if (toggle.textContent === '▶') {
+                    toggle.textContent = '▼';
+                }
+            });
+        }
+
+        function collapseAllOrgUnits() {
+            document.querySelectorAll('.org-unit-children').forEach(div => {
+                div.classList.remove('expanded');
+            });
+            document.querySelectorAll('.org-unit-toggle').forEach(toggle => {
+                if (toggle.textContent === '▼') {
+                    toggle.textContent = '▶';
+                }
+            });
+        }
+
+        function selectAllOrgUnits() {
+            document.querySelectorAll('.org-unit-checkbox').forEach(checkbox => {
+                checkbox.checked = true;
+                selectedOrgUnits.add(checkbox.dataset.id);
+            });
+            document.querySelectorAll('.org-unit-item').forEach(item => {
+                item.classList.add('selected');
+            });
+        }
+
+        function clearAllOrgUnits() {
+            document.querySelectorAll('.org-unit-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            selectedOrgUnits.clear();
+            document.querySelectorAll('.org-unit-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+        }
+
+        function getSelectedOrgUnitsFromTree() {
+            return Array.from(selectedOrgUnits);
+        }
+
+        function selectAllOptions(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select || !select.options) return;
+            
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = true;
+            }
+        }
+
+        function clearAllOptions(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select || !select.options) return;
+            
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = false;
+            }
+        }
+
+        function getSelectedOptions(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select || !select.options) return [];
+            
+            const selected = [];
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].selected) {
+                    selected.push(select.options[i].value);
+                }
+            }
+            return selected;
+        }
+
+        function getPeriodFromForm() {
+            const activeTab = document.querySelector('.period-tab.active');
+            if (!activeTab) return '';
+            
+            const tabText = activeTab.textContent.trim().toLowerCase();
+            
+            if (tabText === 'monthly') {
+                const periodInput = document.querySelector('#monthly-inputs input[name="period"]');
+                const period = periodInput?.value;
+                if (period) {
+                    return `period=${period.replace('-', '')}`;
+                }
+            } else if (tabText === 'date range') {
+                const startInput = document.querySelector('#range-inputs input[name="periodStart"]');
+                const endInput = document.querySelector('#range-inputs input[name="periodEnd"]');
+                const start = startInput?.value;
+                const end = endInput?.value;
+                if (start && end) {
+                    return `startDate=${start}&endDate=${end}`;
+                }
+            } else if (tabText === 'quarterly') {
+                const yearInput = document.querySelector('#quarterly-inputs input[name="year"]');
+                const quarterSelect = document.querySelector('#quarterly-inputs select[name="quarter"]');
+                const year = yearInput?.value;
+                const quarter = quarterSelect?.value;
+                if (year && quarter) {
+                    return `period=${year}${quarter}`;
+                }
+            } else if (tabText === 'yearly') {
+                const startYearInput = document.querySelector('#yearly-inputs input[name="startYear"]');
+                const endYearInput = document.querySelector('#yearly-inputs input[name="endYear"]');
+                const startYear = startYearInput?.value;
+                const endYear = endYearInput?.value;
+                if (startYear && endYear) {
+                    return `startDate=${startYear}-01-01&endDate=${endYear}-12-31`;
+                } else if (startYear) {
+                    return `period=${startYear}`;
+                }
+            }
+            
+            return '';
+        }
+
+        async function fetchWithAuth(url, options = {}) {
+            const apiUrl = state.config.useCorsProxy 
+                ? `https://corsproxy.io/?${encodeURIComponent(url)}`
+                : url;
+            
+            return fetch(apiUrl, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'Authorization': 'Basic ' + btoa(`${state.config.username}:${state.config.password}`),
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
+
+        function log(message, type = 'info') {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        function setProgress(percent) {
+            document.getElementById('progressFill').style.width = percent + '%';
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const instanceUrl = document.getElementById('instanceUrl').value.trim().replace(/\/$/, '');
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const useCorsProxy = true;
+
+            state.config = {
+                instanceUrl,
+                username,
+                password,
+                useCorsProxy
+            };
+
+            try {
+                const testUrl = useCorsProxy 
+                    ? `https://corsproxy.io/?${encodeURIComponent(instanceUrl + '/api/me')}`
+                    : `${instanceUrl}/api/me`;
+
+                const response = await fetch(testUrl, {
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(`${username}:${password}`)
+                    }
+                });
+
+                if (response.ok) {
+                    state.isLoggedIn = true;
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('mainContent').classList.add('show');
+                    showNotification('Connected successfully!', 'success');
+                } else {
+                    showNotification('Authentication failed. Check your credentials.', 'error');
+                }
+            } catch (error) {
+                showNotification('Connection failed. Check URL and try again.', 'error');
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            state.isLoggedIn = false;
+            state.config = null;
+            document.getElementById('mainContent').classList.remove('show');
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('loginForm').reset();
+        });
+
+        function openModal(type) {
+            const config = modalConfigs[type];
+            if (!config) return;
+
+            document.getElementById('modalTitle').textContent = config.title;
+            document.getElementById('modalBody').innerHTML = config.fields;
+            document.getElementById('modal').classList.add('show');
+            document.getElementById('progressSection').classList.remove('show');
+            
+            document.getElementById('modalForm').dataset.action = type;
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+            document.getElementById('modalForm').reset();
+        }
+
+        document.getElementById('modalForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const action = e.target.dataset.action;
+            const formData = new FormData(e.target);
+            
+            document.getElementById('progressSection').classList.add('show');
+            document.getElementById('modalSubmit').disabled = true;
+            document.getElementById('modalSubmit').textContent = 'Processing...';
+            
+            try {
+                await executeAction(action, formData);
+            } catch (error) {
+                log(`❌ ERROR: ${error.message}`, 'error');
+                showNotification(`Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('modalSubmit').disabled = false;
+                document.getElementById('modalSubmit').textContent = 'Execute';
+            }
+        });
+
+        async function executeAction(action, formData) {
+            clearLogs();
+            setProgress(0);
+            
+            log(`🚀 Executing: ${action}`, 'info');
+            
+            try {
+                switch(action) {
+                    case 'downloadDataElements':
+                        await downloadDataElements();
+                        break;
+                    case 'downloadDatasets':
+                        await downloadDatasets();
+                        break;
+                    case 'copyOrgUnits':
+                        await copyOrgUnits(formData);
+                        break;
+                    case 'copyDataElements':
+                        await copyDataElements(formData);
+                        break;
+                    case 'copyDatasets':
+                        await copyDatasets(formData);
+                        break;
+                    default:
+                        log(`Action "${action}" not implemented`, 'info');
+                        showNotification('Feature coming soon!', 'info');
+                        setProgress(100);
+                }
+            } catch (error) {
+                log(`ERROR: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function downloadDataElements() {
+            const selectedDataElements = getSelectedOptions('dataElementSelect');
+            
+            if (selectedDataElements.length === 0) {
+                showNotification('Please select at least one data element', 'error');
+                return;
+            }
+            
+            log('Fetching data element names...', 'info');
+            setProgress(20);
+            
+            const dataElementMap = {};
+            const deUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&filter=id:in:[${selectedDataElements.join(',')}]&paging=false`;
+            const deResponse = await fetchWithAuth(deUrl);
+            
+            if (deResponse.ok) {
+                const deData = await deResponse.json();
+                deData.dataElements?.forEach(de => {
+                    dataElementMap[de.id] = de.displayName || de.name || de.id;
+                });
+            }
+            
+            log('Fetching metadata...', 'info');
+            setProgress(30);
+            
+            const deFilter = selectedDataElements.map(id => `id:eq:${id}`).join(',');
+            const url = `${state.config.instanceUrl}/api/metadata.json?dataElements:filter=${deFilter}&fields=:all`;
+            const response = await fetchWithAuth(url);
+            
+            if (!response.ok) throw new Error('Failed to fetch metadata');
+            
+            const metadata = await response.json();
+            log(`Retrieved metadata for ${selectedDataElements.length} data elements`, 'success');
+            setProgress(50);
+            
+            const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `data-elements-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            log('Download complete', 'success');
+            setProgress(100);
+            showNotification('Data elements exported successfully!', 'success');
+        }
+
+        async function downloadDatasets() {
+            const selectedDatasetIds = getSelectedDatasets();
+            const selectedOrgUnitIds = getSelectedOrgUnitsFromTree();
+            
+            if (selectedDatasetIds.length === 0) {
+                showNotification('Please select at least one dataset', 'error');
+                return;
+            }
+            
+            if (selectedOrgUnitIds.length === 0) {
+                showNotification('Please select at least one organisation unit', 'error');
+                return;
+            }
+            
+            log(`Fetching metadata for ${selectedDatasetIds.length} datasets...`, 'info');
+            setProgress(20);
+            
+            const dsFilter = selectedDatasetIds.map(id => `id:eq:${id}`).join(',');
+            const url = `${state.config.instanceUrl}/api/metadata.json?dataSets:filter=${dsFilter}&fields=:all`;
+            const response = await fetchWithAuth(url);
+            
+            if (!response.ok) throw new Error('Failed to fetch datasets');
+            
+            const metadata = await response.json();
+            log(`Retrieved metadata for ${selectedDatasetIds.length} datasets`, 'success');
+            setProgress(40);
+            
+            const includeDataValues = document.getElementById('includeDataValues')?.checked;
+            
+            if (includeDataValues) {
+                log('Fetching data values for selected period...', 'info');
+                setProgress(60);
+                
+                const period = getPeriodFromForm();
+                
+                if (!period) {
+                    showNotification('Please select a period', 'error');
+                    return;
+                }
+                
+                const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataSet=${selectedDatasetIds.join(',')}&orgUnit=${selectedOrgUnitIds.join(',')}&${period}`;
+                const dataResponse = await fetchWithAuth(dataUrl);
+                
+                if (dataResponse.ok) {
+                    const dataValues = await dataResponse.json();
+                    const numValues = dataValues.dataValues?.length || 0;
+                    log(`Retrieved ${numValues} data values`, 'success');
+                    
+                    const fullExport = {
+                        metadata: metadata,
+                        dataValues: dataValues
+                    };
+                    
+                    const blob = new Blob([JSON.stringify(fullExport, null, 2)], { type: 'application/json' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `datasets-with-data-${new Date().toISOString().split('T')[0]}.json`;
+                    link.click();
+                    
+                    log('Download complete', 'success');
+                } else {
+                    log('Failed to fetch data values', 'error');
+                }
+            } else {
+                const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `datasets-metadata-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                
+                log('Metadata download complete', 'success');
+            }
+            
+            setProgress(100);
+            showNotification('Datasets exported successfully!', 'success');
+        }
+
+        async function copyOrgUnits(formData) {
+            log('🏢 Starting organisation unit copy with dependencies...', 'info');
+            setProgress(5);
+            
+            const includeAttributes = document.getElementById('includeAttributes')?.checked;
+            const skipAttributeValues = document.getElementById('skipAttributeValues')?.checked;
+            const importStrategy = formData.get('importStrategy') || 'CREATE_AND_UPDATE';
+            
+            let attributes = [];
+            
+            if (includeAttributes) {
+                log('📋 Step 1/4: Fetching attributes assigned to Organisation Units...', 'info');
+                setProgress(10);
+                
+                const attributesUrl = `${state.config.instanceUrl}/api/attributes.json?fields=:all&filter=organisationUnitAttribute:eq:true&paging=false`;
+                const attributesResponse = await fetchWithAuth(attributesUrl);
+                
+                if (attributesResponse.ok) {
+                    const attrData = await attributesResponse.json();
+                    attributes = attrData.attributes || [];
+                    log(`✓ Found ${attributes.length} attributes for organisation units`, 'success');
+                    
+                    if (attributes.length > 0) {
+                        attributes.forEach(attr => {
+                            log(`  - ${attr.displayName || attr.name} [${attr.id}]`, 'info');
+                        });
+                    }
+                } else {
+                    log('⚠ Warning: Could not fetch attributes', 'error');
+                }
+            }
+            
+            setProgress(20);
+            
+            log('📊 Step 2/4: Fetching organisation units with metadata...', 'info');
+            const sourceUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=:all&paging=false`;
+            const sourceResponse = await fetchWithAuth(sourceUrl);
+            
+            if (!sourceResponse.ok) {
+                const errorText = await sourceResponse.text();
+                log(`❌ Failed to fetch org units: ${errorText}`, 'error');
+                throw new Error('Failed to fetch organisation units from source');
+            }
+            
+            const sourceData = await sourceResponse.json();
+            let orgUnits = sourceData.organisationUnits || [];
+            log(`✓ Retrieved ${orgUnits.length} organisation units`, 'success');
+            setProgress(40);
+            
+            if (skipAttributeValues) {
+                log('🧹 Cleaning attribute values from org units...', 'info');
+                orgUnits = orgUnits.map(ou => {
+                    const cleaned = { ...ou };
+                    if (cleaned.attributeValues) {
+                        delete cleaned.attributeValues;
+                    }
+                    return cleaned;
+                });
+                log('✓ Attribute values removed', 'success');
+            }
+            
+            log('📦 Step 3/4: Preparing metadata package...', 'info');
+            const metadata = {
+                organisationUnits: orgUnits
+            };
+            
+            if (includeAttributes && attributes.length > 0 && !skipAttributeValues) {
+                metadata.attributes = attributes;
+                log(`✓ Including ${attributes.length} attributes in package`, 'success');
+            }
+            
+            setProgress(50);
+            
+            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
+            const targetUsername = formData.get('targetUsername').trim();
+            const targetPassword = formData.get('targetPassword').trim();
+            
+            log('🚀 Step 4/4: Importing to target instance...', 'info');
+            log(`  Target: ${targetUrl}`, 'info');
+            log(`  Strategy: ${importStrategy}`, 'info');
+            log(`  Package contains: ${Object.keys(metadata).length} metadata types`, 'info');
+            setProgress(60);
+            
+            const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&atomicMode=NONE')}`;
+            
+            const importResponse = await fetch(importUrlWithProxy, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(metadata)
+            });
+            
+            setProgress(80);
+            
+            if (!importResponse.ok) {
+                const errorText = await importResponse.text();
+                log(`❌ Import failed (Status ${importResponse.status})`, 'error');
+                log(`Response: ${errorText}`, 'error');
+                throw new Error(`Import failed with status ${importResponse.status}`);
+            }
+            
+            const result = await importResponse.json();
+            log('📥 Import response received', 'success');
+            log('', 'info');
+            
+            if (result.status === 'OK' || result.status === 'SUCCESS') {
+                log('═══════════════════════════════════════', 'success');
+                log('✅ IMPORT SUCCESSFUL!', 'success');
+                log('═══════════════════════════════════════', 'success');
+                
+                if (result.stats) {
+                    log('📊 Import Statistics:', 'success');
+                    log(`  ✓ Created: ${result.stats.created || 0}`, 'success');
+                    log(`  ✓ Updated: ${result.stats.updated || 0}`, 'success');
+                    log(`  ℹ Ignored: ${result.stats.ignored || 0}`, 'info');
+                    log(`  ℹ Deleted: ${result.stats.deleted || 0}`, 'info');
+                }
+                
+                showNotification('Organisation units copied successfully!', 'success');
+            } else {
+                log('═══════════════════════════════════════', 'info');
+                log(`⚠ Import completed with status: ${result.status}`, 'info');
+                log('═══════════════════════════════════════', 'info');
+                
+                let hasE6012Error = false;
+                
+                if (result.typeReports) {
+                    result.typeReports.forEach(report => {
+                        log(`\n📑 Type: ${report.klass || 'Unknown'}`, 'info');
+                        
+                        if (report.objectReports) {
+                            report.objectReports.forEach(objReport => {
+                                if (objReport.errorReports && objReport.errorReports.length > 0) {
+                                    objReport.errorReports.forEach(err => {
+                                        if (err.errorCode === 'E6012') {
+                                            hasE6012Error = true;
+                                            log(`  ❌ [E6012] ${err.message}`, 'error');
+                                            log(`     → Attribute ${err.errorProperties?.[0]} is not assigned to OrganisationUnit`, 'error');
+                                            log(`     💡 Solution: Enable "Include attributes" option`, 'info');
+                                        } else {
+                                            log(`  ❌ [${err.errorCode}] ${err.message}`, 'error');
+                                        }
+                                        
+                                        if (err.errorProperties && err.errorProperties.length > 0) {
+                                            log(`     Properties: ${err.errorProperties.join(', ')}`, 'error');
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                if (hasE6012Error) {
+                    log('', 'info');
+                    log('═══════════════════════════════════════', 'info');
+                    log('💡 FIX FOR E6012 ERROR:', 'info');
+                    log('1. Check "Include attributes" checkbox', 'info');
+                    log('2. Re-run the copy operation', 'info');
+                    log('   OR', 'info');
+                    log('3. Check "Skip attribute values" if attributes are not needed', 'info');
+                    log('═══════════════════════════════════════', 'info');
+                }
+                
+                showNotification('Import completed with warnings - check logs', 'info');
+            }
+            
+            setProgress(100);
+        }
+
+        async function copyDataElements(formData) {
+            log('📊 Starting data elements copy...', 'info');
+            setProgress(20);
+            
+            const sourceUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=:all&paging=false`;
+            const sourceResponse = await fetchWithAuth(sourceUrl);
+            
+            if (!sourceResponse.ok) {
+                throw new Error('Failed to fetch data elements from source');
+            }
+            
+            const sourceData = await sourceResponse.json();
+            log(`Retrieved ${sourceData.dataElements.length} data elements`, 'success');
+            setProgress(50);
+            
+            const metadata = {
+                dataElements: sourceData.dataElements
+            };
+            
+            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
+            const targetUsername = formData.get('targetUsername').trim();
+            const targetPassword = formData.get('targetPassword').trim();
+            
+            log(`Importing to ${targetUrl}...`, 'info');
+            setProgress(60);
+            
+            const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
+            
+            const importResponse = await fetch(importUrlWithProxy, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(metadata)
+            });
+            
+            setProgress(80);
+            
+            if (!importResponse.ok) {
+                throw new Error(`Import failed with status ${importResponse.status}`);
+            }
+            
+            const result = await importResponse.json();
+            
+            if (result.status === 'OK' || result.status === 'SUCCESS') {
+                log('✓ Import successful!', 'success');
+                if (result.stats) {
+                    log(`  Created: ${result.stats.created || 0}`, 'success');
+                    log(`  Updated: ${result.stats.updated || 0}`, 'success');
+                }
+                showNotification('Data elements copied successfully!', 'success');
+            } else {
+                log(`⚠ Import status: ${result.status}`, 'info');
+                showNotification('Import completed with warnings', 'info');
+            }
+            
+            setProgress(100);
+        }
+
+        async function copyDatasets(formData) {
+            log('📋 Starting dataset copy...', 'info');
+            setProgress(20);
+            
+            const datasetId = formData.get('datasetId').trim();
+            const sourceUrl = `${state.config.instanceUrl}/api/dataSets/${datasetId}.json?fields=:all`;
+            const sourceResponse = await fetchWithAuth(sourceUrl);
+            
+            if (!sourceResponse.ok) {
+                throw new Error('Failed to fetch dataset from source');
+            }
+            
+            const dataset = await sourceResponse.json();
+            log(`Retrieved dataset: ${dataset.displayName || dataset.name}`, 'success');
+            setProgress(50);
+            
+            const metadata = {
+                dataSets: [dataset]
+            };
+            
+            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
+            const targetUsername = formData.get('targetUsername').trim();
+            const targetPassword = formData.get('targetPassword').trim();
+            
+            log(`Importing to ${targetUrl}...`, 'info');
+            setProgress(60);
+            
+            const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
+            
+            const importResponse = await fetch(importUrlWithProxy, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(metadata)
+            });
+            
+            setProgress(80);
+            
+            if (!importResponse.ok) {
+                throw new Error(`Import failed with status ${importResponse.status}`);
+            }
+            
+            const result = await importResponse.json();
+            
+            if (result.status === 'OK' || result.status === 'SUCCESS') {
+                log('✓ Import successful!', 'success');
+                showNotification('Dataset copied successfully!', 'success');
+            } else {
+                log(`⚠ Import status: ${result.status}`, 'info');
+                showNotification('Import completed with warnings', 'info');
+            }
+            
+            setProgress(100);
+        }
+    </script>
+</body>
+</html>
