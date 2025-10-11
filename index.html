@@ -338,7 +338,18 @@
                     <div class="help-text">Find this in the dashboard URL or via API</div>
                 </div>
                 
-                <div class="form-group year-range">
+                <div class="form-group">
+                    <label for="dataRangeType">Data Range Type</label>
+                    <select id="dataRangeType" onchange="toggleDataRangeInputs()">
+                        <option value="year">Full Year(s)</option>
+                        <option value="months" selected>Specific Months</option>
+                        <option value="custom">Custom Date Range</option>
+                    </select>
+                    <div class="help-text">Choose how to specify the data period</div>
+                </div>
+                
+                <!-- Year Range (for Full Years) -->
+                <div class="form-group year-range" id="yearRangeInputs" style="display: none;">
                     <div>
                         <label for="startYear">Start Year</label>
                         <input type="number" id="startYear" placeholder="2023" min="2000" max="2030" value="2024">
@@ -346,6 +357,74 @@
                     <div>
                         <label for="endYear">End Year</label>
                         <input type="number" id="endYear" placeholder="2024" min="2000" max="2030" value="2024">
+                    </div>
+                </div>
+                
+                <!-- Specific Months -->
+                <div id="monthsInputs">
+                    <div class="form-group">
+                        <label for="dataYear">Year</label>
+                        <input type="number" id="dataYear" placeholder="2024" min="2000" max="2030" value="2024">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Select Months to Import</label>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px;">
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="01" class="month-checkbox"> January
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="02" class="month-checkbox"> February
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="03" class="month-checkbox"> March
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="04" class="month-checkbox"> April
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="05" class="month-checkbox"> May
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="06" class="month-checkbox"> June
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="07" class="month-checkbox"> July
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="08" class="month-checkbox"> August
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="09" class="month-checkbox"> September
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="10" class="month-checkbox"> October
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="11" class="month-checkbox"> November
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                                <input type="checkbox" value="12" class="month-checkbox"> December
+                            </label>
+                        </div>
+                        <div class="help-text" style="margin-top: 10px;">
+                            <button type="button" onclick="selectAllMonths()" style="padding: 5px 10px; font-size: 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllMonths()" style="padding: 5px 10px; font-size: 12px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Custom Date Range -->
+                <div id="customDateInputs" style="display: none;">
+                    <div class="form-group year-range">
+                        <div>
+                            <label for="customStartDate">Start Date</label>
+                            <input type="date" id="customStartDate">
+                        </div>
+                        <div>
+                            <label for="customEndDate">End Date</label>
+                            <input type="date" id="customEndDate">
+                        </div>
                     </div>
                 </div>
                 
@@ -357,6 +436,11 @@
                 <div class="checkbox-group">
                     <input type="checkbox" id="runAnalytics" checked>
                     <label for="runAnalytics">Run analytics after import</label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="importInChunks" checked>
+                    <label for="importInChunks">Import in chunks (recommended for large dashboards or slow servers)</label>
                 </div>
                 
                 <div class="checkbox-group">
@@ -404,6 +488,75 @@
         const result = document.getElementById('result');
         const migrateBtn = document.getElementById('migrateBtn');
         const logs = document.getElementById('logs');
+        
+        // Toggle data range input visibility
+        function toggleDataRangeInputs() {
+            const rangeType = document.getElementById('dataRangeType').value;
+            document.getElementById('yearRangeInputs').style.display = rangeType === 'year' ? 'grid' : 'none';
+            document.getElementById('monthsInputs').style.display = rangeType === 'months' ? 'block' : 'none';
+            document.getElementById('customDateInputs').style.display = rangeType === 'custom' ? 'block' : 'none';
+        }
+        
+        // Select all months
+        function selectAllMonths() {
+            document.querySelectorAll('.month-checkbox').forEach(cb => cb.checked = true);
+        }
+        
+        // Clear all months
+        function clearAllMonths() {
+            document.querySelectorAll('.month-checkbox').forEach(cb => cb.checked = false);
+        }
+        
+        // Get selected date range based on type
+        function getDateRange() {
+            const rangeType = document.getElementById('dataRangeType').value;
+            
+            if (rangeType === 'year') {
+                const startYear = document.getElementById('startYear').value;
+                const endYear = document.getElementById('endYear').value;
+                return {
+                    startDate: `${startYear}-01-01`,
+                    endDate: `${endYear}-12-31`,
+                    description: `${startYear} to ${endYear}`
+                };
+            } else if (rangeType === 'months') {
+                const year = document.getElementById('dataYear').value;
+                const selectedMonths = Array.from(document.querySelectorAll('.month-checkbox:checked'))
+                    .map(cb => cb.value);
+                
+                if (selectedMonths.length === 0) {
+                    throw new Error('Please select at least one month');
+                }
+                
+                // Get earliest and latest months
+                const sortedMonths = selectedMonths.sort();
+                const firstMonth = sortedMonths[0];
+                const lastMonth = sortedMonths[sortedMonths.length - 1];
+                
+                // Calculate last day of the last month
+                const lastDay = new Date(year, parseInt(lastMonth), 0).getDate();
+                
+                return {
+                    startDate: `${year}-${firstMonth}-01`,
+                    endDate: `${year}-${lastMonth}-${lastDay}`,
+                    description: `${selectedMonths.length} month(s) in ${year}`,
+                    periods: selectedMonths.map(m => `${year}${m}`)
+                };
+            } else if (rangeType === 'custom') {
+                const startDate = document.getElementById('customStartDate').value;
+                const endDate = document.getElementById('customEndDate').value;
+                
+                if (!startDate || !endDate) {
+                    throw new Error('Please select both start and end dates');
+                }
+                
+                return {
+                    startDate: startDate,
+                    endDate: endDate,
+                    description: `${startDate} to ${endDate}`
+                };
+            }
+        }
         
         function log(message) {
             const timestamp = new Date().toLocaleTimeString();
@@ -481,11 +634,24 @@
                 targetUsername: document.getElementById('targetUsername').value,
                 targetPassword: document.getElementById('targetPassword').value,
                 dashboardId: document.getElementById('dashboardId').value,
-                startYear: document.getElementById('startYear').value,
-                endYear: document.getElementById('endYear').value,
                 includeData: document.getElementById('includeData').checked,
                 runAnalytics: document.getElementById('runAnalytics').checked,
+                importInChunks: document.getElementById('importInChunks').checked,
                 useCorsProxy: document.getElementById('useCorsProxy').value === 'yes'
+            };
+            
+            // Get date range
+            let dateRange;
+            try {
+                dateRange = getDateRange();
+                config.startDate = dateRange.startDate;
+                config.endDate = dateRange.endDate;
+                config.periods = dateRange.periods; // For specific months
+                config.dateDescription = dateRange.description;
+            } catch (error) {
+                showResult(`❌ ${error.message}`, 'error');
+                migrateBtn.disabled = false;
+                return;
             };
             
             resetUI();
@@ -549,58 +715,156 @@
                 log('Starting dashboard metadata import...');
                 updateStep(2, 'active', '⏳', 'Importing dashboard metadata...');
                 
-                const importMetadataUrl = `${config.targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE&atomicMode=NONE&mergeMode=MERGE`;
-                
-                const importMetadataResponse = await fetchWithAuth(
-                    importMetadataUrl,
-                    {
-                        method: 'POST',
-                        body: JSON.stringify(metadataData)
-                    },
-                    config.targetUsername,
-                    config.targetPassword,
-                    config.useCorsProxy
-                );
-                
-                if (!importMetadataResponse.ok) {
-                    const errorText = await importMetadataResponse.text();
-                    log(`Import error: ${errorText}`);
-                    throw new Error(`Failed to import metadata: ${importMetadataResponse.status}. Error: ${errorText}`);
-                }
-                
-                const importResult = await importMetadataResponse.json();
-                log(`Import result: ${importResult.status}`);
-                
-                // Log import summary
-                if (importResult.stats) {
-                    log('Import statistics:');
-                    Object.keys(importResult.stats).forEach(type => {
-                        const stats = importResult.stats[type];
-                        if (stats.total > 0) {
-                            log(`  - ${type}: created=${stats.created}, updated=${stats.updated}, ignored=${stats.ignored}`);
+                if (config.importInChunks) {
+                    // Import in chunks to avoid timeouts
+                    log('Using chunked import strategy...');
+                    
+                    // Define import order (dependencies first)
+                    const importOrder = [
+                        'categoryOptions',
+                        'categories', 
+                        'categoryCombos',
+                        'categoryOptionCombos',
+                        'options',
+                        'optionSets',
+                        'legendSets',
+                        'legends',
+                        'organisationUnitGroups',
+                        'organisationUnitGroupSets',
+                        'organisationUnits',
+                        'indicatorTypes',
+                        'dataElements',
+                        'dataElementGroups',
+                        'indicators',
+                        'dataSets',
+                        'sections',
+                        'validationRules',
+                        'validationRuleGroups',
+                        'programIndicators',
+                        'predictors',
+                        'visualizations',
+                        'charts',
+                        'reportTables',
+                        'maps',
+                        'eventCharts',
+                        'eventReports',
+                        'dashboardItems',
+                        'dashboards'
+                    ];
+                    
+                    let totalImported = 0;
+                    let totalErrors = 0;
+                    
+                    for (const type of importOrder) {
+                        if (metadataData[type] && metadataData[type].length > 0) {
+                            log(`Importing ${type}: ${metadataData[type].length} items...`);
+                            
+                            const chunk = {
+                                [type]: metadataData[type]
+                            };
+                            
+                            try {
+                                const importUrl = `${config.targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE&atomicMode=NONE&mergeMode=MERGE`;
+                                
+                                const response = await fetchWithAuth(
+                                    importUrl,
+                                    {
+                                        method: 'POST',
+                                        body: JSON.stringify(chunk)
+                                    },
+                                    config.targetUsername,
+                                    config.targetPassword,
+                                    config.useCorsProxy
+                                );
+                                
+                                if (!response.ok) {
+                                    const errorText = await response.text();
+                                    log(`⚠️ Warning: ${type} import returned ${response.status}`);
+                                    totalErrors++;
+                                    continue;
+                                }
+                                
+                                const result = await response.json();
+                                
+                                if (result.stats && result.stats[type]) {
+                                    const stats = result.stats[type];
+                                    log(`  ✓ ${type}: created=${stats.created}, updated=${stats.updated}, ignored=${stats.ignored}`);
+                                    totalImported += stats.created + stats.updated;
+                                }
+                                
+                                // Small delay to avoid overwhelming server
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                
+                            } catch (error) {
+                                log(`⚠️ Error importing ${type}: ${error.message}`);
+                                totalErrors++;
+                            }
                         }
-                    });
-                }
-                
-                // Check for type reports with errors
-                if (importResult.typeReports) {
-                    const errorsFound = importResult.typeReports.some(tr => 
-                        tr.objectReports && tr.objectReports.some(or => or.errorReports && or.errorReports.length > 0)
+                    }
+                    
+                    log(`Import complete: ${totalImported} items imported, ${totalErrors} errors`);
+                    
+                    if (totalErrors > 0) {
+                        log('⚠️ Some imports had errors, but continuing...');
+                    }
+                    
+                } else {
+                    // Import all at once (original method)
+                    log('Using single import strategy...');
+                    
+                    const importMetadataUrl = `${config.targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE&atomicMode=NONE&mergeMode=MERGE`;
+                    
+                    const importMetadataResponse = await fetchWithAuth(
+                        importMetadataUrl,
+                        {
+                            method: 'POST',
+                            body: JSON.stringify(metadataData)
+                        },
+                        config.targetUsername,
+                        config.targetPassword,
+                        config.useCorsProxy
                     );
                     
-                    if (errorsFound) {
-                        log('⚠️ Some items had errors during import:');
-                        importResult.typeReports.forEach(tr => {
-                            if (tr.objectReports) {
-                                tr.objectReports.forEach(or => {
-                                    if (or.errorReports && or.errorReports.length > 0) {
-                                        or.errorReports.forEach(err => {
-                                            log(`  - ${tr.klass}: ${err.message}`);
-                                        });
-                                    }
-                                });
+                    if (!importMetadataResponse.ok) {
+                        const errorText = await importMetadataResponse.text();
+                        log(`Import error: ${errorText}`);
+                        throw new Error(`Failed to import metadata: ${importMetadataResponse.status}. Error: ${errorText}`);
+                    }
+                    
+                    const importResult = await importMetadataResponse.json();
+                    log(`Import result: ${importResult.status}`);
+                    
+                    // Log import summary
+                    if (importResult.stats) {
+                        log('Import statistics:');
+                        Object.keys(importResult.stats).forEach(type => {
+                            const stats = importResult.stats[type];
+                            if (stats.total > 0) {
+                                log(`  - ${type}: created=${stats.created}, updated=${stats.updated}, ignored=${stats.ignored}`);
                             }
                         });
+                    }
+                    
+                    // Check for type reports with errors
+                    if (importResult.typeReports) {
+                        const errorsFound = importResult.typeReports.some(tr => 
+                            tr.objectReports && tr.objectReports.some(or => or.errorReports && or.errorReports.length > 0)
+                        );
+                        
+                        if (errorsFound) {
+                            log('⚠️ Some items had errors during import:');
+                            importResult.typeReports.forEach(tr => {
+                                if (tr.objectReports) {
+                                    tr.objectReports.forEach(or => {
+                                        if (or.errorReports && or.errorReports.length > 0) {
+                                            or.errorReports.forEach(err => {
+                                                log(`  - ${tr.klass}: ${err.message}`);
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
                     }
                 }
                 
@@ -608,11 +872,21 @@
                 
                 // Step 3 & 4: Data export/import (if enabled)
                 if (config.includeData) {
-                    log(`Starting data export for ${config.startYear}-${config.endYear}...`);
-                    updateStep(3, 'active', '⏳', `Exporting data (${config.startYear}-${config.endYear})...`);
+                    log(`Starting data export for ${config.dateDescription}...`);
+                    updateStep(3, 'active', '⏳', `Exporting data (${config.dateDescription})...`);
                     
-                    const dataUrl = `${config.sourceUrl}/api/dataValueSets.json?` +
-                        `startDate=${config.startYear}-01-01&endDate=${config.endYear}-12-31&children=true`;
+                    // Build data export URL
+                    let dataUrl = `${config.sourceUrl}/api/dataValueSets.json?`;
+                    
+                    if (config.periods && config.periods.length > 0) {
+                        // Use specific periods (months)
+                        dataUrl += `period=${config.periods.join(',')}&children=true`;
+                        log(`Exporting specific periods: ${config.periods.join(', ')}`);
+                    } else {
+                        // Use date range
+                        dataUrl += `startDate=${config.startDate}&endDate=${config.endDate}&children=true`;
+                        log(`Exporting date range: ${config.startDate} to ${config.endDate}`);
+                    }
                     
                     const dataResponse = await fetchWithAuth(
                         dataUrl,
@@ -629,33 +903,45 @@
                     const dataValues = await dataResponse.json();
                     const dataCount = dataValues.dataValues?.length || 0;
                     log(`Exported ${dataCount} data values`);
-                    updateStep(3, 'complete', '✅', `Data values exported (${dataCount} values)`);
                     
-                    log('Starting data import...');
-                    updateStep(4, 'active', '⏳', 'Importing data values...');
-                    
-                    const importDataUrl = `${config.targetUrl}/api/dataValueSets?importStrategy=CREATE_AND_UPDATE`;
-                    
-                    const importDataResponse = await fetchWithAuth(
-                        importDataUrl,
-                        {
-                            method: 'POST',
-                            body: JSON.stringify(dataValues)
-                        },
-                        config.targetUsername,
-                        config.targetPassword,
-                        config.useCorsProxy
-                    );
-                    
-                    if (!importDataResponse.ok) {
-                        const errorText = await importDataResponse.text();
-                        log(`Data import error: ${errorText}`);
-                        throw new Error(`Failed to import data: ${importDataResponse.status}`);
+                    if (dataCount === 0) {
+                        log('⚠️ No data found for the selected period');
+                        updateStep(3, 'complete', '⚠️', 'No data found for selected period');
+                        updateStep(4, 'complete', '⏭️', 'Skipped (no data to import)');
+                    } else {
+                        updateStep(3, 'complete', '✅', `Data values exported (${dataCount} values)`);
+                        
+                        log('Starting data import...');
+                        updateStep(4, 'active', '⏳', 'Importing data values...');
+                        
+                        const importDataUrl = `${config.targetUrl}/api/dataValueSets?importStrategy=CREATE_AND_UPDATE`;
+                        
+                        const importDataResponse = await fetchWithAuth(
+                            importDataUrl,
+                            {
+                                method: 'POST',
+                                body: JSON.stringify(dataValues)
+                            },
+                            config.targetUsername,
+                            config.targetPassword,
+                            config.useCorsProxy
+                        );
+                        
+                        if (!importDataResponse.ok) {
+                            const errorText = await importDataResponse.text();
+                            log(`Data import error: ${errorText}`);
+                            throw new Error(`Failed to import data: ${importDataResponse.status}`);
+                        }
+                        
+                        const dataImportResult = await importDataResponse.json();
+                        log(`Data import: ${dataImportResult.status}`);
+                        
+                        // Log import counts
+                        const importCount = dataImportResult.importCount || {};
+                        log(`Imported: ${importCount.imported || 0}, Updated: ${importCount.updated || 0}, Ignored: ${importCount.ignored || 0}`);
+                        
+                        updateStep(4, 'complete', '✅', `Data values imported (${importCount.imported || 0} imported, ${importCount.updated || 0} updated)`);
                     }
-                    
-                    const dataImportResult = await importDataResponse.json();
-                    log(`Data import: ${dataImportResult.status}`);
-                    updateStep(4, 'complete', '✅', 'Data values imported');
                 } else {
                     log('Skipping data export/import (disabled)');
                     updateStep(3, 'complete', '⏭️', 'Skipped (data already exists)');
