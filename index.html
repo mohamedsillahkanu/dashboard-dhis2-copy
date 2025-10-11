@@ -236,6 +236,20 @@
         .logs div {
             margin-bottom: 5px;
         }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .info-box p {
+            color: #1976D2;
+            font-size: 13px;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -245,13 +259,27 @@
             <p class="subtitle">Migrate dashboards and data between DHIS2 instances</p>
         </div>
         
-        <div class="warning">
-            <strong>⚠️ Security Notice:</strong>
-            This tool runs entirely in your browser. Your credentials are never sent to any third-party server. 
-            For best security, download this HTML file and run it locally on your computer.
+        <div class="info-box">
+            <p>💡 <strong>Tip:</strong> If you encounter CORS errors, enable the "Use CORS Proxy" option below. This will route requests through a proxy server to bypass browser restrictions.</p>
         </div>
         
         <form id="migrationForm">
+            <!-- CORS Settings -->
+            <div class="section">
+                <div class="section-title">
+                    🌐 Connection Settings
+                </div>
+                
+                <div class="form-group">
+                    <label for="useCorsProxy">Use CORS Proxy?</label>
+                    <select id="useCorsProxy">
+                        <option value="yes">Yes - Use CORS Proxy (Recommended)</option>
+                        <option value="no">No - Direct Connection</option>
+                    </select>
+                    <div class="help-text">Use proxy to bypass CORS restrictions</div>
+                </div>
+            </div>
+
             <!-- Source Instance -->
             <div class="section">
                 <div class="section-title">
@@ -260,18 +288,18 @@
                 
                 <div class="form-group">
                     <label for="sourceUrl">Source Instance URL *</label>
-                    <input type="url" id="sourceUrl" placeholder="https://play.dhis2.org/2.39.1" required>
+                    <input type="url" id="sourceUrl" placeholder="https://your-source-instance.dhis2.org" required>
                     <div class="help-text">Full URL including https://</div>
                 </div>
                 
                 <div class="form-group">
                     <label for="sourceUsername">Username *</label>
-                    <input type="text" id="sourceUsername" placeholder="admin" required>
+                    <input type="text" id="sourceUsername" placeholder="Enter username" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="sourcePassword">Password *</label>
-                    <input type="password" id="sourcePassword" placeholder="district" required>
+                    <input type="password" id="sourcePassword" placeholder="Enter password" required>
                 </div>
             </div>
             
@@ -283,18 +311,18 @@
                 
                 <div class="form-group">
                     <label for="targetUrl">Target Instance URL *</label>
-                    <input type="url" id="targetUrl" placeholder="https://target.dhis2.org" required>
+                    <input type="url" id="targetUrl" placeholder="https://your-target-instance.dhis2.org" required>
                     <div class="help-text">Full URL including https://</div>
                 </div>
                 
                 <div class="form-group">
                     <label for="targetUsername">Username *</label>
-                    <input type="text" id="targetUsername" placeholder="admin" required>
+                    <input type="text" id="targetUsername" placeholder="Enter username" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="targetPassword">Password *</label>
-                    <input type="password" id="targetPassword" placeholder="district" required>
+                    <input type="password" id="targetPassword" placeholder="Enter password" required>
                 </div>
             </div>
             
@@ -306,7 +334,7 @@
                 
                 <div class="form-group">
                     <label for="dashboardId">Dashboard ID *</label>
-                    <input type="text" id="dashboardId" placeholder="nghVC4wtyzi" required>
+                    <input type="text" id="dashboardId" placeholder="e.g., nghVC4wtyzi" required>
                     <div class="help-text">Find this in the dashboard URL or via API</div>
                 </div>
                 
@@ -409,7 +437,6 @@
                 logs.innerHTML = '';
             }
             
-            // Reset all steps
             for (let i = 1; i <= 5; i++) {
                 updateStep(i, '', '⏳', getStepDefaultMessage(i));
             }
@@ -426,20 +453,26 @@
             return messages[stepNum];
         }
         
-        async function fetchWithAuth(url, options, username, password) {
+        async function fetchWithAuth(url, options, username, password, useCorsProxy) {
+            let apiUrl = url;
+            
+            if (useCorsProxy) {
+                apiUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                log(`Using CORS proxy for: ${url}`);
+            }
+            
             const headers = {
                 ...options.headers,
                 'Authorization': 'Basic ' + btoa(`${username}:${password}`),
                 'Content-Type': 'application/json'
             };
             
-            return fetch(url, { ...options, headers });
+            return fetch(apiUrl, { ...options, headers });
         }
         
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Get form values
             const config = {
                 sourceUrl: document.getElementById('sourceUrl').value.replace(/\/$/, ''),
                 sourceUsername: document.getElementById('sourceUsername').value,
@@ -451,7 +484,8 @@
                 startYear: document.getElementById('startYear').value,
                 endYear: document.getElementById('endYear').value,
                 includeData: document.getElementById('includeData').checked,
-                runAnalytics: document.getElementById('runAnalytics').checked
+                runAnalytics: document.getElementById('runAnalytics').checked,
+                useCorsProxy: document.getElementById('useCorsProxy').value === 'yes'
             };
             
             resetUI();
@@ -473,15 +507,23 @@
                     metadataUrl,
                     { method: 'GET' },
                     config.sourceUsername,
-                    config.sourcePassword
+                    config.sourcePassword,
+                    config.useCorsProxy
                 );
                 
                 if (!metadataResponse.ok) {
+                    const errorText = await metadataResponse.text();
+                    log(`HTTP Error: ${metadataResponse.status} - ${errorText}`);
                     throw new Error(`Failed to export metadata: ${metadataResponse.status} ${metadataResponse.statusText}`);
                 }
                 
                 const metadataData = await metadataResponse.json();
                 log(`Exported metadata: ${JSON.stringify(metadataData).length} bytes`);
+                
+                if (!metadataData.dashboards || metadataData.dashboards.length === 0) {
+                    throw new Error(`Dashboard with ID "${config.dashboardId}" not found. Please verify the ID.`);
+                }
+                
                 updateStep(1, 'complete', '✅', 'Dashboard metadata exported');
                 
                 // Step 2: Import dashboard metadata
@@ -497,10 +539,13 @@
                         body: JSON.stringify(metadataData)
                     },
                     config.targetUsername,
-                    config.targetPassword
+                    config.targetPassword,
+                    config.useCorsProxy
                 );
                 
                 if (!importMetadataResponse.ok) {
+                    const errorText = await importMetadataResponse.text();
+                    log(`Import error: ${errorText}`);
                     throw new Error(`Failed to import metadata: ${importMetadataResponse.status}`);
                 }
                 
@@ -520,7 +565,8 @@
                         dataUrl,
                         { method: 'GET' },
                         config.sourceUsername,
-                        config.sourcePassword
+                        config.sourcePassword,
+                        config.useCorsProxy
                     );
                     
                     if (!dataResponse.ok) {
@@ -528,8 +574,9 @@
                     }
                     
                     const dataValues = await dataResponse.json();
-                    log(`Exported ${dataValues.dataValues?.length || 0} data values`);
-                    updateStep(3, 'complete', '✅', 'Data values exported');
+                    const dataCount = dataValues.dataValues?.length || 0;
+                    log(`Exported ${dataCount} data values`);
+                    updateStep(3, 'complete', '✅', `Data values exported (${dataCount} values)`);
                     
                     log('Starting data import...');
                     updateStep(4, 'active', '⏳', 'Importing data values...');
@@ -543,10 +590,13 @@
                             body: JSON.stringify(dataValues)
                         },
                         config.targetUsername,
-                        config.targetPassword
+                        config.targetPassword,
+                        config.useCorsProxy
                     );
                     
                     if (!importDataResponse.ok) {
+                        const errorText = await importDataResponse.text();
+                        log(`Data import error: ${errorText}`);
                         throw new Error(`Failed to import data: ${importDataResponse.status}`);
                     }
                     
@@ -570,7 +620,8 @@
                         analyticsUrl,
                         { method: 'POST' },
                         config.targetUsername,
-                        config.targetPassword
+                        config.targetPassword,
+                        config.useCorsProxy
                     );
                     
                     if (!analyticsResponse.ok) {
@@ -591,9 +642,15 @@
             } catch (error) {
                 console.error('Migration error:', error);
                 log(`ERROR: ${error.message}`);
-                showResult(`❌ Migration failed: ${error.message}`, 'error');
                 
-                // Mark current step as error
+                let errorMessage = `❌ Migration failed: ${error.message}`;
+                
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMessage += '\n\n💡 Try enabling "Use CORS Proxy" option if it\'s not already enabled.';
+                }
+                
+                showResult(errorMessage, 'error');
+                
                 for (let i = 1; i <= 5; i++) {
                     const step = document.getElementById(`step${i}`);
                     if (step.classList.contains('active')) {
