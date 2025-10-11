@@ -1835,6 +1835,13 @@
                 return;
             }
             
+            // Double confirmation for safety
+            const userConfirmed = confirm('ARE YOU SURE? This will permanently delete the selected items. This cannot be undone!');
+            if (!userConfirmed) {
+                showNotification('Deletion cancelled', 'info');
+                return;
+            }
+            
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Deleting...';
@@ -1852,6 +1859,21 @@
                 
                 let totalDeleted = 0;
                 let totalFailed = 0;
+                let totalItems = 0;
+                
+                // Calculate total items
+                for (const typeKey of selectedTypes) {
+                    if (selectedItems[typeKey]) {
+                        totalItems += selectedItems[typeKey].size;
+                    }
+                }
+                
+                if (totalItems === 0) {
+                    throw new Error('No items selected for deletion');
+                }
+                
+                log('Total items to delete: ' + totalItems, 'info');
+                let processedItems = 0;
                 
                 for (const typeKey of selectedTypes) {
                     const type = METADATA_TYPES[typeKey];
@@ -1870,20 +1892,49 @@
                     for (const itemId of selectedIds) {
                         try {
                             const deleteUrl = config.instanceUrl + '/api/' + type.endpoint + '/' + itemId;
-                            const response = await fetchWithAuth(deleteUrl, {
-                                method: 'DELETE'
+                            
+                            // Use CORS proxy for DELETE requests
+                            const proxiedUrl = config.useCorsProxy 
+                                ? 'https://corsproxy.io/?' + encodeURIComponent(deleteUrl)
+                                : deleteUrl;
+                            
+                            const response = await fetch(proxiedUrl, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Authorization': 'Basic ' + btoa(config.username + ':' + config.password)
+                                }
                             });
                             
-                            if (response.ok) {
+                            processedItems++;
+                            const progress = 10 + Math.floor((processedItems / totalItems) * 80);
+                            setProgress(progress);
+                            
+                            if (response.ok || response.status === 204) {
                                 totalDeleted++;
-                                log('  [SUCCESS] Deleted item: ' + itemId, 'success');
+                                log('  [OK] Deleted: ' + itemId, 'success');
+                            } else if (response.status === 404) {
+                                totalFailed++;
+                                log('  [NOT FOUND] Item does not exist: ' + itemId, 'error');
+                            } else if (response.status === 409) {
+                                totalFailed++;
+                                log('  [CONFLICT] Item is in use and cannot be deleted: ' + itemId, 'error');
                             } else {
                                 totalFailed++;
-                                const errorText = await response.text();
-                                log('  [FAILED] Could not delete ' + itemId + ': ' + errorText, 'error');
+                                try {
+                                    const errorData = await response.json();
+                                    const errorMsg = errorData.message || errorData.error || 'Unknown error';
+                                    log('  [FAILED] ' + itemId + ': ' + errorMsg, 'error');
+                                } catch {
+                                    log('  [FAILED] ' + itemId + ': HTTP ' + response.status, 'error');
+                                }
                             }
+                            
+                            // Small delay to avoid overwhelming the server
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            
                         } catch (error) {
                             totalFailed++;
+                            processedItems++;
                             log('  [ERROR] ' + itemId + ': ' + error.message, 'error');
                         }
                     }
@@ -1891,16 +1942,17 @@
                 
                 setProgress(100);
                 log('', 'info');
-                log('========================================', 'success');
-                log('DELETION COMPLETE', 'success');
-                log('========================================', 'success');
+                log('========================================', totalFailed === 0 ? 'success' : 'info');
+                log('DELETION COMPLETE', totalFailed === 0 ? 'success' : 'info');
+                log('========================================', totalFailed === 0 ? 'success' : 'info');
                 log('Total deleted: ' + totalDeleted, 'success');
                 log('Total failed: ' + totalFailed, totalFailed > 0 ? 'error' : 'info');
+                log('Success rate: ' + Math.round((totalDeleted / totalItems) * 100) + '%', 'info');
                 
                 if (totalDeleted > 0) {
-                    showNotification(totalDeleted + ' items deleted successfully', 'success');
+                    showNotification(totalDeleted + ' items deleted successfully' + (totalFailed > 0 ? ', ' + totalFailed + ' failed' : ''), totalFailed > 0 ? 'info' : 'success');
                 } else {
-                    showNotification('No items were deleted', 'error');
+                    showNotification('No items were deleted. Check logs for errors.', 'error');
                 }
                 
             } catch (error) {
