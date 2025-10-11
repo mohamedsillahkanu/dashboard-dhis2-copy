@@ -900,11 +900,22 @@
         }
 
         function selectPeriodType(type) {
-            document.querySelectorAll('.period-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.period-inputs').forEach(input => input.classList.remove('active'));
+            const tabs = document.querySelectorAll('.period-tab');
+            const inputs = document.querySelectorAll('.period-inputs');
             
-            event.target.classList.add('active');
-            document.getElementById(`${type}-inputs`).classList.add('active');
+            if (!tabs || !inputs) return;
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            inputs.forEach(input => input.classList.remove('active'));
+            
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            const targetInput = document.getElementById(`${type}-inputs`);
+            if (targetInput) {
+                targetInput.classList.add('active');
+            }
         }
 
         // Modal configurations
@@ -1260,58 +1271,126 @@
         // Load data elements from DHIS2
         async function loadDataElements() {
             try {
-                log('Fetching data elements...', 'info');
-                const url = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName&paging=false`;
+                log('Fetching data elements from DHIS2...', 'info');
+                showNotification('Loading data elements...', 'info');
+                
+                const url = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&paging=false`;
+                log(`Request URL: ${url}`, 'info');
+                
                 const response = await fetchWithAuth(url);
                 
-                if (!response.ok) throw new Error('Failed to fetch data elements');
+                log(`Response status: ${response.status} ${response.statusText}`, 'info');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response: ${errorText}`, 'error');
+                    throw new Error(`Failed to fetch data elements: ${response.status} - ${errorText}`);
+                }
                 
                 const data = await response.json();
+                log(`Raw response data: ${JSON.stringify(data).substring(0, 200)}...`, 'info');
+                
+                if (!data.dataElements || !Array.isArray(data.dataElements)) {
+                    log('Warning: No dataElements array in response', 'error');
+                    showNotification('No data elements found in response', 'error');
+                    return;
+                }
+                
                 const select = document.getElementById('dataElementSelect');
+                if (!select) {
+                    log('Error: dataElementSelect element not found', 'error');
+                    return;
+                }
+                
                 select.innerHTML = '';
                 select.disabled = false;
+                
+                if (data.dataElements.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No data elements found in this instance';
+                    select.appendChild(option);
+                    log('No data elements available in this DHIS2 instance', 'info');
+                    showNotification('No data elements found', 'info');
+                    return;
+                }
                 
                 data.dataElements.forEach(de => {
                     const option = document.createElement('option');
                     option.value = de.id;
-                    option.textContent = de.displayName;
+                    option.textContent = de.displayName || de.name || de.id;
                     select.appendChild(option);
                 });
                 
-                log(`Loaded ${data.dataElements.length} data elements`, 'success');
+                log(`Successfully loaded ${data.dataElements.length} data elements`, 'success');
                 showNotification(`Loaded ${data.dataElements.length} data elements`, 'success');
             } catch (error) {
-                log(`Error: ${error.message}`, 'error');
-                showNotification('Failed to load data elements', 'error');
+                log(`Error loading data elements: ${error.message}`, 'error');
+                console.error('Full error:', error);
+                showNotification(`Failed to load data elements: ${error.message}`, 'error');
             }
         }
 
         // Load datasets from DHIS2
         async function loadDatasets() {
             try {
-                log('Fetching datasets...', 'info');
-                const url = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName&paging=false`;
+                log('Fetching datasets from DHIS2...', 'info');
+                showNotification('Loading datasets...', 'info');
+                
+                const url = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName,name&paging=false`;
+                log(`Request URL: ${url}`, 'info');
+                
                 const response = await fetchWithAuth(url);
                 
-                if (!response.ok) throw new Error('Failed to fetch datasets');
+                log(`Response status: ${response.status} ${response.statusText}`, 'info');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response: ${errorText}`, 'error');
+                    throw new Error(`Failed to fetch datasets: ${response.status} - ${errorText}`);
+                }
                 
                 const data = await response.json();
+                log(`Raw response data: ${JSON.stringify(data).substring(0, 200)}...`, 'info');
+                
+                if (!data.dataSets || !Array.isArray(data.dataSets)) {
+                    log('Warning: No dataSets array in response', 'error');
+                    showNotification('No datasets found in response', 'error');
+                    return;
+                }
+                
                 const select = document.getElementById('datasetSelect');
+                if (!select) {
+                    log('Error: datasetSelect element not found', 'error');
+                    return;
+                }
+                
                 select.innerHTML = '';
                 select.disabled = false;
+                
+                if (data.dataSets.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No datasets found in this instance';
+                    select.appendChild(option);
+                    log('No datasets available in this DHIS2 instance', 'info');
+                    showNotification('No datasets found', 'info');
+                    return;
+                }
                 
                 data.dataSets.forEach(ds => {
                     const option = document.createElement('option');
                     option.value = ds.id;
-                    option.textContent = ds.displayName;
+                    option.textContent = ds.displayName || ds.name || ds.id;
                     select.appendChild(option);
                 });
                 
-                log(`Loaded ${data.dataSets.length} datasets`, 'success');
+                log(`Successfully loaded ${data.dataSets.length} datasets`, 'success');
                 showNotification(`Loaded ${data.dataSets.length} datasets`, 'success');
             } catch (error) {
-                log(`Error: ${error.message}`, 'error');
-                showNotification('Failed to load datasets', 'error');
+                log(`Error loading datasets: ${error.message}`, 'error');
+                console.error('Full error:', error);
+                showNotification(`Failed to load datasets: ${error.message}`, 'error');
             }
         }
 
@@ -1555,6 +1634,8 @@
         // Select all options in a select element
         function selectAllOptions(selectId) {
             const select = document.getElementById(selectId);
+            if (!select || !select.options) return;
+            
             for (let i = 0; i < select.options.length; i++) {
                 select.options[i].selected = true;
             }
@@ -1563,6 +1644,8 @@
         // Clear all options in a select element
         function clearAllOptions(selectId) {
             const select = document.getElementById(selectId);
+            if (!select || !select.options) return;
+            
             for (let i = 0; i < select.options.length; i++) {
                 select.options[i].selected = false;
             }
@@ -1571,6 +1654,8 @@
         // Get selected option IDs from a multi-select
         function getSelectedOptions(selectId) {
             const select = document.getElementById(selectId);
+            if (!select || !select.options) return [];
+            
             const selected = [];
             for (let i = 0; i < select.options.length; i++) {
                 if (select.options[i].selected) {
@@ -1869,32 +1954,51 @@
 
         // Get period string from form
         function getPeriodFromForm() {
-            const activeTab = document.querySelector('.period-tab.active')?.textContent.toLowerCase();
+            const activeTab = document.querySelector('.period-tab.active');
+            if (!activeTab) return '';
             
-            if (activeTab === 'monthly') {
-                const period = document.querySelector('#monthly-inputs input[name="period"]')?.value;
-                return period ? `period=${period.replace('-', '')}` : '';
-            } else if (activeTab === 'date range') {
-                const start = document.querySelector('#range-inputs input[name="periodStart"]')?.value;
-                const end = document.querySelector('#range-inputs input[name="periodEnd"]')?.value;
-                return start && end ? `startDate=${start}&endDate=${end}` : '';
-            } else if (activeTab === 'quarterly') {
-                const year = document.querySelector('#quarterly-inputs input[name="year"]')?.value;
-                const quarter = document.querySelector('#quarterly-inputs select[name="quarter"]')?.value;
-                return year && quarter ? `period=${year}${quarter}` : '';
-            } else if (activeTab === 'bi-annual') {
-                const year = document.querySelector('#biannual-inputs input[name="year"]')?.value;
-                const biannual = document.querySelector('#biannual-inputs select[name="biannual"]')?.value;
-                return year && biannual ? `period=${year}${biannual}` : '';
-            } else if (activeTab === 'yearly') {
-                const startYear = document.querySelector('#yearly-inputs input[name="startYear"]')?.value;
-                const endYear = document.querySelector('#yearly-inputs input[name="endYear"]')?.value;
+            const tabText = activeTab.textContent.trim().toLowerCase();
+            
+            if (tabText === 'monthly') {
+                const periodInput = document.querySelector('#monthly-inputs input[name="period"]');
+                const period = periodInput?.value;
+                if (period) {
+                    return `period=${period.replace('-', '')}`;
+                }
+            } else if (tabText === 'date range') {
+                const startInput = document.querySelector('#range-inputs input[name="periodStart"]');
+                const endInput = document.querySelector('#range-inputs input[name="periodEnd"]');
+                const start = startInput?.value;
+                const end = endInput?.value;
+                if (start && end) {
+                    return `startDate=${start}&endDate=${end}`;
+                }
+            } else if (tabText === 'quarterly') {
+                const yearInput = document.querySelector('#quarterly-inputs input[name="year"]');
+                const quarterSelect = document.querySelector('#quarterly-inputs select[name="quarter"]');
+                const year = yearInput?.value;
+                const quarter = quarterSelect?.value;
+                if (year && quarter) {
+                    return `period=${year}${quarter}`;
+                }
+            } else if (tabText === 'bi-annual') {
+                const yearInput = document.querySelector('#biannual-inputs input[name="year"]');
+                const biannualSelect = document.querySelector('#biannual-inputs select[name="biannual"]');
+                const year = yearInput?.value;
+                const biannual = biannualSelect?.value;
+                if (year && biannual) {
+                    return `period=${year}${biannual}`;
+                }
+            } else if (tabText === 'yearly') {
+                const startYearInput = document.querySelector('#yearly-inputs input[name="startYear"]');
+                const endYearInput = document.querySelector('#yearly-inputs input[name="endYear"]');
+                const startYear = startYearInput?.value;
+                const endYear = endYearInput?.value;
                 if (startYear && endYear) {
                     return `startDate=${startYear}-01-01&endDate=${endYear}-12-31`;
                 } else if (startYear) {
                     return `period=${startYear}`;
                 }
-                return '';
             }
             
             return '';
