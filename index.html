@@ -1968,26 +1968,38 @@
                 return;
             }
             
-            log('Fetching selected data elements metadata...', 'info');
+            log('Fetching data element names...', 'info');
             setProgress(20);
+            
+            // Fetch data element names directly
+            const dataElementMap = {};
+            const deUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&filter=id:in:[${selectedDataElements.join(',')}]&paging=false`;
+            const deResponse = await fetchWithAuth(deUrl);
+            
+            if (deResponse.ok) {
+                const deData = await deResponse.json();
+                log(`Found ${deData.dataElements?.length || 0} data elements`, 'info');
+                deData.dataElements?.forEach(de => {
+                    dataElementMap[de.id] = de.displayName || de.name || de.id;
+                    log(`  - ${de.id}: ${dataElementMap[de.id]}`, 'info');
+                });
+            }
+            
+            log('Fetching metadata...', 'info');
+            setProgress(30);
             
             const deFilter = selectedDataElements.map(id => `id:eq:${id}`).join(',');
             const url = `${state.config.instanceUrl}/api/metadata.json?dataElements:filter=${deFilter}&fields=:all&includeReferences=true`;
             const response = await fetchWithAuth(url);
             
-            if (!response.ok) throw new Error('Failed to fetch data elements');
+            if (!response.ok) throw new Error('Failed to fetch metadata');
             
             const metadata = await response.json();
             log(`Retrieved metadata for ${selectedDataElements.length} data elements`, 'success');
             setProgress(40);
             
-            const dataElementMap = {};
             const orgUnitMap = {};
             const categoryOptionComboMap = {};
-            
-            metadata.dataElements?.forEach(de => {
-                dataElementMap[de.id] = de.displayName || de.name;
-            });
             
             log('Fetching organisation unit hierarchy...', 'info');
             setProgress(50);
@@ -2033,13 +2045,14 @@
                     setProgress(80);
                     
                     if (numValues > 0) {
-                        log('Fetching category labels...', 'info');
+                        log('Fetching category option combo names...', 'info');
                         const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName,name&paging=false`;
                         const cocResponse = await fetchWithAuth(cocUrl);
                         if (cocResponse.ok) {
                             const cocData = await cocResponse.json();
+                            log(`Found ${cocData.categoryOptionCombos?.length || 0} category combos`, 'info');
                             cocData.categoryOptionCombos?.forEach(coc => {
-                                categoryOptionComboMap[coc.id] = coc.displayName || coc.name;
+                                categoryOptionComboMap[coc.id] = coc.displayName || coc.name || coc.id;
                             });
                         }
                         
@@ -2075,6 +2088,16 @@
         }
 
         function convertToWideFormatCSV(dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap, orgUnitHierarchy) {
+            log(`Converting ${dataValues.length} data values to wide format...`, 'info');
+            log(`Data element map has ${Object.keys(dataElementMap).length} entries`, 'info');
+            log(`Category combo map has ${Object.keys(categoryOptionComboMap).length} entries`, 'info');
+            
+            // Log first few mappings for debugging
+            const deKeys = Object.keys(dataElementMap).slice(0, 3);
+            deKeys.forEach(key => {
+                log(`  DE Mapping: ${key} -> ${dataElementMap[key]}`, 'info');
+            });
+            
             // Group data by org unit and period
             const groupedData = {};
             
@@ -2089,12 +2112,19 @@
                 }
                 
                 // Create unique key for data element + category combo
-                const deKey = `${dataElementMap[dv.dataElement] || dv.dataElement}`;
-                const cocName = categoryOptionComboMap[dv.categoryOptionCombo] || 'default';
-                const fullKey = cocName !== 'default' ? `${deKey} (${cocName})` : deKey;
+                const deName = dataElementMap[dv.dataElement] || dv.dataElement;
+                const cocName = categoryOptionComboMap[dv.categoryOptionCombo] || dv.categoryOptionCombo || 'default';
+                
+                // Only add category combo to column name if it's not "default"
+                let fullKey = deName;
+                if (cocName !== 'default' && cocName !== dv.categoryOptionCombo) {
+                    fullKey = `${deName} (${cocName})`;
+                }
                 
                 groupedData[key].values[fullKey] = dv.value;
             });
+            
+            log(`Grouped into ${Object.keys(groupedData).length} rows`, 'info');
             
             // Get all unique data element columns
             const allColumns = new Set();
@@ -2103,11 +2133,15 @@
             });
             const sortedColumns = Array.from(allColumns).sort();
             
+            log(`Created ${sortedColumns.length} data element columns`, 'info');
+            
             // Get max hierarchy depth
             let maxLevel = 0;
             Object.values(orgUnitHierarchy).forEach(ou => {
                 if (ou.level > maxLevel) maxLevel = ou.level;
             });
+            
+            log(`Maximum org unit hierarchy level: ${maxLevel}`, 'info');
             
             // Build headers with org unit hierarchy
             const hierarchyHeaders = [];
@@ -2138,6 +2172,7 @@
                 csv += csvRow.join(',') + '\n';
             });
             
+            log('Wide format CSV conversion complete', 'success');
             return csv;
         }
         
@@ -2256,13 +2291,24 @@
             
             log(`Found ${allDataElements.size} data elements in datasets`, 'info');
             
+            // Fetch data element names directly
             const dataElementMap = {};
+            if (allDataElements.size > 0) {
+                log('Fetching data element names...', 'info');
+                const deUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&filter=id:in:[${Array.from(allDataElements).join(',')}]&paging=false`;
+                const deResponse = await fetchWithAuth(deUrl);
+                
+                if (deResponse.ok) {
+                    const deData = await deResponse.json();
+                    log(`Found ${deData.dataElements?.length || 0} data element names`, 'info');
+                    deData.dataElements?.forEach(de => {
+                        dataElementMap[de.id] = de.displayName || de.name || de.id;
+                    });
+                }
+            }
+            
             const orgUnitMap = {};
             const categoryOptionComboMap = {};
-            
-            metadata.dataElements?.forEach(de => {
-                dataElementMap[de.id] = de.displayName || de.name;
-            });
             
             log('Fetching organisation unit hierarchy...', 'info');
             setProgress(50);
@@ -2310,13 +2356,14 @@
                     setProgress(80);
                     
                     if (numValues > 0) {
-                        log('Fetching category labels...', 'info');
+                        log('Fetching category option combo names...', 'info');
                         const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName,name&paging=false`;
                         const cocResponse = await fetchWithAuth(cocUrl);
                         if (cocResponse.ok) {
                             const cocData = await cocResponse.json();
+                            log(`Found ${cocData.categoryOptionCombos?.length || 0} category combos`, 'info');
                             cocData.categoryOptionCombos?.forEach(coc => {
-                                categoryOptionComboMap[coc.id] = coc.displayName || coc.name;
+                                categoryOptionComboMap[coc.id] = coc.displayName || coc.name || coc.id;
                             });
                         }
                         
