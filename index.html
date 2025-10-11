@@ -1,4 +1,4 @@
-<!DOCTYPE html>    
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -19,7 +19,6 @@
             min-height: 100vh;
         }
 
-        /* Login Screen */
         .login-screen {
             display: flex;
             align-items: center;
@@ -157,7 +156,6 @@
             cursor: not-allowed;
         }
 
-        /* Main Content */
         .main-content {
             display: none;
             padding: 20px;
@@ -219,7 +217,6 @@
             color: #e6edf3;
         }
 
-        /* Cards Grid */
         .cards-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -280,7 +277,6 @@
             line-height: 1.5;
         }
 
-        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -375,7 +371,6 @@
             font-weight: normal;
         }
 
-        /* Period Selector */
         .period-selector {
             background: #21262d;
             border: 1px solid #30363d;
@@ -421,7 +416,6 @@
             display: block;
         }
 
-        /* Progress & Results */
         .progress-section {
             background: #21262d;
             border: 1px solid #30363d;
@@ -484,7 +478,6 @@
             border-left-color: #58a6ff;
         }
 
-        /* Notification */
         .notification {
             position: fixed;
             top: 20px;
@@ -518,7 +511,6 @@
             border-left: 4px solid #58a6ff;
         }
 
-        /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -562,7 +554,6 @@
             50% { opacity: 0.8; }
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .cards-grid {
                 grid-template-columns: 1fr;
@@ -732,15 +723,14 @@
     </style>
 </head>
 <body>
-    <!-- Login Screen -->
     <div class="login-screen" id="loginScreen">
         <div class="login-card">
             <div class="logo-container">
                 <div class="logo-box">
-                    <img src="NMCP.png" alt="NMCP Logo" class="logo-img">
+                    <img src="NMCP.png" alt="NMCP Logo" class="logo-img" onerror="this.style.display='none'">
                 </div>
                 <div class="logo-box">
-                    <img src="ICF-SL.jpg" alt="ICF-SL Logo" class="logo-img">
+                    <img src="ICF-SL.jpg" alt="ICF-SL Logo" class="logo-img" onerror="this.style.display='none'">
                 </div>
             </div>
 
@@ -771,7 +761,6 @@
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="main-content" id="mainContent">
         <button class="logout-btn" id="logoutBtn">Logout</button>
 
@@ -782,23 +771,10 @@
             </div>
 
             <div class="cards-grid">
-                <!-- Data Elements -->
                 <div class="card" onclick="openModal('downloadDataElements')">
                     <span class="card-icon">📊</span>
                     <h3 class="card-title">Download Data Elements</h3>
                     <p class="card-description">Export data elements with full metadata and configurations</p>
-                </div>
-
-                <div class="card" onclick="openModal('uploadData')">
-                    <span class="card-icon">📤</span>
-                    <h3 class="card-title">Upload Data</h3>
-                    <p class="card-description">Import data values with flexible period selection</p>
-                </div>
-
-                <div class="card" onclick="openModal('enterData')">
-                    <span class="card-icon">✍️</span>
-                    <h3 class="card-title">Enter Data</h3>
-                    <p class="card-description">Manual data entry interface with validation</p>
                 </div>
 
                 <div class="card" onclick="openModal('downloadDatasets')">
@@ -806,71 +782,10 @@
                     <h3 class="card-title">Download Datasets</h3>
                     <p class="card-description">Export complete dataset configurations</p>
                 </div>
-
-                <div class="card" onclick="openModal('createDataElement')">
-                    <span class="card-icon">➕</span>
-                    <h3 class="card-title">Create Data Element</h3>
-                    <p class="card-description">Create new data elements with full configuration</p>
-                </div>
-
-                <div class="card" onclick="openModal('createDataset')">
-                    <span class="card-icon">📝</span>
-                    <h3 class="card-title">Create Dataset</h3>
-                    <p class="card-description">Build custom datasets with data elements</p>
-                </div>
-
-                <div class="card" onclick="openModal('createIndicator')">
-                    <span class="card-icon">📈</span>
-                    <h3 class="card-title">Create Indicator</h3>
-                    <p class="card-description">Design indicators with formulas and metadata</p>
-                </div>
-
-                <div class="card" onclick="openModal('createDashboard')">
-                    <span class="card-icon">📊</span>
-                    <h3 class="card-title">Create Dashboard</h3>
-                    <p class="card-description">Build interactive dashboards with visualizations</p>
-                </div>
-
-                <div class="card" onclick="openModal('copyOrgUnits')">
-                    <span class="card-icon">🏢</span>
-                    <h3 class="card-title">Copy Organisation Units</h3>
-                    <p class="card-description">Transfer org units between DHIS2 instances</p>
-                </div>
-
-                <div class="card" onclick="openModal('copyDataElements')">
-                    <span class="card-icon">📊</span>
-                    <h3 class="card-title">Copy Data Elements</h3>
-                    <p class="card-description">Migrate data elements across instances</p>
-                </div>
-
-                <div class="card" onclick="openModal('copyDatasets')">
-                    <span class="card-icon">📋</span>
-                    <h3 class="card-title">Copy Datasets</h3>
-                    <p class="card-description">Transfer datasets with dependencies</p>
-                </div>
-
-                <div class="card" onclick="openModal('copyDashboard')">
-                    <span class="card-icon">🎯</span>
-                    <h3 class="card-title">Copy Dashboard</h3>
-                    <p class="card-description">Migrate dashboards between instances</p>
-                </div>
-
-                <div class="card" onclick="openModal('importMetadataDatasets')">
-                    <span class="card-icon">⬇️</span>
-                    <h3 class="card-title">Import Dataset Metadata</h3>
-                    <p class="card-description">Import dataset metadata with dependencies</p>
-                </div>
-
-                <div class="card" onclick="openModal('importMetadataDataElements')">
-                    <span class="card-icon">⬇️</span>
-                    <h3 class="card-title">Import Data Element Metadata</h3>
-                    <p class="card-description">Import data element configurations</p>
-                </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Template -->
     <div class="modal" id="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -894,17 +809,19 @@
         </div>
     </div>
 
-    <!-- Notification -->
     <div class="notification" id="notification"></div>
 
     <script>
-        // Global state
         const state = {
             config: null,
             isLoggedIn: false
         };
 
-        // Period selector HTML generator
+        let datasetsData = [];
+        let selectedDatasets = new Set();
+        let orgUnitsData = [];
+        let selectedOrgUnits = new Set();
+
         function getPeriodSelector() {
             return `
                 <div class="period-selector">
@@ -913,7 +830,6 @@
                         <div class="period-tab active" onclick="selectPeriodType('monthly')">Monthly</div>
                         <div class="period-tab" onclick="selectPeriodType('range')">Date Range</div>
                         <div class="period-tab" onclick="selectPeriodType('quarterly')">Quarterly</div>
-                        <div class="period-tab" onclick="selectPeriodType('biannual')">Bi-Annual</div>
                         <div class="period-tab" onclick="selectPeriodType('yearly')">Yearly</div>
                     </div>
 
@@ -955,25 +871,9 @@
                         </div>
                     </div>
 
-                    <div class="period-inputs" id="biannual-inputs">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Year</label>
-                                <input type="number" class="form-input" name="year" min="2000" max="2030" value="2025">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Period</label>
-                                <select class="form-select" name="biannual">
-                                    <option value="S1">S1 (Jan-Jun)</option>
-                                    <option value="S2">S2 (Jul-Dec)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="period-inputs" id="yearly-inputs">
                         <div class="form-group">
-                            <label class="form-label">Year Range (e.g., 2024-2025)</label>
+                            <label class="form-label">Year Range</label>
                             <div class="form-row">
                                 <input type="number" class="form-input" name="startYear" min="2000" max="2030" placeholder="Start Year">
                                 <input type="number" class="form-input" name="endYear" min="2000" max="2030" placeholder="End Year">
@@ -988,14 +888,10 @@
             const tabs = document.querySelectorAll('.period-tab');
             const inputs = document.querySelectorAll('.period-inputs');
             
-            if (!tabs || !inputs) return;
-            
             tabs.forEach(tab => tab.classList.remove('active'));
             inputs.forEach(input => input.classList.remove('active'));
             
-            if (event && event.target) {
-                event.target.classList.add('active');
-            }
+            event.target.classList.add('active');
             
             const targetInput = document.getElementById(`${type}-inputs`);
             if (targetInput) {
@@ -1003,7 +899,6 @@
             }
         }
 
-        // Modal configurations
         const modalConfigs = {
             downloadDataElements: {
                 title: '📊 Download Data Elements',
@@ -1026,50 +921,31 @@
                     </div>
                     
                     <div class="form-group">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="includeCategories" checked>
-                            <label>Include category combinations</label>
+                        <label class="form-label">Organisation Units <span class="required">*</span></label>
+                        <div style="margin-bottom: 10px;">
+                            <button type="button" class="btn-primary" onclick="loadOrgUnitsTree('downloadDataElements')" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                                Load Organisation Units
+                            </button>
                         </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="includeGroups" checked>
-                            <label>Include data element groups</label>
+                        <div style="background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 15px; max-height: 300px; overflow-y: auto;" id="orgUnitTreeDE">
+                            <p style="color: #8b949e; text-align: center;">Click "Load Organisation Units" to fetch...</p>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" onclick="expandAllOrgUnits('orgUnitTreeDE')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Expand All</button>
+                            <button type="button" onclick="collapseAllOrgUnits('orgUnitTreeDE')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Collapse All</button>
+                            <button type="button" onclick="selectAllOrgUnitsInTree('orgUnitTreeDE')" style="padding: 5px 10px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllOrgUnitsInTree('orgUnitTreeDE')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
                         </div>
                     </div>
-                `
-            },
-            uploadData: {
-                title: '📤 Upload Data',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Select Data File <span class="required">*</span></label>
-                        <input type="file" class="form-input" accept=".json,.xml,.csv" required>
-                        <div class="help-text">Supported formats: JSON, XML, CSV</div>
-                    </div>
+
                     ${getPeriodSelector()}
+
                     <div class="form-group">
                         <div class="checkbox-group">
-                            <input type="checkbox" id="dryRun">
-                            <label>Dry run (validate without importing)</label>
+                            <input type="checkbox" id="includeDataValues" checked>
+                            <label>Include data values for selected period</label>
                         </div>
                     </div>
-                `
-            },
-            enterData: {
-                title: '✍️ Enter Data',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Data Set <span class="required">*</span></label>
-                        <select class="form-select" required>
-                            <option value="">Select dataset...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Organisation Unit <span class="required">*</span></label>
-                        <select class="form-select" required>
-                            <option value="">Select org unit...</option>
-                        </select>
-                    </div>
-                    ${getPeriodSelector()}
                 `
             },
             downloadDatasets: {
@@ -1096,7 +972,6 @@
                         <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
                             <button type="button" onclick="selectAllDatasets()" style="padding: 8px 15px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer;">✓ Select All</button>
                             <button type="button" onclick="clearAllDatasets()" style="padding: 8px 15px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ Clear All</button>
-                            <button type="button" onclick="selectVisibleDatasets()" style="padding: 8px 15px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer;">✓ Select Visible</button>
                         </div>
                     </div>
 
@@ -1111,16 +986,10 @@
                             <p style="color: #8b949e; text-align: center;">Click "Load Organisation Units" to fetch...</p>
                         </div>
                         <div style="margin-top: 10px;">
-                            <button type="button" onclick="expandAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Expand All</button>
-                            <button type="button" onclick="collapseAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Collapse All</button>
-                            <button type="button" onclick="selectAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
-                            <button type="button" onclick="clearAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
-                        </div>
-                        <div class="help-text" style="margin-top: 10px;">
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="includeChildren" checked>
-                                <label>Include all child organisation units in export</label>
-                            </div>
+                            <button type="button" onclick="expandAllOrgUnits('orgUnitTree')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Expand All</button>
+                            <button type="button" onclick="collapseAllOrgUnits('orgUnitTree')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Collapse All</button>
+                            <button type="button" onclick="selectAllOrgUnitsInTree('orgUnitTree')" style="padding: 5px 10px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllOrgUnitsInTree('orgUnitTree')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
                         </div>
                     </div>
 
@@ -1128,283 +997,34 @@
 
                     <div class="form-group">
                         <div class="checkbox-group">
-                            <input type="checkbox" id="includeDataElements" checked>
-                            <label>Include data elements</label>
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="includeSections" checked>
-                            <label>Include sections</label>
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="includeDataValues" checked>
+                            <input type="checkbox" id="includeDataValuesDS" checked>
                             <label>Include data values for selected period</label>
                         </div>
-                    </div>
-                `
-            },
-            createDataElement: {
-                title: '➕ Create Data Element',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Name <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Short Name <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="shortName" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Value Type <span class="required">*</span></label>
-                            <select class="form-select" name="valueType" required>
-                                <option value="NUMBER">Number</option>
-                                <option value="INTEGER">Integer</option>
-                                <option value="TEXT">Text</option>
-                                <option value="BOOLEAN">Yes/No</option>
-                                <option value="DATE">Date</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Aggregation Type <span class="required">*</span></label>
-                            <select class="form-select" name="aggregationType" required>
-                                <option value="SUM">Sum</option>
-                                <option value="AVERAGE">Average</option>
-                                <option value="COUNT">Count</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Domain Type <span class="required">*</span></label>
-                        <select class="form-select" name="domainType" required>
-                            <option value="AGGREGATE">Aggregate</option>
-                            <option value="TRACKER">Tracker</option>
-                        </select>
-                    </div>
-                `
-            },
-            createDataset: {
-                title: '📝 Create Dataset',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Name <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Short Name <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="shortName" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Period Type <span class="required">*</span></label>
-                            <select class="form-select" name="periodType" required>
-                                <option value="Monthly">Monthly</option>
-                                <option value="Quarterly">Quarterly</option>
-                                <option value="Yearly">Yearly</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Expiry Days</label>
-                            <input type="number" class="form-input" name="expiryDays" value="0">
-                        </div>
-                    </div>
-                `
-            },
-            createIndicator: {
-                title: '📈 Create Indicator',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Name <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Short Name <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="shortName" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Numerator Formula <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="numerator" placeholder="#{dataElementId}" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Denominator Formula <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="denominator" placeholder="#{dataElementId}" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Indicator Type <span class="required">*</span></label>
-                        <select class="form-select" name="indicatorType" required>
-                            <option value="">Select type...</option>
-                        </select>
-                    </div>
-                `
-            },
-            createDashboard: {
-                title: '📊 Create Dashboard',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Name <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Description</label>
-                        <input type="text" class="form-input" name="description">
-                    </div>
-                `
-            },
-            copyOrgUnits: {
-                title: '🏢 Copy Organisation Units',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Target Instance URL <span class="required">*</span></label>
-                        <input type="url" class="form-input" name="targetUrl" placeholder="https://target-instance.dhis2.org" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Target Username <span class="required">*</span></label>
-                            <input type="text" class="form-input" name="targetUsername" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Target Password <span class="required">*</span></label>
-                            <input type="password" class="form-input" name="targetPassword" required>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="includeHierarchy" checked>
-                            <label>Include full hierarchy</label>
-                        </div>
-                    </div>
-                `
-            },
-            copyDataElements: {
-                title: '📊 Copy Data Elements',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Target Instance URL <span class="required">*</span></label>
-                        <input type="url" class="form-input" name="targetUrl" placeholder="https://target-instance.dhis2.org" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Target Username <span class="required">*</span></label>
-                            <input type="text" class="form-input" name="targetUsername" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Target Password <span class="required">*</span></label>
-                            <input type="password" class="form-input" name="targetPassword" required>
-                        </div>
-                    </div>
-                `
-            },
-            copyDatasets: {
-                title: '📋 Copy Datasets',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Dataset ID <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="datasetId" placeholder="e.g., abcd1234efg" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Target Instance URL <span class="required">*</span></label>
-                        <input type="url" class="form-input" name="targetUrl" placeholder="https://target-instance.dhis2.org" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Target Username <span class="required">*</span></label>
-                            <input type="text" class="form-input" name="targetUsername" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Target Password <span class="required">*</span></label>
-                            <input type="password" class="form-input" name="targetPassword" required>
-                        </div>
-                    </div>
-                `
-            },
-            copyDashboard: {
-                title: '🎯 Copy Dashboard',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Dashboard ID <span class="required">*</span></label>
-                        <input type="text" class="form-input" name="dashboardId" placeholder="e.g., nghVC4wtyzi" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Target Instance URL <span class="required">*</span></label>
-                        <input type="url" class="form-input" name="targetUrl" placeholder="https://target-instance.dhis2.org" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Target Username <span class="required">*</span></label>
-                            <input type="text" class="form-input" name="targetUsername" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Target Password <span class="required">*</span></label>
-                            <input type="password" class="form-input" name="targetPassword" required>
-                        </div>
-                    </div>
-                `
-            },
-            importMetadataDatasets: {
-                title: '⬇️ Import Dataset Metadata',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Metadata File <span class="required">*</span></label>
-                        <input type="file" class="form-input" accept=".json,.xml" required>
-                        <div class="help-text">Upload JSON or XML metadata file</div>
-                    </div>
-                `
-            },
-            importMetadataDataElements: {
-                title: '⬇️ Import Data Element Metadata',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Metadata File <span class="required">*</span></label>
-                        <input type="file" class="form-input" accept=".json,.xml" required>
-                        <div class="help-text">Upload JSON or XML metadata file</div>
                     </div>
                 `
             }
         };
 
-        // Load data elements from DHIS2
         async function loadDataElements() {
             try {
                 log('Fetching data elements from DHIS2...', 'info');
                 showNotification('Loading data elements...', 'info');
                 
                 const url = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&paging=false`;
-                log(`Request URL: ${url}`, 'info');
-                
                 const response = await fetchWithAuth(url);
                 
-                log(`Response status: ${response.status} ${response.statusText}`, 'info');
-                
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    log(`Error response: ${errorText}`, 'error');
-                    throw new Error(`Failed to fetch data elements: ${response.status} - ${errorText}`);
+                    throw new Error(`Failed to fetch: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                log(`Raw response data: ${JSON.stringify(data).substring(0, 200)}...`, 'info');
-                
-                if (!data.dataElements || !Array.isArray(data.dataElements)) {
-                    log('Warning: No dataElements array in response', 'error');
-                    showNotification('No data elements found in response', 'error');
-                    return;
-                }
                 
                 const select = document.getElementById('dataElementSelect');
-                if (!select) {
-                    log('Error: dataElementSelect element not found', 'error');
-                    return;
-                }
-                
                 select.innerHTML = '';
                 select.disabled = false;
                 
-                if (data.dataElements.length === 0) {
-                    const option = document.createElement('option');
-                    option.value = '';
-                    option.textContent = 'No data elements found in this instance';
-                    select.appendChild(option);
-                    log('No data elements available in this DHIS2 instance', 'info');
-                    showNotification('No data elements found', 'info');
+                if (!data.dataElements || data.dataElements.length === 0) {
+                    select.innerHTML = '<option value="">No data elements found</option>';
                     return;
                 }
                 
@@ -1415,65 +1035,42 @@
                     select.appendChild(option);
                 });
                 
-                log(`Successfully loaded ${data.dataElements.length} data elements`, 'success');
+                log(`Loaded ${data.dataElements.length} data elements`, 'success');
                 showNotification(`Loaded ${data.dataElements.length} data elements`, 'success');
             } catch (error) {
-                log(`Error loading data elements: ${error.message}`, 'error');
-                console.error('Full error:', error);
-                showNotification(`Failed to load data elements: ${error.message}`, 'error');
+                log(`Error: ${error.message}`, 'error');
+                showNotification('Failed to load data elements', 'error');
             }
         }
 
-        // Dataset checkbox management
-        let datasetsData = [];
-        let selectedDatasets = new Set();
-
-        // Load datasets as checkbox list
         async function loadDatasetsCheckbox() {
             try {
-                log('Fetching datasets from DHIS2...', 'info');
+                log('Fetching datasets...', 'info');
                 showNotification('Loading datasets...', 'info');
                 
                 const url = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName,name,periodType&paging=false`;
-                log(`Request URL: ${url}`, 'info');
-                
                 const response = await fetchWithAuth(url);
                 
-                log(`Response status: ${response.status} ${response.statusText}`, 'info');
-                
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    log(`Error response: ${errorText}`, 'error');
-                    throw new Error(`Failed to fetch datasets: ${response.status} - ${errorText}`);
+                    throw new Error(`Failed to fetch: ${response.status}`);
                 }
                 
                 const data = await response.json();
                 
-                if (!data.dataSets || !Array.isArray(data.dataSets)) {
-                    log('Warning: No dataSets array in response', 'error');
-                    showNotification('No datasets found in response', 'error');
-                    return;
-                }
-                
-                if (data.dataSets.length === 0) {
-                    document.getElementById('datasetCheckboxList').innerHTML = '<p style="color: #8b949e; text-align: center; padding: 20px;">No datasets found in this DHIS2 instance</p>';
-                    log('No datasets available in this DHIS2 instance', 'info');
-                    showNotification('No datasets found', 'info');
+                if (!data.dataSets || data.dataSets.length === 0) {
+                    document.getElementById('datasetCheckboxList').innerHTML = '<p style="color: #8b949e; text-align: center; padding: 20px;">No datasets found</p>';
                     return;
                 }
                 
                 datasetsData = data.dataSets;
                 renderDatasetCheckboxList(datasetsData);
-                
-                // Show search box
                 document.getElementById('datasetSearch').style.display = 'block';
                 
-                log(`Successfully loaded ${data.dataSets.length} datasets`, 'success');
+                log(`Loaded ${data.dataSets.length} datasets`, 'success');
                 showNotification(`Loaded ${data.dataSets.length} datasets`, 'success');
             } catch (error) {
-                log(`Error loading datasets: ${error.message}`, 'error');
-                console.error('Full error:', error);
-                showNotification(`Failed to load datasets: ${error.message}`, 'error');
+                log(`Error: ${error.message}`, 'error');
+                showNotification('Failed to load datasets', 'error');
             }
         }
 
@@ -1481,40 +1078,30 @@
             const container = document.getElementById('datasetCheckboxList');
             container.innerHTML = '';
             
-            if (datasets.length === 0) {
-                container.innerHTML = '<p style="color: #8b949e; text-align: center; padding: 20px;">No datasets match your search</p>';
-                return;
-            }
-            
             datasets.forEach(ds => {
                 const item = document.createElement('div');
                 item.className = 'dataset-item';
                 item.dataset.id = ds.id;
-                if (selectedDatasets.has(ds.id)) {
-                    item.classList.add('selected');
-                }
+                if (selectedDatasets.has(ds.id)) item.classList.add('selected');
                 
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.className = 'dataset-checkbox';
                 checkbox.checked = selectedDatasets.has(ds.id);
-                checkbox.dataset.id = ds.id;
-                
-                checkbox.addEventListener('click', function(e) {
+                checkbox.onclick = (e) => {
                     e.stopPropagation();
                     toggleDatasetSelection(ds.id);
-                });
+                };
                 
                 const name = document.createElement('span');
                 name.className = 'dataset-name';
                 const periodType = ds.periodType ? ` (${ds.periodType})` : '';
-                name.textContent = (ds.displayName || ds.name || ds.id) + periodType;
+                name.textContent = (ds.displayName || ds.name) + periodType;
                 
-                item.addEventListener('click', function(e) {
-                    if (e.target.type === 'checkbox') return;
+                item.onclick = () => {
                     checkbox.checked = !checkbox.checked;
                     toggleDatasetSelection(ds.id);
-                });
+                };
                 
                 item.appendChild(checkbox);
                 item.appendChild(name);
@@ -1532,16 +1119,9 @@
             }
             
             const item = document.querySelector(`.dataset-item[data-id="${id}"]`);
-            const checkbox = item?.querySelector('.dataset-checkbox');
-            
-            if (item && checkbox) {
-                if (selectedDatasets.has(id)) {
-                    item.classList.add('selected');
-                    checkbox.checked = true;
-                } else {
-                    item.classList.remove('selected');
-                    checkbox.checked = false;
-                }
+            if (item) {
+                item.classList.toggle('selected', selectedDatasets.has(id));
+                item.querySelector('.dataset-checkbox').checked = selectedDatasets.has(id);
             }
             
             updateDatasetSelectionSummary();
@@ -1551,121 +1131,86 @@
             const summary = document.getElementById('datasetSelectionSummary');
             const count = document.getElementById('datasetSelectionCount');
             
-            const numSelected = selectedDatasets.size;
-            
-            if (numSelected > 0) {
+            if (selectedDatasets.size > 0) {
                 summary.style.display = 'block';
-                count.textContent = `${numSelected} dataset${numSelected === 1 ? '' : 's'} selected`;
+                count.textContent = `${selectedDatasets.size} dataset${selectedDatasets.size === 1 ? '' : 's'} selected`;
             } else {
                 summary.style.display = 'none';
             }
         }
 
         function selectAllDatasets() {
-            datasetsData.forEach(ds => {
-                selectedDatasets.add(ds.id);
-            });
-            
-            document.querySelectorAll('.dataset-checkbox').forEach(cb => {
-                cb.checked = true;
-            });
+            datasetsData.forEach(ds => selectedDatasets.add(ds.id));
             document.querySelectorAll('.dataset-item').forEach(item => {
                 item.classList.add('selected');
+                item.querySelector('.dataset-checkbox').checked = true;
             });
-            
             updateDatasetSelectionSummary();
         }
 
         function clearAllDatasets() {
             selectedDatasets.clear();
-            
-            document.querySelectorAll('.dataset-checkbox').forEach(cb => cb.checked = false);
-            document.querySelectorAll('.dataset-item').forEach(item => item.classList.remove('selected'));
-            updateDatasetSelectionSummary();
-        }
-
-        function selectVisibleDatasets() {
             document.querySelectorAll('.dataset-item').forEach(item => {
-                if (item.style.display !== 'none') {
-                    const id = item.dataset.id;
-                    selectedDatasets.add(id);
-                    item.classList.add('selected');
-                    item.querySelector('.dataset-checkbox').checked = true;
-                }
+                item.classList.remove('selected');
+                item.querySelector('.dataset-checkbox').checked = false;
             });
             updateDatasetSelectionSummary();
         }
 
         function filterDatasets() {
-            const searchTerm = document.getElementById('datasetSearch').value.toLowerCase();
-            const items = document.querySelectorAll('.dataset-item');
-            
-            items.forEach(item => {
+            const search = document.getElementById('datasetSearch').value.toLowerCase();
+            document.querySelectorAll('.dataset-item').forEach(item => {
                 const name = item.querySelector('.dataset-name').textContent.toLowerCase();
-                if (name.includes(searchTerm)) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
+                item.style.display = name.includes(search) ? 'flex' : 'none';
             });
         }
 
-        function getSelectedDatasets() {
-            return Array.from(selectedDatasets);
-        }
-
-        // Load organisation units as hierarchical tree
-        let orgUnitsData = [];
-        let selectedOrgUnits = new Set();
-
         async function loadOrgUnitsTree(context) {
             try {
-                log('Fetching organisation units hierarchy...', 'info');
+                log('Fetching organisation units...', 'info');
                 const url = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,level,parent[id],children[id]&paging=false`;
                 const response = await fetchWithAuth(url);
                 
-                if (!response.ok) throw new Error('Failed to fetch organisation units');
+                if (!response.ok) throw new Error('Failed to fetch');
                 
                 const data = await response.json();
                 orgUnitsData = data.organisationUnits;
                 
                 const tree = buildOrgUnitTree(orgUnitsData);
-                renderOrgUnitTree(tree);
+                const containerId = context === 'downloadDataElements' ? 'orgUnitTreeDE' : 'orgUnitTree';
+                renderOrgUnitTree(tree, containerId);
                 
-                log(`Loaded ${orgUnitsData.length} organisation units`, 'success');
-                showNotification(`Loaded ${orgUnitsData.length} organisation units`, 'success');
+                log(`Loaded ${orgUnitsData.length} org units`, 'success');
+                showNotification(`Loaded ${orgUnitsData.length} org units`, 'success');
             } catch (error) {
                 log(`Error: ${error.message}`, 'error');
-                showNotification('Failed to load organisation units', 'error');
+                showNotification('Failed to load org units', 'error');
             }
         }
 
         function buildOrgUnitTree(orgUnits) {
-            const orgUnitMap = {};
-            const rootUnits = [];
+            const map = {};
+            const roots = [];
             
             orgUnits.forEach(ou => {
-                orgUnitMap[ou.id] = { ...ou, children: [] };
+                map[ou.id] = { ...ou, children: [] };
             });
             
             orgUnits.forEach(ou => {
-                if (ou.parent && orgUnitMap[ou.parent.id]) {
-                    orgUnitMap[ou.parent.id].children.push(orgUnitMap[ou.id]);
+                if (ou.parent && map[ou.parent.id]) {
+                    map[ou.parent.id].children.push(map[ou.id]);
                 } else {
-                    rootUnits.push(orgUnitMap[ou.id]);
+                    roots.push(map[ou.id]);
                 }
             });
             
-            return rootUnits;
+            return roots;
         }
 
-        function renderOrgUnitTree(tree) {
-            const container = document.getElementById('orgUnitTree');
+        function renderOrgUnitTree(tree, containerId) {
+            const container = document.getElementById(containerId);
             container.innerHTML = '';
-            
-            tree.forEach(ou => {
-                container.appendChild(createOrgUnitNode(ou));
-            });
+            tree.forEach(ou => container.appendChild(createOrgUnitNode(ou)));
         }
 
         function createOrgUnitNode(orgUnit) {
@@ -1685,7 +1230,6 @@
                 };
             } else {
                 toggle.textContent = '  ';
-                toggle.style.cursor = 'default';
             }
             
             const checkbox = document.createElement('input');
@@ -1715,11 +1259,7 @@
                 const childrenDiv = document.createElement('div');
                 childrenDiv.className = 'org-unit-children';
                 childrenDiv.id = `children-${orgUnit.id}`;
-                
-                orgUnit.children.forEach(child => {
-                    childrenDiv.appendChild(createOrgUnitNode(child));
-                });
-                
+                orgUnit.children.forEach(child => childrenDiv.appendChild(createOrgUnitNode(child)));
                 div.appendChild(childrenDiv);
             }
             
@@ -1748,64 +1288,50 @@
             
             const item = document.querySelector(`.org-unit-item[data-id="${id}"]`);
             if (item) {
-                if (selected) {
-                    item.classList.add('selected');
-                } else {
-                    item.classList.remove('selected');
-                }
+                item.classList.toggle('selected', selected);
             }
         }
 
-        function expandAllOrgUnits() {
-            document.querySelectorAll('.org-unit-children').forEach(div => {
+        function expandAllOrgUnits(containerId) {
+            document.querySelectorAll(`#${containerId} .org-unit-children`).forEach(div => {
                 div.classList.add('expanded');
             });
-            document.querySelectorAll('.org-unit-toggle').forEach(toggle => {
-                if (toggle.textContent === '▶') {
-                    toggle.textContent = '▼';
-                }
+            document.querySelectorAll(`#${containerId} .org-unit-toggle`).forEach(toggle => {
+                if (toggle.textContent === '▶') toggle.textContent = '▼';
             });
         }
 
-        function collapseAllOrgUnits() {
-            document.querySelectorAll('.org-unit-children').forEach(div => {
+        function collapseAllOrgUnits(containerId) {
+            document.querySelectorAll(`#${containerId} .org-unit-children`).forEach(div => {
                 div.classList.remove('expanded');
             });
-            document.querySelectorAll('.org-unit-toggle').forEach(toggle => {
-                if (toggle.textContent === '▼') {
-                    toggle.textContent = '▶';
-                }
+            document.querySelectorAll(`#${containerId} .org-unit-toggle`).forEach(toggle => {
+                if (toggle.textContent === '▼') toggle.textContent = '▶';
             });
         }
 
-        function selectAllOrgUnits() {
-            document.querySelectorAll('.org-unit-checkbox').forEach(checkbox => {
-                checkbox.checked = true;
-                selectedOrgUnits.add(checkbox.dataset.id);
+        function selectAllOrgUnitsInTree(containerId) {
+            document.querySelectorAll(`#${containerId} .org-unit-checkbox`).forEach(cb => {
+                cb.checked = true;
+                selectedOrgUnits.add(cb.dataset.id);
             });
-            document.querySelectorAll('.org-unit-item').forEach(item => {
+            document.querySelectorAll(`#${containerId} .org-unit-item`).forEach(item => {
                 item.classList.add('selected');
             });
         }
 
-        function clearAllOrgUnits() {
-            document.querySelectorAll('.org-unit-checkbox').forEach(checkbox => {
-                checkbox.checked = false;
+        function clearAllOrgUnitsInTree(containerId) {
+            document.querySelectorAll(`#${containerId} .org-unit-checkbox`).forEach(cb => {
+                cb.checked = false;
             });
             selectedOrgUnits.clear();
-            document.querySelectorAll('.org-unit-item').forEach(item => {
+            document.querySelectorAll(`#${containerId} .org-unit-item`).forEach(item => {
                 item.classList.remove('selected');
             });
         }
 
-        function getSelectedOrgUnitsFromTree() {
-            return Array.from(selectedOrgUnits);
-        }
-
         function selectAllOptions(selectId) {
             const select = document.getElementById(selectId);
-            if (!select || !select.options) return;
-            
             for (let i = 0; i < select.options.length; i++) {
                 select.options[i].selected = true;
             }
@@ -1813,24 +1339,9 @@
 
         function clearAllOptions(selectId) {
             const select = document.getElementById(selectId);
-            if (!select || !select.options) return;
-            
             for (let i = 0; i < select.options.length; i++) {
                 select.options[i].selected = false;
             }
-        }
-
-        function getSelectedOptions(selectId) {
-            const select = document.getElementById(selectId);
-            if (!select || !select.options) return [];
-            
-            const selected = [];
-            for (let i = 0; i < select.options.length; i++) {
-                if (select.options[i].selected) {
-                    selected.push(select.options[i].value);
-                }
-            }
-            return selected;
         }
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -1839,19 +1350,11 @@
             const instanceUrl = document.getElementById('instanceUrl').value.trim().replace(/\/$/, '');
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
-            const useCorsProxy = true;
 
-            state.config = {
-                instanceUrl,
-                username,
-                password,
-                useCorsProxy: false  // Set to false for testing
-            };
+            state.config = { instanceUrl, username, password };
 
             try {
-                // Always try direct connection first for login test
                 const testUrl = `${instanceUrl}/api/me`;
-
                 const response = await fetch(testUrl, {
                     headers: {
                         'Authorization': 'Basic ' + btoa(`${username}:${password}`)
@@ -1864,10 +1367,10 @@
                     document.getElementById('mainContent').classList.add('show');
                     showNotification('Connected successfully!', 'success');
                 } else {
-                    showNotification('Authentication failed. Check your credentials.', 'error');
+                    showNotification('Authentication failed', 'error');
                 }
             } catch (error) {
-                showNotification('Connection failed. Check URL and network connection.', 'error');
+                showNotification('Connection failed', 'error');
             }
         });
 
@@ -1887,8 +1390,11 @@
             document.getElementById('modalBody').innerHTML = config.fields;
             document.getElementById('modal').classList.add('show');
             document.getElementById('progressSection').classList.remove('show');
-            
             document.getElementById('modalForm').dataset.action = type;
+            
+            // Reset state
+            selectedDatasets.clear();
+            selectedOrgUnits.clear();
         }
 
         function closeModal() {
@@ -1900,17 +1406,15 @@
             e.preventDefault();
             
             const action = e.target.dataset.action;
-            const formData = new FormData(e.target);
             
             document.getElementById('progressSection').classList.add('show');
             document.getElementById('modalSubmit').disabled = true;
             document.getElementById('modalSubmit').textContent = 'Processing...';
             
             try {
-                await executeAction(action, formData);
+                await executeAction(action);
             } catch (error) {
-                log(`❌ FATAL ERROR: ${error.message}`, 'error');
-                console.error('Full error:', error);
+                log(`Error: ${error.message}`, 'error');
                 showNotification(`Error: ${error.message}`, 'error');
             } finally {
                 document.getElementById('modalSubmit').disabled = false;
@@ -1918,240 +1422,252 @@
             }
         });
 
-        async function executeAction(action, formData) {
+        async function executeAction(action) {
             clearLogs();
             setProgress(0);
             
-            log(`🚀 Executing action: ${action}`, 'info');
-            log('', 'info');
+            log(`Executing: ${action}`, 'info');
             
-            try {
-                switch(action) {
-                    case 'downloadDataElements':
-                        await downloadDataElements();
-                        break;
-                    case 'downloadDatasets':
-                        await downloadDatasets();
-                        break;
-                    case 'createDataElement':
-                        await createDataElement(formData);
-                        break;
-                    case 'copyOrgUnits':
-                        await copyOrgUnits(formData);
-                        break;
-                    case 'copyDataElements':
-                        await copyDataElements(formData);
-                        break;
-                    case 'copyDatasets':
-                        await copyDatasets(formData);
-                        break;
-                    case 'copyDashboard':
-                        await copyDashboard(formData);
-                        break;
-                    default:
-                        log(`⚠️ Action "${action}" not implemented yet`, 'info');
-                        showNotification('This feature is coming soon!', 'info');
-                        setProgress(100);
-                }
-            } catch (error) {
-                log('', 'info');
-                log('═══════════════════════════════════════', 'error');
-                log(`❌ ERROR: ${error.message}`, 'error');
-                log('═══════════════════════════════════════', 'error');
-                throw error;
+            switch(action) {
+                case 'downloadDataElements':
+                    await downloadDataElements();
+                    break;
+                case 'downloadDatasets':
+                    await downloadDatasets();
+                    break;
+                default:
+                    log('Feature not implemented', 'info');
+                    setProgress(100);
             }
         }
 
         async function downloadDataElements() {
-            const selectedDataElements = getSelectedOptions('dataElementSelect');
-            const selectedOrgUnits = getSelectedOptions('orgUnitSelect');
+            const select = document.getElementById('dataElementSelect');
+            const selectedIds = Array.from(select.selectedOptions).map(opt => opt.value);
+            const selectedOrgUnitIds = Array.from(selectedOrgUnits);
             
-            if (selectedDataElements.length === 0) {
-                showNotification('Please select at least one data element', 'error');
+            if (selectedIds.length === 0) {
+                showNotification('Please select data elements', 'error');
                 return;
             }
             
-            if (selectedOrgUnits.length === 0) {
-                showNotification('Please select at least one organisation unit', 'error');
+            if (selectedOrgUnitIds.length === 0) {
+                showNotification('Please select organisation units', 'error');
                 return;
             }
             
-            log('Fetching data element names...', 'info');
+            log(`Selected ${selectedIds.length} data elements`, 'info');
+            log(`Selected ${selectedOrgUnitIds.length} org units`, 'info');
             setProgress(20);
             
-            // Fetch data element names directly
-            const dataElementMap = {};
-            const deUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&filter=id:in:[${selectedDataElements.join(',')}]&paging=false`;
+            const includeData = document.getElementById('includeDataValues')?.checked;
+            
+            if (!includeData) {
+                log('Downloading metadata only...', 'info');
+                const url = `${state.config.instanceUrl}/api/metadata.json?dataElements:filter=id:in:[${selectedIds.join(',')}]&fields=:all`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) throw new Error('Failed to fetch metadata');
+                
+                const metadata = await response.json();
+                downloadJSON(metadata, 'data-elements-metadata');
+                log('Download complete', 'success');
+                setProgress(100);
+                return;
+            }
+            
+            // Fetch data with values
+            log('Fetching data element details...', 'info');
+            const deUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&filter=id:in:[${selectedIds.join(',')}]&paging=false`;
             const deResponse = await fetchWithAuth(deUrl);
+            const deData = await deResponse.json();
             
-            if (deResponse.ok) {
-                const deData = await deResponse.json();
-                log(`Found ${deData.dataElements?.length || 0} data elements`, 'info');
-                deData.dataElements?.forEach(de => {
-                    dataElementMap[de.id] = de.displayName || de.name || de.id;
-                    log(`  - ${de.id}: ${dataElementMap[de.id]}`, 'info');
-                });
-            }
-            
-            log('Fetching metadata...', 'info');
-            setProgress(30);
-            
-            const deFilter = selectedDataElements.map(id => `id:eq:${id}`).join(',');
-            const url = `${state.config.instanceUrl}/api/metadata.json?dataElements:filter=${deFilter}&fields=:all&includeReferences=true`;
-            const response = await fetchWithAuth(url);
-            
-            if (!response.ok) throw new Error('Failed to fetch metadata');
-            
-            const metadata = await response.json();
-            log(`Retrieved metadata for ${selectedDataElements.length} data elements`, 'success');
-            setProgress(40);
-            
-            const orgUnitMap = {};
-            const categoryOptionComboMap = {};
-            
-            log('Fetching organisation unit hierarchy...', 'info');
-            setProgress(50);
-            
-            // Fetch ALL org units with hierarchy to build complete parent chain
-            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,name,level,parent[id]&paging=false`;
-            const ouResponse = await fetchWithAuth(ouUrl);
-            const orgUnitHierarchy = {};
-            
-            if (ouResponse.ok) {
-                const ouData = await ouResponse.json();
-                ouData.organisationUnits?.forEach(ou => {
-                    orgUnitMap[ou.id] = ou.displayName || ou.name;
-                    orgUnitHierarchy[ou.id] = {
-                        id: ou.id,
-                        name: ou.displayName || ou.name,
-                        level: ou.level,
-                        parent: ou.parent ? ou.parent.id : null
-                    };
-                });
-            }
-            
-            const includeData = document.getElementById('includeData')?.checked;
-            
-            if (includeData) {
-                log('Fetching data values for selected period...', 'info');
-                setProgress(60);
-                
-                const period = getPeriodFromForm();
-                
-                if (!period) {
-                    showNotification('Please select a period', 'error');
-                    return;
-                }
-                
-                const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataElement=${selectedDataElements.join(',')}&orgUnit=${selectedOrgUnits.join(',')}&${period}`;
-                const dataResponse = await fetchWithAuth(dataUrl);
-                
-                if (dataResponse.ok) {
-                    const dataValues = await dataResponse.json();
-                    const numValues = dataValues.dataValues?.length || 0;
-                    log(`Retrieved ${numValues} data values`, 'success');
-                    setProgress(80);
-                    
-                    if (numValues > 0) {
-                        log('Fetching category option combo names...', 'info');
-                        const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName,name&paging=false`;
-                        const cocResponse = await fetchWithAuth(cocUrl);
-                        if (cocResponse.ok) {
-                            const cocData = await cocResponse.json();
-                            log(`Found ${cocData.categoryOptionCombos?.length || 0} category combos`, 'info');
-                            cocData.categoryOptionCombos?.forEach(coc => {
-                                categoryOptionComboMap[coc.id] = coc.displayName || coc.name || coc.id;
-                            });
-                        }
-                        
-                        log('Converting to wide format CSV...', 'info');
-                        const csvData = convertToWideFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap, orgUnitHierarchy);
-                        
-                        const blob = new Blob([csvData], { type: 'text/csv' });
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = `data-values-wide-${new Date().toISOString().split('T')[0]}.csv`;
-                        link.click();
-                        
-                        log('CSV download complete (wide format)', 'success');
-                    } else {
-                        showNotification('No data values found for selected criteria', 'info');
-                    }
-                } else {
-                    log('Warning: Could not fetch data values', 'error');
-                    showNotification('Failed to fetch data values', 'error');
-                }
-                
-                setProgress(100);
-            } else {
-                const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `data-elements-metadata-${new Date().toISOString().split('T')[0]}.json`;
-                link.click();
-                
-                log('Metadata download complete', 'success');
-                setProgress(100);
-            }
-        }
-
-        function convertToWideFormatCSV(dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap, orgUnitHierarchy) {
-            log(`Converting ${dataValues.length} data values to wide format...`, 'info');
-            log(`Data element map has ${Object.keys(dataElementMap).length} entries`, 'info');
-            log(`Category combo map has ${Object.keys(categoryOptionComboMap).length} entries`, 'info');
-            
-            // Log first few mappings for debugging
-            const deKeys = Object.keys(dataElementMap).slice(0, 3);
-            deKeys.forEach(key => {
-                log(`  DE Mapping: ${key} -> ${dataElementMap[key]}`, 'info');
+            const dataElementMap = {};
+            deData.dataElements?.forEach(de => {
+                dataElementMap[de.id] = de.displayName || de.name;
             });
             
-            // Group data by org unit and period
-            const groupedData = {};
+            setProgress(40);
+            
+            const period = getPeriodFromForm();
+            if (!period) {
+                showNotification('Please select a period', 'error');
+                return;
+            }
+            
+            log('Fetching data values...', 'info');
+            const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataElement=${selectedIds.join(',')}&orgUnit=${selectedOrgUnitIds.join(',')}&${period}`;
+            const dataResponse = await fetchWithAuth(dataUrl);
+            
+            if (!dataResponse.ok) throw new Error('Failed to fetch data');
+            
+            const dataValues = await dataResponse.json();
+            const numValues = dataValues.dataValues?.length || 0;
+            log(`Retrieved ${numValues} data values`, 'success');
+            setProgress(60);
+            
+            if (numValues === 0) {
+                showNotification('No data values found', 'info');
+                setProgress(100);
+                return;
+            }
+            
+            // Fetch org unit hierarchy
+            log('Building org unit hierarchy...', 'info');
+            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,name,level,parent[id]&paging=false`;
+            const ouResponse = await fetchWithAuth(ouUrl);
+            const ouData = await ouResponse.json();
+            
+            const orgUnitHierarchy = {};
+            ouData.organisationUnits?.forEach(ou => {
+                orgUnitHierarchy[ou.id] = {
+                    id: ou.id,
+                    name: ou.displayName || ou.name,
+                    level: ou.level,
+                    parent: ou.parent?.id
+                };
+            });
+            
+            setProgress(80);
+            
+            // Convert to CSV
+            log('Converting to CSV...', 'info');
+            const csv = convertToCSV(dataValues.dataValues, dataElementMap, orgUnitHierarchy);
+            downloadCSV(csv, 'data-elements-export');
+            
+            log('Download complete', 'success');
+            setProgress(100);
+        }
+
+        async function downloadDatasets() {
+            const selectedDatasetIds = Array.from(selectedDatasets);
+            const selectedOrgUnitIds = Array.from(selectedOrgUnits);
+            
+            if (selectedDatasetIds.length === 0) {
+                showNotification('Please select datasets', 'error');
+                return;
+            }
+            
+            if (selectedOrgUnitIds.length === 0) {
+                showNotification('Please select org units', 'error');
+                return;
+            }
+            
+            log(`Selected ${selectedDatasetIds.length} datasets`, 'info');
+            log(`Selected ${selectedOrgUnitIds.length} org units`, 'info');
+            setProgress(20);
+            
+            const includeData = document.getElementById('includeDataValuesDS')?.checked;
+            
+            if (!includeData) {
+                log('Downloading metadata only...', 'info');
+                const url = `${state.config.instanceUrl}/api/metadata.json?dataSets:filter=id:in:[${selectedDatasetIds.join(',')}]&fields=:all`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) throw new Error('Failed to fetch metadata');
+                
+                const metadata = await response.json();
+                downloadJSON(metadata, 'datasets-metadata');
+                log('Download complete', 'success');
+                setProgress(100);
+                return;
+            }
+            
+            // Fetch with data values
+            const period = getPeriodFromForm();
+            if (!period) {
+                showNotification('Please select a period', 'error');
+                return;
+            }
+            
+            log('Fetching data values...', 'info');
+            setProgress(40);
+            
+            const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataSet=${selectedDatasetIds.join(',')}&orgUnit=${selectedOrgUnitIds.join(',')}&${period}`;
+            const dataResponse = await fetchWithAuth(dataUrl);
+            
+            if (!dataResponse.ok) throw new Error('Failed to fetch data');
+            
+            const dataValues = await dataResponse.json();
+            const numValues = dataValues.dataValues?.length || 0;
+            log(`Retrieved ${numValues} data values`, 'success');
+            setProgress(60);
+            
+            if (numValues === 0) {
+                showNotification('No data values found', 'info');
+                setProgress(100);
+                return;
+            }
+            
+            // Get data element names
+            const uniqueDEs = [...new Set(dataValues.dataValues.map(dv => dv.dataElement))];
+            const deUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&filter=id:in:[${uniqueDEs.join(',')}]&paging=false`;
+            const deResponse = await fetchWithAuth(deUrl);
+            const deData = await deResponse.json();
+            
+            const dataElementMap = {};
+            deData.dataElements?.forEach(de => {
+                dataElementMap[de.id] = de.displayName || de.name;
+            });
+            
+            // Get org unit hierarchy
+            log('Building org unit hierarchy...', 'info');
+            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,name,level,parent[id]&paging=false`;
+            const ouResponse = await fetchWithAuth(ouUrl);
+            const ouData = await ouResponse.json();
+            
+            const orgUnitHierarchy = {};
+            ouData.organisationUnits?.forEach(ou => {
+                orgUnitHierarchy[ou.id] = {
+                    id: ou.id,
+                    name: ou.displayName || ou.name,
+                    level: ou.level,
+                    parent: ou.parent?.id
+                };
+            });
+            
+            setProgress(80);
+            
+            log('Converting to CSV...', 'info');
+            const csv = convertToCSV(dataValues.dataValues, dataElementMap, orgUnitHierarchy);
+            downloadCSV(csv, 'datasets-export');
+            
+            log('Download complete', 'success');
+            setProgress(100);
+        }
+
+        function convertToCSV(dataValues, dataElementMap, orgUnitHierarchy) {
+            // Group by org unit and period
+            const grouped = {};
             
             dataValues.forEach(dv => {
                 const key = `${dv.orgUnit}|${dv.period}`;
-                if (!groupedData[key]) {
-                    groupedData[key] = {
+                if (!grouped[key]) {
+                    grouped[key] = {
                         orgUnit: dv.orgUnit,
                         period: dv.period,
                         values: {}
                     };
                 }
                 
-                // Create unique key for data element + category combo
                 const deName = dataElementMap[dv.dataElement] || dv.dataElement;
-                const cocName = categoryOptionComboMap[dv.categoryOptionCombo] || dv.categoryOptionCombo || 'default';
-                
-                // Only add category combo to column name if it's not "default"
-                let fullKey = deName;
-                if (cocName !== 'default' && cocName !== dv.categoryOptionCombo) {
-                    fullKey = `${deName} (${cocName})`;
-                }
-                
-                groupedData[key].values[fullKey] = dv.value;
+                grouped[key].values[deName] = dv.value;
             });
-            
-            log(`Grouped into ${Object.keys(groupedData).length} rows`, 'info');
             
             // Get all unique data element columns
             const allColumns = new Set();
-            Object.values(groupedData).forEach(row => {
+            Object.values(grouped).forEach(row => {
                 Object.keys(row.values).forEach(col => allColumns.add(col));
             });
             const sortedColumns = Array.from(allColumns).sort();
             
-            log(`Created ${sortedColumns.length} data element columns`, 'info');
-            
-            // Get max hierarchy depth
+            // Get max hierarchy level
             let maxLevel = 0;
             Object.values(orgUnitHierarchy).forEach(ou => {
                 if (ou.level > maxLevel) maxLevel = ou.level;
             });
             
-            log(`Maximum org unit hierarchy level: ${maxLevel}`, 'info');
-            
-            // Build headers with org unit hierarchy
+            // Build headers
             const hierarchyHeaders = [];
             for (let i = 1; i <= maxLevel; i++) {
                 hierarchyHeaders.push(`Level ${i}`);
@@ -2160,7 +1676,7 @@
             let csv = headers.join(',') + '\n';
             
             // Build rows
-            Object.values(groupedData).forEach(row => {
+            Object.values(grouped).forEach(row => {
                 const csvRow = [];
                 
                 // Add org unit hierarchy
@@ -2172,7 +1688,7 @@
                 // Add period
                 csvRow.push(escapeCSV(row.period));
                 
-                // Add data element values
+                // Add data values
                 sortedColumns.forEach(col => {
                     csvRow.push(escapeCSV(row.values[col] || ''));
                 });
@@ -2180,7 +1696,6 @@
                 csv += csvRow.join(',') + '\n';
             });
             
-            log('Wide format CSV conversion complete', 'success');
             return csv;
         }
         
@@ -2233,14 +1748,6 @@
                 if (year && quarter) {
                     return `period=${year}${quarter}`;
                 }
-            } else if (tabText === 'bi-annual') {
-                const yearInput = document.querySelector('#biannual-inputs input[name="year"]');
-                const biannualSelect = document.querySelector('#biannual-inputs select[name="biannual"]');
-                const year = yearInput?.value;
-                const biannual = biannualSelect?.value;
-                if (year && biannual) {
-                    return `period=${year}${biannual}`;
-                }
             } else if (tabText === 'yearly') {
                 const startYearInput = document.querySelector('#yearly-inputs input[name="startYear"]');
                 const endYearInput = document.querySelector('#yearly-inputs input[name="endYear"]');
@@ -2256,637 +1763,8 @@
             return '';
         }
 
-        async function downloadDatasets() {
-            const selectedDatasetIds = getSelectedDatasets();
-            const selectedOrgUnitIds = getSelectedOrgUnitsFromTree();
-            
-            console.log('=== downloadDatasets START ===');
-            console.log('Selected datasets:', selectedDatasetIds);
-            console.log('Selected org units:', selectedOrgUnitIds);
-            
-            if (selectedDatasetIds.length === 0) {
-                log('No datasets selected', 'error');
-                showNotification('Please select at least one dataset', 'error');
-                return;
-            }
-            
-            if (selectedOrgUnitIds.length === 0) {
-                log('No organisation units selected', 'error');
-                showNotification('Please select at least one organisation unit', 'error');
-                return;
-            }
-            
-            log(`Fetching metadata for ${selectedDatasetIds.length} selected datasets...`, 'info');
-            setProgress(20);
-            
-            const dsFilter = selectedDatasetIds.map(id => `id:eq:${id}`).join(',');
-            const url = `${state.config.instanceUrl}/api/metadata.json?dataSets:filter=${dsFilter}&fields=:all&includeReferences=true`;
-            log(`Metadata URL: ${url}`, 'info');
-            const response = await fetchWithAuth(url);
-            
-            if (!response.ok) throw new Error('Failed to fetch datasets');
-            
-            const metadata = await response.json();
-            log(`Retrieved metadata for ${selectedDatasetIds.length} datasets`, 'success');
-            setProgress(40);
-            
-            const allDataElements = new Set();
-            metadata.dataSets?.forEach(ds => {
-                ds.dataSetElements?.forEach(dse => {
-                    allDataElements.add(dse.dataElement.id);
-                });
-            });
-            
-            log(`Found ${allDataElements.size} data elements in datasets`, 'info');
-            
-            // Fetch data element names directly
-            const dataElementMap = {};
-            if (allDataElements.size > 0) {
-                log('Fetching data element names...', 'info');
-                const deUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&filter=id:in:[${Array.from(allDataElements).join(',')}]&paging=false`;
-                const deResponse = await fetchWithAuth(deUrl);
-                
-                if (deResponse.ok) {
-                    const deData = await deResponse.json();
-                    log(`Found ${deData.dataElements?.length || 0} data element names`, 'info');
-                    deData.dataElements?.forEach(de => {
-                        dataElementMap[de.id] = de.displayName || de.name || de.id;
-                    });
-                }
-            }
-            
-            const orgUnitMap = {};
-            const categoryOptionComboMap = {};
-            
-            log('Fetching organisation unit hierarchy...', 'info');
-            setProgress(50);
-            
-            // Fetch ALL org units with hierarchy to build complete parent chain
-            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,name,level,parent[id]&paging=false`;
-            const ouResponse = await fetchWithAuth(ouUrl);
-            const orgUnitHierarchy = {};
-            
-            if (ouResponse.ok) {
-                const ouData = await ouResponse.json();
-                ouData.organisationUnits?.forEach(ou => {
-                    orgUnitMap[ou.id] = ou.displayName || ou.name;
-                    orgUnitHierarchy[ou.id] = {
-                        id: ou.id,
-                        name: ou.displayName || ou.name,
-                        level: ou.level,
-                        parent: ou.parent ? ou.parent.id : null
-                    };
-                });
-            }
-            
-            const includeDataValues = document.getElementById('includeDataValues')?.checked;
-            
-            if (includeDataValues && allDataElements.size > 0) {
-                log('Fetching data values for selected period...', 'info');
-                setProgress(60);
-                
-                const period = getPeriodFromForm();
-                
-                if (!period) {
-                    showNotification('Please select a period', 'error');
-                    return;
-                }
-                
-                const dataElementList = Array.from(allDataElements).join(',');
-                const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataSet=${selectedDatasetIds.join(',')}&orgUnit=${selectedOrgUnitIds.join(',')}&${period}`;
-                log(`Data values URL: ${dataUrl}`, 'info');
-                const dataResponse = await fetchWithAuth(dataUrl);
-                
-                if (dataResponse.ok) {
-                    const dataValues = await dataResponse.json();
-                    const numValues = dataValues.dataValues?.length || 0;
-                    log(`Retrieved ${numValues} data values`, 'success');
-                    setProgress(80);
-                    
-                    if (numValues > 0) {
-                        log('Fetching category option combo names...', 'info');
-                        const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName,name&paging=false`;
-                        const cocResponse = await fetchWithAuth(cocUrl);
-                        if (cocResponse.ok) {
-                            const cocData = await cocResponse.json();
-                            log(`Found ${cocData.categoryOptionCombos?.length || 0} category combos`, 'info');
-                            cocData.categoryOptionCombos?.forEach(coc => {
-                                categoryOptionComboMap[coc.id] = coc.displayName || coc.name || coc.id;
-                            });
-                        }
-                        
-                        log('Converting to wide format CSV...', 'info');
-                        const csvData = convertToWideFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap, orgUnitHierarchy);
-                        
-                        const blob = new Blob([csvData], { type: 'text/csv' });
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = `dataset-values-wide-${new Date().toISOString().split('T')[0]}.csv`;
-                        link.click();
-                        
-                        log('CSV download complete (wide format)', 'success');
-                    } else {
-                        showNotification('No data values found for selected criteria', 'info');
-                    }
-                } else {
-                    log('Warning: Could not fetch data values', 'error');
-                    showNotification('Failed to fetch data values', 'error');
-                }
-                
-                setProgress(100);
-            } else {
-                const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `datasets-metadata-${new Date().toISOString().split('T')[0]}.json`;
-                link.click();
-                
-                log('Metadata download complete', 'success');
-                setProgress(100);
-            }
-        }
-
-        async function createDataElement(formData) {
-            log('Creating data element...', 'info');
-            setProgress(30);
-            
-            const data = {
-                name: formData.get('name'),
-                shortName: formData.get('shortName'),
-                valueType: formData.get('valueType'),
-                aggregationType: formData.get('aggregationType'),
-                domainType: formData.get('domainType')
-            };
-            
-            const url = `${state.config.instanceUrl}/api/dataElements`;
-            const response = await fetchWithAuth(url, {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
-            
-            if (!response.ok) {
-                const error = await response.text();
-                throw new Error(`Failed to create: ${error}`);
-            }
-            
-            const result = await response.json();
-            log(`Data element created with ID: ${result.response.uid}`, 'success');
-            setProgress(100);
-        }
-
-        async function copyOrgUnits(formData) {
-            log('Fetching organisation units from source...', 'info');
-            setProgress(20);
-            
-            const sourceUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=:all&paging=false`;
-            const sourceResponse = await fetchWithAuth(sourceUrl);
-            
-            if (!sourceResponse.ok) {
-                const errorText = await sourceResponse.text();
-                log(`Failed to fetch source org units: ${errorText}`, 'error');
-                throw new Error('Failed to fetch org units from source');
-            }
-            
-            const sourceData = await sourceResponse.json();
-            log(`Retrieved ${sourceData.organisationUnits.length} org units`, 'success');
-            setProgress(50);
-            
-            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
-            const targetUsername = formData.get('targetUsername').trim();
-            const targetPassword = formData.get('targetPassword').trim();
-            
-            const metadata = {
-                organisationUnits: sourceData.organisationUnits
-            };
-            
-            log(`Target URL: ${targetUrl}`, 'info');
-            log(`Importing ${metadata.organisationUnits.length} organisation units...`, 'info');
-            setProgress(60);
-            
-            // Try multiple methods
-            let success = false;
-            let lastError = null;
-            
-            // Method 1: CORS Proxy
-            try {
-                log('Method 1: Attempting import via CORS proxy...', 'info');
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
-                
-                const proxyResponse = await fetch(proxyUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(metadata)
-                });
-                
-                setProgress(80);
-                
-                if (proxyResponse.ok) {
-                    const result = await proxyResponse.json();
-                    logImportResult(result);
-                    success = true;
-                    setProgress(100);
-                    showNotification('Organisation units copied successfully via CORS proxy!', 'success');
-                    return;
-                } else {
-                    throw new Error(`CORS proxy returned status ${proxyResponse.status}`);
-                }
-            } catch (error) {
-                log(`CORS proxy failed: ${error.message}`, 'error');
-                lastError = error;
-            }
-            
-            // Method 2: Direct connection
-            if (!success) {
-                try {
-                    log('Method 2: Attempting direct connection...', 'info');
-                    const directUrl = `${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`;
-                    
-                    const directResponse = await fetch(directUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(metadata)
-                    });
-                    
-                    if (directResponse.ok) {
-                        const result = await directResponse.json();
-                        logImportResult(result);
-                        success = true;
-                        setProgress(100);
-                        showNotification('Organisation units copied successfully!', 'success');
-                        return;
-                    } else {
-                        throw new Error(`Direct connection returned status ${directResponse.status}`);
-                    }
-                } catch (error) {
-                    log(`Direct connection failed: ${error.message}`, 'error');
-                    lastError = error;
-                }
-            }
-            
-            // Method 3: Download for manual import
-            if (!success) {
-                log('', 'error');
-                log('════════════════════════════════════════════', 'info');
-                log('All automatic methods failed. Downloading file...', 'info');
-                log('════════════════════════════════════════════', 'info');
-                log('', 'info');
-                log('MANUAL IMPORT INSTRUCTIONS:', 'info');
-                log('1. The metadata file has been downloaded', 'success');
-                log(`2. Go to: ${targetUrl}/dhis-web-importexport/`, 'info');
-                log('3. Click on "Metadata Import"', 'info');
-                log('4. Select "JSON" format', 'info');
-                log('5. Upload the downloaded file', 'info');
-                log('6. Click "Import" button', 'info');
-                
-                const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `org-units-export-${new Date().toISOString().split('T')[0]}.json`;
-                link.click();
-                
-                log('', 'success');
-                log('✓ File downloaded successfully!', 'success');
-                setProgress(100);
-                showNotification('File downloaded - Please import manually to target instance', 'info');
-            }
-        }
-
-        async function copyDataElements(formData) {
-            log('Fetching data elements from source...', 'info');
-            setProgress(20);
-            
-            const sourceUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=:all&paging=false`;
-            const sourceResponse = await fetchWithAuth(sourceUrl);
-            
-            if (!sourceResponse.ok) {
-                const errorText = await sourceResponse.text();
-                log(`Failed to fetch data elements: ${errorText}`, 'error');
-                throw new Error('Failed to fetch data elements');
-            }
-            
-            const sourceData = await sourceResponse.json();
-            log(`Retrieved ${sourceData.dataElements.length} data elements`, 'success');
-            setProgress(50);
-            
-            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
-            const targetUsername = formData.get('targetUsername').trim();
-            const targetPassword = formData.get('targetPassword').trim();
-            
-            const metadata = {
-                dataElements: sourceData.dataElements
-            };
-            
-            log(`Importing ${metadata.dataElements.length} data elements...`, 'info');
-            setProgress(60);
-            
-            let success = false;
-            
-            // Method 1: CORS Proxy
-            try {
-                log('Attempting import via CORS proxy...', 'info');
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
-                
-                const response = await fetch(proxyUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(metadata)
-                });
-                
-                setProgress(80);
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    logImportResult(result);
-                    success = true;
-                    setProgress(100);
-                    showNotification('Data elements copied successfully!', 'success');
-                    return;
-                }
-            } catch (error) {
-                log(`CORS proxy failed: ${error.message}`, 'error');
-            }
-            
-            // Method 2: Direct connection
-            if (!success) {
-                try {
-                    log('Attempting direct connection...', 'info');
-                    const directUrl = `${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`;
-                    
-                    const response = await fetch(directUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(metadata)
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        logImportResult(result);
-                        success = true;
-                        setProgress(100);
-                        showNotification('Data elements copied successfully!', 'success');
-                        return;
-                    }
-                } catch (error) {
-                    log(`Direct connection failed: ${error.message}`, 'error');
-                }
-            }
-            
-            // Method 3: Download
-            if (!success) {
-                downloadMetadataFile(metadata, 'data-elements', targetUrl);
-                setProgress(100);
-            }
-        }
-
-        async function copyDatasets(formData) {
-            log('Fetching dataset from source...', 'info');
-            setProgress(20);
-            
-            const datasetId = formData.get('datasetId').trim();
-            const sourceUrl = `${state.config.instanceUrl}/api/dataSets/${datasetId}.json?fields=:all`;
-            const sourceResponse = await fetchWithAuth(sourceUrl);
-            
-            if (!sourceResponse.ok) {
-                throw new Error('Failed to fetch dataset');
-            }
-            
-            const dataset = await sourceResponse.json();
-            log(`Retrieved dataset: ${dataset.displayName || dataset.name}`, 'success');
-            setProgress(50);
-            
-            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
-            const targetUsername = formData.get('targetUsername').trim();
-            const targetPassword = formData.get('targetPassword').trim();
-            
-            const metadata = { dataSets: [dataset] };
-            
-            log('Importing dataset...', 'info');
-            setProgress(60);
-            
-            let success = false;
-            
-            // Try CORS proxy
-            try {
-                log('Attempting import via CORS proxy...', 'info');
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
-                
-                const response = await fetch(proxyUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(metadata)
-                });
-                
-                setProgress(80);
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    logImportResult(result);
-                    success = true;
-                    setProgress(100);
-                    showNotification('Dataset copied successfully!', 'success');
-                    return;
-                }
-            } catch (error) {
-                log(`CORS proxy failed: ${error.message}`, 'error');
-            }
-            
-            // Try direct
-            if (!success) {
-                try {
-                    log('Attempting direct connection...', 'info');
-                    const directUrl = `${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`;
-                    
-                    const response = await fetch(directUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(metadata)
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        logImportResult(result);
-                        success = true;
-                        setProgress(100);
-                        showNotification('Dataset copied successfully!', 'success');
-                        return;
-                    }
-                } catch (error) {
-                    log(`Direct connection failed: ${error.message}`, 'error');
-                }
-            }
-            
-            // Download fallback
-            if (!success) {
-                downloadMetadataFile(metadata, 'dataset', targetUrl);
-                setProgress(100);
-            }
-        }
-
-        async function copyDashboard(formData) {
-            log('Fetching dashboard from source...', 'info');
-            setProgress(20);
-            
-            const dashboardId = formData.get('dashboardId').trim();
-            const sourceUrl = `${state.config.instanceUrl}/api/dashboards/${dashboardId}.json?fields=:all`;
-            const sourceResponse = await fetchWithAuth(sourceUrl);
-            
-            if (!sourceResponse.ok) {
-                throw new Error('Failed to fetch dashboard');
-            }
-            
-            const dashboard = await sourceResponse.json();
-            log(`Retrieved dashboard: ${dashboard.displayName || dashboard.name}`, 'success');
-            setProgress(50);
-            
-            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
-            const targetUsername = formData.get('targetUsername').trim();
-            const targetPassword = formData.get('targetPassword').trim();
-            
-            const metadata = { dashboards: [dashboard] };
-            
-            log('Importing dashboard...', 'info');
-            setProgress(60);
-            
-            let success = false;
-            
-            // Try CORS proxy
-            try {
-                log('Attempting import via CORS proxy...', 'info');
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
-                
-                const response = await fetch(proxyUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(metadata)
-                });
-                
-                setProgress(80);
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    logImportResult(result);
-                    success = true;
-                    setProgress(100);
-                    showNotification('Dashboard copied successfully!', 'success');
-                    return;
-                }
-            } catch (error) {
-                log(`CORS proxy failed: ${error.message}`, 'error');
-            }
-            
-            // Try direct
-            if (!success) {
-                try {
-                    log('Attempting direct connection...', 'info');
-                    const directUrl = `${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`;
-                    
-                    const response = await fetch(directUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(metadata)
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        logImportResult(result);
-                        success = true;
-                        setProgress(100);
-                        showNotification('Dashboard copied successfully!', 'success');
-                        return;
-                    }
-                } catch (error) {
-                    log(`Direct connection failed: ${error.message}`, 'error');
-                }
-            }
-            
-            // Download fallback
-            if (!success) {
-                downloadMetadataFile(metadata, 'dashboard', targetUrl);
-                setProgress(100);
-            }
-        }
-
-        function logImportResult(result) {
-            if (result.status === 'OK' || result.status === 'SUCCESS') {
-                log(`✓ Import successful!`, 'success');
-                if (result.stats) {
-                    log(`  - Created: ${result.stats.created || 0}`, 'success');
-                    log(`  - Updated: ${result.stats.updated || 0}`, 'success');
-                    log(`  - Ignored: ${result.stats.ignored || 0}`, 'info');
-                    if (result.stats.deleted) log(`  - Deleted: ${result.stats.deleted}`, 'info');
-                }
-            } else {
-                log(`⚠ Import status: ${result.status}`, 'info');
-                if (result.typeReports) {
-                    result.typeReports.forEach(report => {
-                        if (report.objectReports) {
-                            report.objectReports.forEach(objReport => {
-                                if (objReport.errorReports && objReport.errorReports.length > 0) {
-                                    objReport.errorReports.forEach(err => {
-                                        log(`  Error: ${err.message}`, 'error');
-                                    });
-                                }
-                            });
-                        }
-                    });
-                }
-            }
-        }
-
-        function downloadMetadataFile(metadata, type, targetUrl) {
-            log('', 'error');
-            log('════════════════════════════════════════════', 'info');
-            log('All automatic methods failed. Downloading file...', 'info');
-            log('════════════════════════════════════════════', 'info');
-            log('', 'info');
-            log('MANUAL IMPORT INSTRUCTIONS:', 'info');
-            log('1. The metadata file has been downloaded', 'success');
-            log(`2. Go to: ${targetUrl}/dhis-web-importexport/`, 'info');
-            log('3. Click on "Metadata Import"', 'info');
-            log('4. Select "JSON" format', 'info');
-            log('5. Upload the downloaded file', 'info');
-            log('6. Click "Import" button', 'info');
-            
-            const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `${type}-export-${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            
-            log('', 'success');
-            log('✓ File downloaded successfully!', 'success');
-            showNotification('File downloaded - Please import manually to target instance', 'info');
-        }
-
         async function fetchWithAuth(url, options = {}) {
-            // Always try direct connection first (no CORS proxy)
-            const apiUrl = url;
-            
-            return fetch(apiUrl, {
+            return fetch(url, {
                 ...options,
                 headers: {
                     ...options.headers,
@@ -2896,6 +1774,22 @@
             });
         }
 
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${filename}-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
         function log(message, type = 'info') {
             const container = document.getElementById('logContainer');
             const entry = document.createElement('div');
@@ -2903,7 +1797,6 @@
             entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
             container.appendChild(entry);
             container.scrollTop = container.scrollHeight;
-            console.log(message);
         }
 
         function clearLogs() {
