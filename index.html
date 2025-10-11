@@ -587,6 +587,54 @@
             }
         }
 
+        .org-unit-item {
+            padding: 5px 10px;
+            margin: 2px 0;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+            user-select: none;
+        }
+
+        .org-unit-item:hover {
+            background: #30363d;
+        }
+
+        .org-unit-item.selected {
+            background: rgba(88, 166, 255, 0.2);
+            border-left: 3px solid #58a6ff;
+        }
+
+        .org-unit-toggle {
+            display: inline-block;
+            width: 20px;
+            cursor: pointer;
+            color: #58a6ff;
+            font-weight: bold;
+        }
+
+        .org-unit-checkbox {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .org-unit-children {
+            margin-left: 25px;
+            display: none;
+        }
+
+        .org-unit-children.expanded {
+            display: block;
+        }
+
+        .org-unit-label {
+            color: #e6edf3;
+        }
+
+        .org-unit-level-1 { font-weight: 700; font-size: 15px; }
+        .org-unit-level-2 { font-weight: 600; font-size: 14px; }
+        .org-unit-level-3 { font-weight: 500; font-size: 13px; }
+
         .required {
             color: #f85149;
         }
@@ -882,25 +930,6 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Organisation Units <span class="required">*</span></label>
-                        <div style="margin-bottom: 10px;">
-                            <button type="button" class="btn-primary" onclick="loadOrgUnits('downloadDataElements')" style="width: auto; padding: 10px 20px; font-size: 14px;">
-                                Load Organisation Units
-                            </button>
-                        </div>
-                        <select class="form-select" id="orgUnitSelect" multiple size="8" style="height: 150px;" disabled>
-                            <option value="">Click "Load Organisation Units" to fetch...</option>
-                        </select>
-                        <div class="help-text">Hold Ctrl/Cmd to select multiple</div>
-                        <div style="margin-top: 10px;">
-                            <button type="button" onclick="selectAllOptions('orgUnitSelect')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
-                            <button type="button" onclick="clearAllOptions('orgUnitSelect')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
-                        </div>
-                    </div>
-
-                    ${getPeriodSelector()}
-                    
-                    <div class="form-group">
                         <div class="checkbox-group">
                             <input type="checkbox" id="includeCategories" checked>
                             <label>Include category combinations</label>
@@ -908,10 +937,6 @@
                         <div class="checkbox-group">
                             <input type="checkbox" id="includeGroups" checked>
                             <label>Include data element groups</label>
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="includeData" checked>
-                            <label>Include data values for selected period</label>
                         </div>
                     </div>
                 `
@@ -974,17 +999,24 @@
                     <div class="form-group">
                         <label class="form-label">Organisation Units <span class="required">*</span></label>
                         <div style="margin-bottom: 10px;">
-                            <button type="button" class="btn-primary" onclick="loadOrgUnits('downloadDatasets')" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                            <button type="button" class="btn-primary" onclick="loadOrgUnitsTree('downloadDatasets')" style="width: auto; padding: 10px 20px; font-size: 14px;">
                                 Load Organisation Units
                             </button>
                         </div>
-                        <select class="form-select" id="orgUnitSelectDatasets" multiple size="8" style="height: 150px;" disabled>
-                            <option value="">Click "Load Organisation Units" to fetch...</option>
-                        </select>
-                        <div class="help-text">Hold Ctrl/Cmd to select multiple</div>
+                        <div style="background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 15px; max-height: 300px; overflow-y: auto;" id="orgUnitTree">
+                            <p style="color: #8b949e; text-align: center;">Click "Load Organisation Units" to fetch...</p>
+                        </div>
                         <div style="margin-top: 10px;">
-                            <button type="button" onclick="selectAllOptions('orgUnitSelectDatasets')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
-                            <button type="button" onclick="clearAllOptions('orgUnitSelectDatasets')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                            <button type="button" onclick="expandAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Expand All</button>
+                            <button type="button" onclick="collapseAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Collapse All</button>
+                            <button type="button" onclick="selectAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllOrgUnits()" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                        </div>
+                        <div class="help-text" style="margin-top: 10px;">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="includeChildren" checked>
+                                <label>Include all child organisation units in export</label>
+                            </div>
                         </div>
                     </div>
 
@@ -1283,7 +1315,202 @@
             }
         }
 
-        // Load organisation units from DHIS2
+        // Load organisation units as hierarchical tree
+        let orgUnitsData = [];
+        let selectedOrgUnits = new Set();
+
+        async function loadOrgUnitsTree(context) {
+            try {
+                log('Fetching organisation units hierarchy...', 'info');
+                const url = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,level,parent[id],children[id]&paging=false`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) throw new Error('Failed to fetch organisation units');
+                
+                const data = await response.json();
+                orgUnitsData = data.organisationUnits;
+                
+                // Build tree structure
+                const tree = buildOrgUnitTree(orgUnitsData);
+                renderOrgUnitTree(tree);
+                
+                log(`Loaded ${orgUnitsData.length} organisation units`, 'success');
+                showNotification(`Loaded ${orgUnitsData.length} organisation units`, 'success');
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                showNotification('Failed to load organisation units', 'error');
+            }
+        }
+
+        function buildOrgUnitTree(orgUnits) {
+            const orgUnitMap = {};
+            const rootUnits = [];
+            
+            // Create map of all org units
+            orgUnits.forEach(ou => {
+                orgUnitMap[ou.id] = { ...ou, children: [] };
+            });
+            
+            // Build tree structure
+            orgUnits.forEach(ou => {
+                if (ou.parent && orgUnitMap[ou.parent.id]) {
+                    orgUnitMap[ou.parent.id].children.push(orgUnitMap[ou.id]);
+                } else {
+                    rootUnits.push(orgUnitMap[ou.id]);
+                }
+            });
+            
+            return rootUnits;
+        }
+
+        function renderOrgUnitTree(tree) {
+            const container = document.getElementById('orgUnitTree');
+            container.innerHTML = '';
+            
+            tree.forEach(ou => {
+                container.appendChild(createOrgUnitNode(ou));
+            });
+        }
+
+        function createOrgUnitNode(orgUnit) {
+            const div = document.createElement('div');
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.className = `org-unit-item org-unit-level-${orgUnit.level}`;
+            itemDiv.dataset.id = orgUnit.id;
+            
+            // Toggle button for children
+            const toggle = document.createElement('span');
+            toggle.className = 'org-unit-toggle';
+            if (orgUnit.children && orgUnit.children.length > 0) {
+                toggle.textContent = '▶';
+                toggle.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleOrgUnit(orgUnit.id);
+                };
+            } else {
+                toggle.textContent = '  ';
+                toggle.style.cursor = 'default';
+            }
+            
+            // Checkbox
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'org-unit-checkbox';
+            checkbox.dataset.id = orgUnit.id;
+            checkbox.checked = selectedOrgUnits.has(orgUnit.id);
+            checkbox.onchange = (e) => {
+                e.stopPropagation();
+                toggleOrgUnitSelection(orgUnit.id, e.target.checked);
+            };
+            
+            // Label
+            const label = document.createElement('span');
+            label.className = 'org-unit-label';
+            label.textContent = orgUnit.displayName;
+            label.onclick = () => {
+                checkbox.checked = !checkbox.checked;
+                toggleOrgUnitSelection(orgUnit.id, checkbox.checked);
+            };
+            
+            itemDiv.appendChild(toggle);
+            itemDiv.appendChild(checkbox);
+            itemDiv.appendChild(label);
+            div.appendChild(itemDiv);
+            
+            // Children container
+            if (orgUnit.children && orgUnit.children.length > 0) {
+                const childrenDiv = document.createElement('div');
+                childrenDiv.className = 'org-unit-children';
+                childrenDiv.id = `children-${orgUnit.id}`;
+                
+                orgUnit.children.forEach(child => {
+                    childrenDiv.appendChild(createOrgUnitNode(child));
+                });
+                
+                div.appendChild(childrenDiv);
+            }
+            
+            return div;
+        }
+
+        function toggleOrgUnit(id) {
+            const childrenDiv = document.getElementById(`children-${id}`);
+            const toggle = document.querySelector(`[data-id="${id}"] .org-unit-toggle`);
+            
+            if (childrenDiv.classList.contains('expanded')) {
+                childrenDiv.classList.remove('expanded');
+                toggle.textContent = '▶';
+            } else {
+                childrenDiv.classList.add('expanded');
+                toggle.textContent = '▼';
+            }
+        }
+
+        function toggleOrgUnitSelection(id, selected) {
+            if (selected) {
+                selectedOrgUnits.add(id);
+            } else {
+                selectedOrgUnits.delete(id);
+            }
+            
+            const item = document.querySelector(`.org-unit-item[data-id="${id}"]`);
+            if (item) {
+                if (selected) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            }
+        }
+
+        function expandAllOrgUnits() {
+            document.querySelectorAll('.org-unit-children').forEach(div => {
+                div.classList.add('expanded');
+            });
+            document.querySelectorAll('.org-unit-toggle').forEach(toggle => {
+                if (toggle.textContent === '▶') {
+                    toggle.textContent = '▼';
+                }
+            });
+        }
+
+        function collapseAllOrgUnits() {
+            document.querySelectorAll('.org-unit-children').forEach(div => {
+                div.classList.remove('expanded');
+            });
+            document.querySelectorAll('.org-unit-toggle').forEach(toggle => {
+                if (toggle.textContent === '▼') {
+                    toggle.textContent = '▶';
+                }
+            });
+        }
+
+        function selectAllOrgUnits() {
+            document.querySelectorAll('.org-unit-checkbox').forEach(checkbox => {
+                checkbox.checked = true;
+                selectedOrgUnits.add(checkbox.dataset.id);
+            });
+            document.querySelectorAll('.org-unit-item').forEach(item => {
+                item.classList.add('selected');
+            });
+        }
+
+        function clearAllOrgUnits() {
+            document.querySelectorAll('.org-unit-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            selectedOrgUnits.clear();
+            document.querySelectorAll('.org-unit-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+        }
+
+        function getSelectedOrgUnitsFromTree() {
+            return Array.from(selectedOrgUnits);
+        }
+
+        // Load organisation units from DHIS2 (old method - keep for backwards compatibility)
         async function loadOrgUnits(context) {
             try {
                 log('Fetching organisation units...', 'info');
