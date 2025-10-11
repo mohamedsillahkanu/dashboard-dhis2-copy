@@ -2009,17 +2009,28 @@
             
             document.getElementById('progressSection').classList.add('show');
             document.getElementById('modalSubmit').disabled = true;
+            document.getElementById('modalSubmit').textContent = 'Processing...';
             
-            // Execute action
-            await executeAction(action, formData);
-            
-            document.getElementById('modalSubmit').disabled = false;
+            try {
+                // Execute action
+                await executeAction(action, formData);
+            } catch (error) {
+                log(`❌ FATAL ERROR: ${error.message}`, 'error');
+                console.error('Full error:', error);
+                showNotification(`Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('modalSubmit').disabled = false;
+                document.getElementById('modalSubmit').textContent = 'Execute';
+            }
         });
 
         // Execute DHIS2 action
         async function executeAction(action, formData) {
             clearLogs();
-            setProgress(10);
+            setProgress(0);
+            
+            log(`🚀 Executing action: ${action}`, 'info');
+            log('', 'info');
             
             try {
                 switch(action) {
@@ -2037,14 +2048,16 @@
                         break;
                     // Add more cases...
                     default:
-                        log('Action not implemented yet', 'info');
+                        log(`⚠️ Action "${action}" not implemented yet`, 'info');
+                        showNotification('This feature is coming soon!', 'info');
+                        setProgress(100);
                 }
-                
-                setProgress(100);
-                showNotification('Action completed successfully!', 'success');
             } catch (error) {
-                log(`Error: ${error.message}`, 'error');
-                showNotification('Action failed: ' + error.message, 'error');
+                log('', 'info');
+                log('═══════════════════════════════════════', 'error');
+                log(`❌ ERROR: ${error.message}`, 'error');
+                log('═══════════════════════════════════════', 'error');
+                throw error;
             }
         }
 
