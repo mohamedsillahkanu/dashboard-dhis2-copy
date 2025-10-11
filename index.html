@@ -587,6 +587,91 @@
             }
         }
 
+        .dataset-checkbox-list {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .dataset-item {
+            padding: 12px;
+            margin: 5px 0;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dataset-item:hover {
+            background: #21262d;
+            border-color: #58a6ff;
+            transform: translateX(3px);
+        }
+
+        .dataset-item.selected {
+            background: rgba(88, 166, 255, 0.15);
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3);
+        }
+
+        .dataset-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #58a6ff;
+        }
+
+        .dataset-name {
+            flex: 1;
+            color: #e6edf3;
+            font-size: 14px;
+        }
+
+        .dataset-item.selected .dataset-name {
+            color: #58a6ff;
+            font-weight: 600;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 10px 12px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 14px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        .search-box::placeholder {
+            color: #6e7681;
+        }
+
+        .selection-summary {
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid #58a6ff;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-top: 10px;
+            color: #58a6ff;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
         .org-unit-item {
             padding: 5px 10px;
             margin: 2px 0;
@@ -993,17 +1078,25 @@
                     <div class="form-group">
                         <label class="form-label">Select Datasets <span class="required">*</span></label>
                         <div style="margin-bottom: 10px;">
-                            <button type="button" class="btn-primary" onclick="loadDatasets()" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                            <button type="button" class="btn-primary" onclick="loadDatasetsCheckbox()" style="width: auto; padding: 10px 20px; font-size: 14px;">
                                 Load Datasets
                             </button>
                         </div>
-                        <select class="form-select" id="datasetSelect" multiple size="10" style="height: 200px;" disabled>
-                            <option value="">Click "Load Datasets" to fetch...</option>
-                        </select>
-                        <div class="help-text">Hold Ctrl/Cmd to select multiple items</div>
-                        <div style="margin-top: 10px;">
-                            <button type="button" onclick="selectAllOptions('datasetSelect')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
-                            <button type="button" onclick="clearAllOptions('datasetSelect')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                        
+                        <input type="text" class="search-box" id="datasetSearch" placeholder="🔍 Search datasets..." onkeyup="filterDatasets()" style="display: none;">
+                        
+                        <div class="dataset-checkbox-list" id="datasetCheckboxList">
+                            <p style="color: #8b949e; text-align: center; padding: 20px;">Click "Load Datasets" to fetch available datasets</p>
+                        </div>
+                        
+                        <div class="selection-summary" id="datasetSelectionSummary" style="display: none;">
+                            <span id="datasetSelectionCount">0 datasets selected</span>
+                        </div>
+                        
+                        <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button type="button" onclick="selectAllDatasets()" style="padding: 8px 15px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer;">✓ Select All</button>
+                            <button type="button" onclick="clearAllDatasets()" style="padding: 8px 15px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ Clear All</button>
+                            <button type="button" onclick="selectVisibleDatasets()" style="padding: 8px 15px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer;">✓ Select Visible</button>
                         </div>
                     </div>
 
@@ -1331,7 +1424,179 @@
             }
         }
 
-        // Load datasets from DHIS2
+        // Dataset checkbox management
+        let datasetsData = [];
+        let selectedDatasets = new Set();
+
+        // Load datasets as checkbox list
+        async function loadDatasetsCheckbox() {
+            try {
+                log('Fetching datasets from DHIS2...', 'info');
+                showNotification('Loading datasets...', 'info');
+                
+                const url = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName,name,periodType&paging=false`;
+                log(`Request URL: ${url}`, 'info');
+                
+                const response = await fetchWithAuth(url);
+                
+                log(`Response status: ${response.status} ${response.statusText}`, 'info');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response: ${errorText}`, 'error');
+                    throw new Error(`Failed to fetch datasets: ${response.status} - ${errorText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.dataSets || !Array.isArray(data.dataSets)) {
+                    log('Warning: No dataSets array in response', 'error');
+                    showNotification('No datasets found in response', 'error');
+                    return;
+                }
+                
+                if (data.dataSets.length === 0) {
+                    document.getElementById('datasetCheckboxList').innerHTML = '<p style="color: #8b949e; text-align: center; padding: 20px;">No datasets found in this DHIS2 instance</p>';
+                    log('No datasets available in this DHIS2 instance', 'info');
+                    showNotification('No datasets found', 'info');
+                    return;
+                }
+                
+                datasetsData = data.dataSets;
+                renderDatasetCheckboxList(datasetsData);
+                
+                // Show search box
+                document.getElementById('datasetSearch').style.display = 'block';
+                
+                log(`Successfully loaded ${data.dataSets.length} datasets`, 'success');
+                showNotification(`Loaded ${data.dataSets.length} datasets`, 'success');
+            } catch (error) {
+                log(`Error loading datasets: ${error.message}`, 'error');
+                console.error('Full error:', error);
+                showNotification(`Failed to load datasets: ${error.message}`, 'error');
+            }
+        }
+
+        function renderDatasetCheckboxList(datasets) {
+            const container = document.getElementById('datasetCheckboxList');
+            container.innerHTML = '';
+            
+            if (datasets.length === 0) {
+                container.innerHTML = '<p style="color: #8b949e; text-align: center; padding: 20px;">No datasets match your search</p>';
+                return;
+            }
+            
+            datasets.forEach(ds => {
+                const item = document.createElement('div');
+                item.className = 'dataset-item';
+                item.dataset.id = ds.id;
+                if (selectedDatasets.has(ds.id)) {
+                    item.classList.add('selected');
+                }
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'dataset-checkbox';
+                checkbox.checked = selectedDatasets.has(ds.id);
+                checkbox.onchange = (e) => {
+                    e.stopPropagation();
+                    toggleDatasetSelection(ds.id);
+                };
+                
+                const name = document.createElement('span');
+                name.className = 'dataset-name';
+                const periodType = ds.periodType ? ` (${ds.periodType})` : '';
+                name.textContent = (ds.displayName || ds.name || ds.id) + periodType;
+                
+                item.onclick = () => {
+                    checkbox.checked = !checkbox.checked;
+                    toggleDatasetSelection(ds.id);
+                };
+                
+                item.appendChild(checkbox);
+                item.appendChild(name);
+                container.appendChild(item);
+            });
+            
+            updateDatasetSelectionSummary();
+        }
+
+        function toggleDatasetSelection(id) {
+            if (selectedDatasets.has(id)) {
+                selectedDatasets.delete(id);
+            } else {
+                selectedDatasets.add(id);
+            }
+            
+            const item = document.querySelector(`.dataset-item[data-id="${id}"]`);
+            if (item) {
+                if (selectedDatasets.has(id)) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            }
+            
+            updateDatasetSelectionSummary();
+        }
+
+        function updateDatasetSelectionSummary() {
+            const summary = document.getElementById('datasetSelectionSummary');
+            const count = document.getElementById('datasetSelectionCount');
+            
+            if (selectedDatasets.size > 0) {
+                summary.style.display = 'block';
+                count.textContent = `${selectedDatasets.size} dataset${selectedDatasets.size === 1 ? '' : 's'} selected`;
+            } else {
+                summary.style.display = 'none';
+            }
+        }
+
+        function selectAllDatasets() {
+            datasetsData.forEach(ds => selectedDatasets.add(ds.id));
+            document.querySelectorAll('.dataset-checkbox').forEach(cb => cb.checked = true);
+            document.querySelectorAll('.dataset-item').forEach(item => item.classList.add('selected'));
+            updateDatasetSelectionSummary();
+        }
+
+        function clearAllDatasets() {
+            selectedDatasets.clear();
+            document.querySelectorAll('.dataset-checkbox').forEach(cb => cb.checked = false);
+            document.querySelectorAll('.dataset-item').forEach(item => item.classList.remove('selected'));
+            updateDatasetSelectionSummary();
+        }
+
+        function selectVisibleDatasets() {
+            document.querySelectorAll('.dataset-item').forEach(item => {
+                if (item.style.display !== 'none') {
+                    const id = item.dataset.id;
+                    selectedDatasets.add(id);
+                    item.classList.add('selected');
+                    item.querySelector('.dataset-checkbox').checked = true;
+                }
+            });
+            updateDatasetSelectionSummary();
+        }
+
+        function filterDatasets() {
+            const searchTerm = document.getElementById('datasetSearch').value.toLowerCase();
+            const items = document.querySelectorAll('.dataset-item');
+            
+            items.forEach(item => {
+                const name = item.querySelector('.dataset-name').textContent.toLowerCase();
+                if (name.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function getSelectedDatasets() {
+            return Array.from(selectedDatasets);
+        }
+
+        // Load datasets from DHIS2 (old function for backwards compatibility)
         async function loadDatasets() {
             try {
                 log('Fetching datasets from DHIS2...', 'info');
