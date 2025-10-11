@@ -1498,20 +1498,29 @@
                 checkbox.type = 'checkbox';
                 checkbox.className = 'dataset-checkbox';
                 checkbox.checked = selectedDatasets.has(ds.id);
-                checkbox.onchange = (e) => {
+                checkbox.dataset.id = ds.id;
+                
+                // Checkbox click handler
+                checkbox.addEventListener('click', function(e) {
                     e.stopPropagation();
+                    console.log('Checkbox clicked for:', ds.id, 'Checked:', this.checked);
                     toggleDatasetSelection(ds.id);
-                };
+                });
                 
                 const name = document.createElement('span');
                 name.className = 'dataset-name';
                 const periodType = ds.periodType ? ` (${ds.periodType})` : '';
                 name.textContent = (ds.displayName || ds.name || ds.id) + periodType;
                 
-                item.onclick = () => {
+                // Item click handler (for clicking the whole row)
+                item.addEventListener('click', function(e) {
+                    // Don't toggle if clicking the checkbox itself
+                    if (e.target.type === 'checkbox') return;
+                    
+                    console.log('Item clicked for:', ds.id);
                     checkbox.checked = !checkbox.checked;
                     toggleDatasetSelection(ds.id);
-                };
+                });
                 
                 item.appendChild(checkbox);
                 item.appendChild(name);
@@ -1522,45 +1531,59 @@
         }
 
         function toggleDatasetSelection(id) {
-            console.log('toggleDatasetSelection called with id:', id);
+            console.log('=== toggleDatasetSelection START ===');
+            console.log('ID:', id);
+            console.log('Before - selectedDatasets size:', selectedDatasets.size);
+            console.log('Before - selectedDatasets has id:', selectedDatasets.has(id));
             
             if (selectedDatasets.has(id)) {
                 selectedDatasets.delete(id);
-                console.log('  - Removed from selection');
+                console.log('ACTION: REMOVED from selection');
             } else {
                 selectedDatasets.add(id);
-                console.log('  - Added to selection');
+                console.log('ACTION: ADDED to selection');
             }
             
-            console.log('  - Total selected:', selectedDatasets.size);
-            console.log('  - Selected IDs:', Array.from(selectedDatasets));
+            console.log('After - selectedDatasets size:', selectedDatasets.size);
+            console.log('After - All selected IDs:', Array.from(selectedDatasets));
             
+            // Update the visual state
             const item = document.querySelector(`.dataset-item[data-id="${id}"]`);
-            if (item) {
-                const checkbox = item.querySelector('.dataset-checkbox');
+            const checkbox = item?.querySelector('.dataset-checkbox');
+            
+            if (item && checkbox) {
                 if (selectedDatasets.has(id)) {
                     item.classList.add('selected');
-                    if (checkbox) checkbox.checked = true;
+                    checkbox.checked = true;
+                    console.log('VISUAL: Item marked as selected');
                 } else {
                     item.classList.remove('selected');
-                    if (checkbox) checkbox.checked = false;
+                    checkbox.checked = false;
+                    console.log('VISUAL: Item marked as unselected');
                 }
+            } else {
+                console.log('ERROR: Could not find item or checkbox in DOM');
             }
             
             updateDatasetSelectionSummary();
+            console.log('=== toggleDatasetSelection END ===');
         }
 
         function updateDatasetSelectionSummary() {
             const summary = document.getElementById('datasetSelectionSummary');
             const count = document.getElementById('datasetSelectionCount');
             
-            console.log('updateDatasetSelectionSummary:', selectedDatasets.size, 'datasets selected');
+            const numSelected = selectedDatasets.size;
+            console.log('📊 updateDatasetSelectionSummary:', numSelected, 'datasets selected');
+            console.log('   Selected IDs:', Array.from(selectedDatasets));
             
-            if (selectedDatasets.size > 0) {
+            if (numSelected > 0) {
                 summary.style.display = 'block';
-                count.textContent = `${selectedDatasets.size} dataset${selectedDatasets.size === 1 ? '' : 's'} selected`;
+                count.textContent = `${numSelected} dataset${numSelected === 1 ? '' : 's'} selected`;
+                console.log('   Summary box shown:', count.textContent);
             } else {
                 summary.style.display = 'none';
+                console.log('   Summary box hidden (no selection)');
             }
         }
 
