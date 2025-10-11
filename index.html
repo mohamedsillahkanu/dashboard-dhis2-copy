@@ -2103,7 +2103,7 @@
             const importResponse = await fetch(importUrlWithProxy, {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                    'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),  
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(metadata)
