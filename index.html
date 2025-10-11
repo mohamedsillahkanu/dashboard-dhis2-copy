@@ -51,6 +51,40 @@
             background: linear-gradient(90deg, #2ea043, #58a6ff, #7c3aed);
         }
 
+        .logo-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            gap: 20px;
+        }
+
+        .logo-box {
+            width: 120px;
+            height: 120px;
+            background: #21262d;
+            border: 2px solid #30363d;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .logo-box:hover {
+            border-color: #58a6ff;
+            background: rgba(88, 166, 255, 0.05);
+            transform: scale(1.05);
+        }
+
+        .logo-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
         .login-header {
             text-align: center;
             margin-bottom: 40px;
@@ -568,6 +602,15 @@
     <!-- Login Screen -->
     <div class="login-screen" id="loginScreen">
         <div class="login-card">
+            <div class="logo-container">
+                <div class="logo-box">
+                    <img src="NMCP.png" alt="NMCP Logo" class="logo-img">
+                </div>
+                <div class="logo-box">
+                    <img src="ICF-SL.jpg" alt="ICF-SL Logo" class="logo-img">
+                </div>
+            </div>
+
             <div class="login-header">
                 <h1>🚀 DHIS2 Management Suite</h1>
                 <p>Professional DHIS2 Administration Tool</p>
@@ -588,14 +631,6 @@
                 <div class="form-group">
                     <label class="form-label">Password <span class="required">*</span></label>
                     <input type="password" class="form-input" id="password" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">CORS Proxy</label>
-                    <select class="form-select" id="useCorsProxy">
-                        <option value="yes">Yes - Use CORS Proxy (Recommended)</option>
-                        <option value="no">No - Direct Connection</option>
-                    </select>
                 </div>
 
                 <button type="submit" class="btn-primary">Connect to DHIS2</button>
@@ -830,6 +865,42 @@
                 title: '📊 Download Data Elements',
                 fields: `
                     <div class="form-group">
+                        <label class="form-label">Select Data Elements <span class="required">*</span></label>
+                        <div style="margin-bottom: 10px;">
+                            <button type="button" class="btn-primary" onclick="loadDataElements()" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                                Load Data Elements
+                            </button>
+                        </div>
+                        <select class="form-select" id="dataElementSelect" multiple size="10" style="height: 200px;" disabled>
+                            <option value="">Click "Load Data Elements" to fetch...</option>
+                        </select>
+                        <div class="help-text">Hold Ctrl/Cmd to select multiple items</div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" onclick="selectAllOptions('dataElementSelect')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllOptions('dataElementSelect')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Organisation Units <span class="required">*</span></label>
+                        <div style="margin-bottom: 10px;">
+                            <button type="button" class="btn-primary" onclick="loadOrgUnits('downloadDataElements')" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                                Load Organisation Units
+                            </button>
+                        </div>
+                        <select class="form-select" id="orgUnitSelect" multiple size="8" style="height: 150px;" disabled>
+                            <option value="">Click "Load Organisation Units" to fetch...</option>
+                        </select>
+                        <div class="help-text">Hold Ctrl/Cmd to select multiple</div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" onclick="selectAllOptions('orgUnitSelect')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllOptions('orgUnitSelect')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                        </div>
+                    </div>
+
+                    ${getPeriodSelector()}
+                    
+                    <div class="form-group">
                         <div class="checkbox-group">
                             <input type="checkbox" id="includeCategories" checked>
                             <label>Include category combinations</label>
@@ -837,6 +908,10 @@
                         <div class="checkbox-group">
                             <input type="checkbox" id="includeGroups" checked>
                             <label>Include data element groups</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="includeData" checked>
+                            <label>Include data values for selected period</label>
                         </div>
                     </div>
                 `
@@ -880,6 +955,42 @@
                 title: '📋 Download Datasets',
                 fields: `
                     <div class="form-group">
+                        <label class="form-label">Select Datasets <span class="required">*</span></label>
+                        <div style="margin-bottom: 10px;">
+                            <button type="button" class="btn-primary" onclick="loadDatasets()" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                                Load Datasets
+                            </button>
+                        </div>
+                        <select class="form-select" id="datasetSelect" multiple size="10" style="height: 200px;" disabled>
+                            <option value="">Click "Load Datasets" to fetch...</option>
+                        </select>
+                        <div class="help-text">Hold Ctrl/Cmd to select multiple items</div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" onclick="selectAllOptions('datasetSelect')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllOptions('datasetSelect')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Organisation Units <span class="required">*</span></label>
+                        <div style="margin-bottom: 10px;">
+                            <button type="button" class="btn-primary" onclick="loadOrgUnits('downloadDatasets')" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                                Load Organisation Units
+                            </button>
+                        </div>
+                        <select class="form-select" id="orgUnitSelectDatasets" multiple size="8" style="height: 150px;" disabled>
+                            <option value="">Click "Load Organisation Units" to fetch...</option>
+                        </select>
+                        <div class="help-text">Hold Ctrl/Cmd to select multiple</div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" onclick="selectAllOptions('orgUnitSelectDatasets')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
+                            <button type="button" onclick="clearAllOptions('orgUnitSelectDatasets')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
+                        </div>
+                    </div>
+
+                    ${getPeriodSelector()}
+
+                    <div class="form-group">
                         <div class="checkbox-group">
                             <input type="checkbox" id="includeDataElements" checked>
                             <label>Include data elements</label>
@@ -887,6 +998,10 @@
                         <div class="checkbox-group">
                             <input type="checkbox" id="includeSections" checked>
                             <label>Include sections</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="includeDataValues" checked>
+                            <label>Include data values for selected period</label>
                         </div>
                     </div>
                 `
@@ -1110,6 +1225,134 @@
             }
         };
 
+        // Load data elements from DHIS2
+        async function loadDataElements() {
+            try {
+                log('Fetching data elements...', 'info');
+                const url = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName&paging=false`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) throw new Error('Failed to fetch data elements');
+                
+                const data = await response.json();
+                const select = document.getElementById('dataElementSelect');
+                select.innerHTML = '';
+                select.disabled = false;
+                
+                data.dataElements.forEach(de => {
+                    const option = document.createElement('option');
+                    option.value = de.id;
+                    option.textContent = de.displayName;
+                    select.appendChild(option);
+                });
+                
+                log(`Loaded ${data.dataElements.length} data elements`, 'success');
+                showNotification(`Loaded ${data.dataElements.length} data elements`, 'success');
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                showNotification('Failed to load data elements', 'error');
+            }
+        }
+
+        // Load datasets from DHIS2
+        async function loadDatasets() {
+            try {
+                log('Fetching datasets...', 'info');
+                const url = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName&paging=false`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) throw new Error('Failed to fetch datasets');
+                
+                const data = await response.json();
+                const select = document.getElementById('datasetSelect');
+                select.innerHTML = '';
+                select.disabled = false;
+                
+                data.dataSets.forEach(ds => {
+                    const option = document.createElement('option');
+                    option.value = ds.id;
+                    option.textContent = ds.displayName;
+                    select.appendChild(option);
+                });
+                
+                log(`Loaded ${data.dataSets.length} datasets`, 'success');
+                showNotification(`Loaded ${data.dataSets.length} datasets`, 'success');
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                showNotification('Failed to load datasets', 'error');
+            }
+        }
+
+        // Load organisation units from DHIS2
+        async function loadOrgUnits(context) {
+            try {
+                log('Fetching organisation units...', 'info');
+                const url = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,level&paging=false`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) throw new Error('Failed to fetch organisation units');
+                
+                const data = await response.json();
+                
+                // Determine which select to populate based on context
+                let selectId = 'orgUnitSelect';
+                if (context === 'downloadDatasets') {
+                    selectId = 'orgUnitSelectDatasets';
+                }
+                
+                const select = document.getElementById(selectId);
+                select.innerHTML = '';
+                select.disabled = false;
+                
+                // Sort by level then name
+                data.organisationUnits.sort((a, b) => {
+                    if (a.level !== b.level) return a.level - b.level;
+                    return a.displayName.localeCompare(b.displayName);
+                });
+                
+                data.organisationUnits.forEach(ou => {
+                    const option = document.createElement('option');
+                    option.value = ou.id;
+                    option.textContent = `${'  '.repeat(ou.level - 1)}${ou.displayName}`;
+                    select.appendChild(option);
+                });
+                
+                log(`Loaded ${data.organisationUnits.length} organisation units`, 'success');
+                showNotification(`Loaded ${data.organisationUnits.length} organisation units`, 'success');
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                showNotification('Failed to load organisation units', 'error');
+            }
+        }
+
+        // Select all options in a select element
+        function selectAllOptions(selectId) {
+            const select = document.getElementById(selectId);
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = true;
+            }
+        }
+
+        // Clear all options in a select element
+        function clearAllOptions(selectId) {
+            const select = document.getElementById(selectId);
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = false;
+            }
+        }
+
+        // Get selected option IDs from a multi-select
+        function getSelectedOptions(selectId) {
+            const select = document.getElementById(selectId);
+            const selected = [];
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].selected) {
+                    selected.push(select.options[i].value);
+                }
+            }
+            return selected;
+        }
+
         // Login
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1117,7 +1360,7 @@
             const instanceUrl = document.getElementById('instanceUrl').value.trim().replace(/\/$/, '');
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
-            const useCorsProxy = document.getElementById('useCorsProxy').value === 'yes';
+            const useCorsProxy = true; // Always use CORS proxy
 
             state.config = {
                 instanceUrl,
@@ -1206,6 +1449,9 @@
                     case 'downloadDataElements':
                         await downloadDataElements();
                         break;
+                    case 'downloadDatasets':
+                        await downloadDatasets();
+                        break;
                     case 'createDataElement':
                         await createDataElement(formData);
                         break;
@@ -1227,27 +1473,336 @@
 
         // Download data elements
         async function downloadDataElements() {
-            log('Fetching data elements...', 'info');
-            setProgress(30);
+            const selectedDataElements = getSelectedOptions('dataElementSelect');
+            const selectedOrgUnits = getSelectedOptions('orgUnitSelect');
             
-            const url = `${state.config.instanceUrl}/api/dataElements.json?fields=:all&paging=false`;
+            if (selectedDataElements.length === 0) {
+                showNotification('Please select at least one data element', 'error');
+                return;
+            }
+            
+            if (selectedOrgUnits.length === 0) {
+                showNotification('Please select at least one organisation unit', 'error');
+                return;
+            }
+            
+            log('Fetching selected data elements metadata...', 'info');
+            setProgress(20);
+            
+            // Build metadata URL with selected data elements
+            const deFilter = selectedDataElements.map(id => `id:eq:${id}`).join(',');
+            const url = `${state.config.instanceUrl}/api/metadata.json?dataElements:filter=${deFilter}&fields=:all&includeReferences=true`;
             const response = await fetchWithAuth(url);
             
             if (!response.ok) throw new Error('Failed to fetch data elements');
             
-            const data = await response.json();
-            log(`Retrieved ${data.dataElements.length} data elements`, 'success');
-            setProgress(70);
+            const metadata = await response.json();
+            log(`Retrieved metadata for ${selectedDataElements.length} data elements`, 'success');
+            setProgress(40);
             
-            // Download as JSON
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `data-elements-${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
+            // Create lookup maps for labels
+            const dataElementMap = {};
+            const orgUnitMap = {};
+            const categoryOptionComboMap = {};
             
-            log('Download complete', 'success');
-            setProgress(100);
+            metadata.dataElements?.forEach(de => {
+                dataElementMap[de.id] = de.displayName || de.name;
+            });
+            
+            log('Fetching organisation unit labels...', 'info');
+            setProgress(50);
+            
+            // Fetch org units for labels
+            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?filter=id:in:[${selectedOrgUnits.join(',')}]&fields=id,displayName&paging=false`;
+            const ouResponse = await fetchWithAuth(ouUrl);
+            if (ouResponse.ok) {
+                const ouData = await ouResponse.json();
+                ouData.organisationUnits?.forEach(ou => {
+                    orgUnitMap[ou.id] = ou.displayName;
+                });
+            }
+            
+            // Check if we should include data values
+            const includeData = document.getElementById('includeData')?.checked;
+            
+            if (includeData) {
+                log('Fetching data values for selected period...', 'info');
+                setProgress(60);
+                
+                // Get period
+                const period = getPeriodFromForm();
+                
+                if (!period) {
+                    showNotification('Please select a period', 'error');
+                    return;
+                }
+                
+                // Build data value URL
+                const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataElement=${selectedDataElements.join(',')}&orgUnit=${selectedOrgUnits.join(',')}&${period}`;
+                const dataResponse = await fetchWithAuth(dataUrl);
+                
+                if (dataResponse.ok) {
+                    const dataValues = await dataResponse.json();
+                    const numValues = dataValues.dataValues?.length || 0;
+                    log(`Retrieved ${numValues} data values`, 'success');
+                    setProgress(80);
+                    
+                    if (numValues > 0) {
+                        // Fetch category option combos for labels
+                        log('Fetching category labels...', 'info');
+                        const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName&paging=false`;
+                        const cocResponse = await fetchWithAuth(cocUrl);
+                        if (cocResponse.ok) {
+                            const cocData = await cocResponse.json();
+                            cocData.categoryOptionCombos?.forEach(coc => {
+                                categoryOptionComboMap[coc.id] = coc.displayName;
+                            });
+                        }
+                        
+                        // Convert to long format CSV with labels
+                        const csvData = convertToLongFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap);
+                        
+                        // Download as CSV
+                        const blob = new Blob([csvData], { type: 'text/csv' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `data-values-${new Date().toISOString().split('T')[0]}.csv`;
+                        link.click();
+                        
+                        log('CSV download complete', 'success');
+                    } else {
+                        showNotification('No data values found for selected criteria', 'info');
+                    }
+                } else {
+                    log('Warning: Could not fetch data values', 'error');
+                    showNotification('Failed to fetch data values', 'error');
+                }
+                
+                setProgress(100);
+            } else {
+                // Download metadata only as JSON
+                const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `data-elements-metadata-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                
+                log('Metadata download complete', 'success');
+                setProgress(100);
+            }
+        }
+
+        // Convert data values to long format CSV with labels
+        function convertToLongFormatCSV(dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap) {
+            // CSV Headers
+            const headers = [
+                'Data Element',
+                'Organisation Unit',
+                'Period',
+                'Category Option Combo',
+                'Attribute Option Combo',
+                'Value',
+                'Stored By',
+                'Last Updated',
+                'Comment'
+            ];
+            
+            let csv = headers.join(',') + '\n';
+            
+            // Add each data value as a row
+            dataValues.forEach(dv => {
+                const row = [
+                    escapeCSV(dataElementMap[dv.dataElement] || dv.dataElement),
+                    escapeCSV(orgUnitMap[dv.orgUnit] || dv.orgUnit),
+                    escapeCSV(dv.period || ''),
+                    escapeCSV(categoryOptionComboMap[dv.categoryOptionCombo] || dv.categoryOptionCombo || 'default'),
+                    escapeCSV(categoryOptionComboMap[dv.attributeOptionCombo] || dv.attributeOptionCombo || 'default'),
+                    escapeCSV(dv.value || ''),
+                    escapeCSV(dv.storedBy || ''),
+                    escapeCSV(dv.lastUpdated || ''),
+                    escapeCSV(dv.comment || '')
+                ];
+                
+                csv += row.join(',') + '\n';
+            });
+            
+            return csv;
+        }
+
+        // Escape CSV values
+        function escapeCSV(value) {
+            if (value === null || value === undefined) return '';
+            const stringValue = String(value);
+            // If value contains comma, quote, or newline, wrap in quotes and escape quotes
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                return '"' + stringValue.replace(/"/g, '""') + '"';
+            }
+            return stringValue;
+        }
+
+        // Get period string from form
+        function getPeriodFromForm() {
+            const activeTab = document.querySelector('.period-tab.active')?.textContent.toLowerCase();
+            
+            if (activeTab === 'monthly') {
+                const period = document.querySelector('#monthly-inputs input[name="period"]')?.value;
+                return period ? `period=${period.replace('-', '')}` : '';
+            } else if (activeTab === 'date range') {
+                const start = document.querySelector('#range-inputs input[name="periodStart"]')?.value;
+                const end = document.querySelector('#range-inputs input[name="periodEnd"]')?.value;
+                return start && end ? `startDate=${start}&endDate=${end}` : '';
+            } else if (activeTab === 'quarterly') {
+                const year = document.querySelector('#quarterly-inputs input[name="year"]')?.value;
+                const quarter = document.querySelector('#quarterly-inputs select[name="quarter"]')?.value;
+                return year && quarter ? `period=${year}${quarter}` : '';
+            } else if (activeTab === 'bi-annual') {
+                const year = document.querySelector('#biannual-inputs input[name="year"]')?.value;
+                const biannual = document.querySelector('#biannual-inputs select[name="biannual"]')?.value;
+                return year && biannual ? `period=${year}${biannual}` : '';
+            } else if (activeTab === 'yearly') {
+                const startYear = document.querySelector('#yearly-inputs input[name="startYear"]')?.value;
+                const endYear = document.querySelector('#yearly-inputs input[name="endYear"]')?.value;
+                if (startYear && endYear) {
+                    return `startDate=${startYear}-01-01&endDate=${endYear}-12-31`;
+                } else if (startYear) {
+                    return `period=${startYear}`;
+                }
+                return '';
+            }
+            
+            return '';
+        }
+
+        // Download datasets
+        async function downloadDatasets() {
+            const selectedDatasets = getSelectedOptions('datasetSelect');
+            const selectedOrgUnits = getSelectedOptions('orgUnitSelectDatasets');
+            
+            if (selectedDatasets.length === 0) {
+                showNotification('Please select at least one dataset', 'error');
+                return;
+            }
+            
+            if (selectedOrgUnits.length === 0) {
+                showNotification('Please select at least one organisation unit', 'error');
+                return;
+            }
+            
+            log('Fetching selected datasets metadata...', 'info');
+            setProgress(20);
+            
+            // Build metadata URL with selected datasets
+            const dsFilter = selectedDatasets.map(id => `id:eq:${id}`).join(',');
+            const url = `${state.config.instanceUrl}/api/metadata.json?dataSets:filter=${dsFilter}&fields=:all&includeReferences=true`;
+            const response = await fetchWithAuth(url);
+            
+            if (!response.ok) throw new Error('Failed to fetch datasets');
+            
+            const metadata = await response.json();
+            log(`Retrieved metadata for ${selectedDatasets.length} datasets`, 'success');
+            setProgress(40);
+            
+            // Get all data elements from the datasets
+            const allDataElements = new Set();
+            metadata.dataSets?.forEach(ds => {
+                ds.dataSetElements?.forEach(dse => {
+                    allDataElements.add(dse.dataElement.id);
+                });
+            });
+            
+            log(`Found ${allDataElements.size} data elements in datasets`, 'info');
+            
+            // Create lookup maps for labels
+            const dataElementMap = {};
+            const orgUnitMap = {};
+            const categoryOptionComboMap = {};
+            
+            metadata.dataElements?.forEach(de => {
+                dataElementMap[de.id] = de.displayName || de.name;
+            });
+            
+            log('Fetching organisation unit labels...', 'info');
+            setProgress(50);
+            
+            // Fetch org units for labels
+            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?filter=id:in:[${selectedOrgUnits.join(',')}]&fields=id,displayName&paging=false`;
+            const ouResponse = await fetchWithAuth(ouUrl);
+            if (ouResponse.ok) {
+                const ouData = await ouResponse.json();
+                ouData.organisationUnits?.forEach(ou => {
+                    orgUnitMap[ou.id] = ou.displayName;
+                });
+            }
+            
+            // Check if we should include data values
+            const includeDataValues = document.getElementById('includeDataValues')?.checked;
+            
+            if (includeDataValues && allDataElements.size > 0) {
+                log('Fetching data values for selected period...', 'info');
+                setProgress(60);
+                
+                // Get period
+                const period = getPeriodFromForm();
+                
+                if (!period) {
+                    showNotification('Please select a period', 'error');
+                    return;
+                }
+                
+                // Build data value URL
+                const dataElementList = Array.from(allDataElements).join(',');
+                const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataSet=${selectedDatasets.join(',')}&orgUnit=${selectedOrgUnits.join(',')}&${period}`;
+                const dataResponse = await fetchWithAuth(dataUrl);
+                
+                if (dataResponse.ok) {
+                    const dataValues = await dataResponse.json();
+                    const numValues = dataValues.dataValues?.length || 0;
+                    log(`Retrieved ${numValues} data values`, 'success');
+                    setProgress(80);
+                    
+                    if (numValues > 0) {
+                        // Fetch category option combos for labels
+                        log('Fetching category labels...', 'info');
+                        const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName&paging=false`;
+                        const cocResponse = await fetchWithAuth(cocUrl);
+                        if (cocResponse.ok) {
+                            const cocData = await cocResponse.json();
+                            cocData.categoryOptionCombos?.forEach(coc => {
+                                categoryOptionComboMap[coc.id] = coc.displayName;
+                            });
+                        }
+                        
+                        // Convert to long format CSV with labels
+                        const csvData = convertToLongFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap);
+                        
+                        // Download as CSV
+                        const blob = new Blob([csvData], { type: 'text/csv' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `dataset-values-${new Date().toISOString().split('T')[0]}.csv`;
+                        link.click();
+                        
+                        log('CSV download complete', 'success');
+                    } else {
+                        showNotification('No data values found for selected criteria', 'info');
+                    }
+                } else {
+                    log('Warning: Could not fetch data values', 'error');
+                    showNotification('Failed to fetch data values', 'error');
+                }
+                
+                setProgress(100);
+            } else {
+                // Download metadata only as JSON
+                const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `datasets-metadata-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                
+                log('Metadata download complete', 'success');
+                setProgress(100);
+            }
         }
 
         // Create data element
