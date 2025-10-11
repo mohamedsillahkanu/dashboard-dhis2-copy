@@ -1,4 +1,4 @@
-<!DOCTYPE html>       
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1845,13 +1845,12 @@
                 instanceUrl,
                 username,
                 password,
-                useCorsProxy
+                useCorsProxy: false  // Set to false for testing
             };
 
             try {
-                const testUrl = useCorsProxy 
-                    ? `https://corsproxy.io/?${encodeURIComponent(instanceUrl + '/api/me')}`
-                    : `${instanceUrl}/api/me`;
+                // Always try direct connection first for login test
+                const testUrl = `${instanceUrl}/api/me`;
 
                 const response = await fetch(testUrl, {
                     headers: {
@@ -1868,7 +1867,7 @@
                     showNotification('Authentication failed. Check your credentials.', 'error');
                 }
             } catch (error) {
-                showNotification('Connection failed. Check URL and try enabling CORS proxy.', 'error');
+                showNotification('Connection failed. Check URL and network connection.', 'error');
             }
         });
 
@@ -1939,6 +1938,15 @@
                         break;
                     case 'copyOrgUnits':
                         await copyOrgUnits(formData);
+                        break;
+                    case 'copyDataElements':
+                        await copyDataElements(formData);
+                        break;
+                    case 'copyDatasets':
+                        await copyDatasets(formData);
+                        break;
+                    case 'copyDashboard':
+                        await copyDashboard(formData);
                         break;
                     default:
                         log(`⚠️ Action "${action}" not implemented yet`, 'info');
@@ -2433,38 +2441,450 @@
             const sourceUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=:all&paging=false`;
             const sourceResponse = await fetchWithAuth(sourceUrl);
             
-            if (!sourceResponse.ok) throw new Error('Failed to fetch org units');
+            if (!sourceResponse.ok) {
+                const errorText = await sourceResponse.text();
+                log(`Failed to fetch source org units: ${errorText}`, 'error');
+                throw new Error('Failed to fetch org units from source');
+            }
             
             const sourceData = await sourceResponse.json();
             log(`Retrieved ${sourceData.organisationUnits.length} org units`, 'success');
             setProgress(50);
             
-            log('Importing to target instance...', 'info');
             const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
-            const targetUsername = formData.get('targetUsername');
-            const targetPassword = formData.get('targetPassword');
+            const targetUsername = formData.get('targetUsername').trim();
+            const targetPassword = formData.get('targetPassword').trim();
             
-            const importUrl = `${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`;
-            const importResponse = await fetch(importUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ organisationUnits: sourceData.organisationUnits })
-            });
+            const metadata = {
+                organisationUnits: sourceData.organisationUnits
+            };
             
-            if (!importResponse.ok) throw new Error('Failed to import org units');
+            log(`Target URL: ${targetUrl}`, 'info');
+            log(`Importing ${metadata.organisationUnits.length} organisation units...`, 'info');
+            setProgress(60);
             
-            const result = await importResponse.json();
-            log('Import completed successfully', 'success');
-            setProgress(100);
+            // Try multiple methods
+            let success = false;
+            let lastError = null;
+            
+            // Method 1: CORS Proxy
+            try {
+                log('Method 1: Attempting import via CORS proxy...', 'info');
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
+                
+                const proxyResponse = await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(metadata)
+                });
+                
+                setProgress(80);
+                
+                if (proxyResponse.ok) {
+                    const result = await proxyResponse.json();
+                    logImportResult(result);
+                    success = true;
+                    setProgress(100);
+                    showNotification('Organisation units copied successfully via CORS proxy!', 'success');
+                    return;
+                } else {
+                    throw new Error(`CORS proxy returned status ${proxyResponse.status}`);
+                }
+            } catch (error) {
+                log(`CORS proxy failed: ${error.message}`, 'error');
+                lastError = error;
+            }
+            
+            // Method 2: Direct connection
+            if (!success) {
+                try {
+                    log('Method 2: Attempting direct connection...', 'info');
+                    const directUrl = `${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`;
+                    
+                    const directResponse = await fetch(directUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(metadata)
+                    });
+                    
+                    if (directResponse.ok) {
+                        const result = await directResponse.json();
+                        logImportResult(result);
+                        success = true;
+                        setProgress(100);
+                        showNotification('Organisation units copied successfully!', 'success');
+                        return;
+                    } else {
+                        throw new Error(`Direct connection returned status ${directResponse.status}`);
+                    }
+                } catch (error) {
+                    log(`Direct connection failed: ${error.message}`, 'error');
+                    lastError = error;
+                }
+            }
+            
+            // Method 3: Download for manual import
+            if (!success) {
+                log('', 'error');
+                log('════════════════════════════════════════════', 'info');
+                log('All automatic methods failed. Downloading file...', 'info');
+                log('════════════════════════════════════════════', 'info');
+                log('', 'info');
+                log('MANUAL IMPORT INSTRUCTIONS:', 'info');
+                log('1. The metadata file has been downloaded', 'success');
+                log(`2. Go to: ${targetUrl}/dhis-web-importexport/`, 'info');
+                log('3. Click on "Metadata Import"', 'info');
+                log('4. Select "JSON" format', 'info');
+                log('5. Upload the downloaded file', 'info');
+                log('6. Click "Import" button', 'info');
+                
+                const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `org-units-export-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                
+                log('', 'success');
+                log('✓ File downloaded successfully!', 'success');
+                setProgress(100);
+                showNotification('File downloaded - Please import manually to target instance', 'info');
+            }
+        }
+
+        async function copyDataElements(formData) {
+            log('Fetching data elements from source...', 'info');
+            setProgress(20);
+            
+            const sourceUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=:all&paging=false`;
+            const sourceResponse = await fetchWithAuth(sourceUrl);
+            
+            if (!sourceResponse.ok) {
+                const errorText = await sourceResponse.text();
+                log(`Failed to fetch data elements: ${errorText}`, 'error');
+                throw new Error('Failed to fetch data elements');
+            }
+            
+            const sourceData = await sourceResponse.json();
+            log(`Retrieved ${sourceData.dataElements.length} data elements`, 'success');
+            setProgress(50);
+            
+            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
+            const targetUsername = formData.get('targetUsername').trim();
+            const targetPassword = formData.get('targetPassword').trim();
+            
+            const metadata = {
+                dataElements: sourceData.dataElements
+            };
+            
+            log(`Importing ${metadata.dataElements.length} data elements...`, 'info');
+            setProgress(60);
+            
+            let success = false;
+            
+            // Method 1: CORS Proxy
+            try {
+                log('Attempting import via CORS proxy...', 'info');
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
+                
+                const response = await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(metadata)
+                });
+                
+                setProgress(80);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    logImportResult(result);
+                    success = true;
+                    setProgress(100);
+                    showNotification('Data elements copied successfully!', 'success');
+                    return;
+                }
+            } catch (error) {
+                log(`CORS proxy failed: ${error.message}`, 'error');
+            }
+            
+            // Method 2: Direct connection
+            if (!success) {
+                try {
+                    log('Attempting direct connection...', 'info');
+                    const directUrl = `${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`;
+                    
+                    const response = await fetch(directUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(metadata)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        logImportResult(result);
+                        success = true;
+                        setProgress(100);
+                        showNotification('Data elements copied successfully!', 'success');
+                        return;
+                    }
+                } catch (error) {
+                    log(`Direct connection failed: ${error.message}`, 'error');
+                }
+            }
+            
+            // Method 3: Download
+            if (!success) {
+                downloadMetadataFile(metadata, 'data-elements', targetUrl);
+                setProgress(100);
+            }
+        }
+
+        async function copyDatasets(formData) {
+            log('Fetching dataset from source...', 'info');
+            setProgress(20);
+            
+            const datasetId = formData.get('datasetId').trim();
+            const sourceUrl = `${state.config.instanceUrl}/api/dataSets/${datasetId}.json?fields=:all`;
+            const sourceResponse = await fetchWithAuth(sourceUrl);
+            
+            if (!sourceResponse.ok) {
+                throw new Error('Failed to fetch dataset');
+            }
+            
+            const dataset = await sourceResponse.json();
+            log(`Retrieved dataset: ${dataset.displayName || dataset.name}`, 'success');
+            setProgress(50);
+            
+            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
+            const targetUsername = formData.get('targetUsername').trim();
+            const targetPassword = formData.get('targetPassword').trim();
+            
+            const metadata = { dataSets: [dataset] };
+            
+            log('Importing dataset...', 'info');
+            setProgress(60);
+            
+            let success = false;
+            
+            // Try CORS proxy
+            try {
+                log('Attempting import via CORS proxy...', 'info');
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
+                
+                const response = await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(metadata)
+                });
+                
+                setProgress(80);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    logImportResult(result);
+                    success = true;
+                    setProgress(100);
+                    showNotification('Dataset copied successfully!', 'success');
+                    return;
+                }
+            } catch (error) {
+                log(`CORS proxy failed: ${error.message}`, 'error');
+            }
+            
+            // Try direct
+            if (!success) {
+                try {
+                    log('Attempting direct connection...', 'info');
+                    const directUrl = `${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`;
+                    
+                    const response = await fetch(directUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(metadata)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        logImportResult(result);
+                        success = true;
+                        setProgress(100);
+                        showNotification('Dataset copied successfully!', 'success');
+                        return;
+                    }
+                } catch (error) {
+                    log(`Direct connection failed: ${error.message}`, 'error');
+                }
+            }
+            
+            // Download fallback
+            if (!success) {
+                downloadMetadataFile(metadata, 'dataset', targetUrl);
+                setProgress(100);
+            }
+        }
+
+        async function copyDashboard(formData) {
+            log('Fetching dashboard from source...', 'info');
+            setProgress(20);
+            
+            const dashboardId = formData.get('dashboardId').trim();
+            const sourceUrl = `${state.config.instanceUrl}/api/dashboards/${dashboardId}.json?fields=:all`;
+            const sourceResponse = await fetchWithAuth(sourceUrl);
+            
+            if (!sourceResponse.ok) {
+                throw new Error('Failed to fetch dashboard');
+            }
+            
+            const dashboard = await sourceResponse.json();
+            log(`Retrieved dashboard: ${dashboard.displayName || dashboard.name}`, 'success');
+            setProgress(50);
+            
+            const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
+            const targetUsername = formData.get('targetUsername').trim();
+            const targetPassword = formData.get('targetPassword').trim();
+            
+            const metadata = { dashboards: [dashboard] };
+            
+            log('Importing dashboard...', 'info');
+            setProgress(60);
+            
+            let success = false;
+            
+            // Try CORS proxy
+            try {
+                log('Attempting import via CORS proxy...', 'info');
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=CREATE_AND_UPDATE')}`;
+                
+                const response = await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(metadata)
+                });
+                
+                setProgress(80);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    logImportResult(result);
+                    success = true;
+                    setProgress(100);
+                    showNotification('Dashboard copied successfully!', 'success');
+                    return;
+                }
+            } catch (error) {
+                log(`CORS proxy failed: ${error.message}`, 'error');
+            }
+            
+            // Try direct
+            if (!success) {
+                try {
+                    log('Attempting direct connection...', 'info');
+                    const directUrl = `${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`;
+                    
+                    const response = await fetch(directUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(metadata)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        logImportResult(result);
+                        success = true;
+                        setProgress(100);
+                        showNotification('Dashboard copied successfully!', 'success');
+                        return;
+                    }
+                } catch (error) {
+                    log(`Direct connection failed: ${error.message}`, 'error');
+                }
+            }
+            
+            // Download fallback
+            if (!success) {
+                downloadMetadataFile(metadata, 'dashboard', targetUrl);
+                setProgress(100);
+            }
+        }
+
+        function logImportResult(result) {
+            if (result.status === 'OK' || result.status === 'SUCCESS') {
+                log(`✓ Import successful!`, 'success');
+                if (result.stats) {
+                    log(`  - Created: ${result.stats.created || 0}`, 'success');
+                    log(`  - Updated: ${result.stats.updated || 0}`, 'success');
+                    log(`  - Ignored: ${result.stats.ignored || 0}`, 'info');
+                    if (result.stats.deleted) log(`  - Deleted: ${result.stats.deleted}`, 'info');
+                }
+            } else {
+                log(`⚠ Import status: ${result.status}`, 'info');
+                if (result.typeReports) {
+                    result.typeReports.forEach(report => {
+                        if (report.objectReports) {
+                            report.objectReports.forEach(objReport => {
+                                if (objReport.errorReports && objReport.errorReports.length > 0) {
+                                    objReport.errorReports.forEach(err => {
+                                        log(`  Error: ${err.message}`, 'error');
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+        }
+
+        function downloadMetadataFile(metadata, type, targetUrl) {
+            log('', 'error');
+            log('════════════════════════════════════════════', 'info');
+            log('All automatic methods failed. Downloading file...', 'info');
+            log('════════════════════════════════════════════', 'info');
+            log('', 'info');
+            log('MANUAL IMPORT INSTRUCTIONS:', 'info');
+            log('1. The metadata file has been downloaded', 'success');
+            log(`2. Go to: ${targetUrl}/dhis-web-importexport/`, 'info');
+            log('3. Click on "Metadata Import"', 'info');
+            log('4. Select "JSON" format', 'info');
+            log('5. Upload the downloaded file', 'info');
+            log('6. Click "Import" button', 'info');
+            
+            const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${type}-export-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            log('', 'success');
+            log('✓ File downloaded successfully!', 'success');
+            showNotification('File downloaded - Please import manually to target instance', 'info');
         }
 
         async function fetchWithAuth(url, options = {}) {
-            const apiUrl = state.config.useCorsProxy 
-                ? `https://corsproxy.io/?${encodeURIComponent(url)}`
-                : url;
+            // Always try direct connection first (no CORS proxy)
+            const apiUrl = url;
             
             return fetch(apiUrl, {
                 ...options,
