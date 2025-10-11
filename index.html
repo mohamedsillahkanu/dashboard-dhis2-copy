@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DHIS2 Dashboard Migration Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 30px;
+            color: #856404;
+        }
+        
+        .warning strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+        
+        .checkbox-group label {
+            margin-bottom: 0;
+            font-weight: normal;
+        }
+        
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .progress {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .progress.show {
+            display: block;
+        }
+        
+        .progress-step {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #e0e0e0;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .progress-step.active {
+            border-left-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .progress-step.complete {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+        
+        .progress-step.error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .progress-icon {
+            display: inline-block;
+            width: 24px;
+            margin-right: 10px;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+            font-size: 16px;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 2px solid #4caf50;
+        }
+        
+        .result.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+        
+        .year-range {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .logs {
+            margin-top: 20px;
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .logs.show {
+            display: block;
+        }
+        
+        .logs div {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 DHIS2 Dashboard Migration Tool</h1>
+            <p class="subtitle">Migrate dashboards and data between DHIS2 instances</p>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Security Notice:</strong>
+            This tool runs entirely in your browser. Your credentials are never sent to any third-party server. 
+            For best security, download this HTML file and run it locally on your computer.
+        </div>
+        
+        <form id="migrationForm">
+            <!-- Source Instance -->
+            <div class="section">
+                <div class="section-title">
+                    📤 Source DHIS2 Instance
+                </div>
+                
+                <div class="form-group">
+                    <label for="sourceUrl">Source Instance URL *</label>
+                    <input type="url" id="sourceUrl" placeholder="https://play.dhis2.org/2.39.1" required>
+                    <div class="help-text">Full URL including https://</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sourceUsername">Username *</label>
+                    <input type="text" id="sourceUsername" placeholder="admin" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sourcePassword">Password *</label>
+                    <input type="password" id="sourcePassword" placeholder="district" required>
+                </div>
+            </div>
+            
+            <!-- Target Instance -->
+            <div class="section">
+                <div class="section-title">
+                    📥 Target DHIS2 Instance
+                </div>
+                
+                <div class="form-group">
+                    <label for="targetUrl">Target Instance URL *</label>
+                    <input type="url" id="targetUrl" placeholder="https://target.dhis2.org" required>
+                    <div class="help-text">Full URL including https://</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="targetUsername">Username *</label>
+                    <input type="text" id="targetUsername" placeholder="admin" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="targetPassword">Password *</label>
+                    <input type="password" id="targetPassword" placeholder="district" required>
+                </div>
+            </div>
+            
+            <!-- Migration Settings -->
+            <div class="section">
+                <div class="section-title">
+                    ⚙️ Migration Settings
+                </div>
+                
+                <div class="form-group">
+                    <label for="dashboardId">Dashboard ID *</label>
+                    <input type="text" id="dashboardId" placeholder="nghVC4wtyzi" required>
+                    <div class="help-text">Find this in the dashboard URL or via API</div>
+                </div>
+                
+                <div class="form-group year-range">
+                    <div>
+                        <label for="startYear">Start Year</label>
+                        <input type="number" id="startYear" placeholder="2023" min="2000" max="2030" value="2024">
+                    </div>
+                    <div>
+                        <label for="endYear">End Year</label>
+                        <input type="number" id="endYear" placeholder="2024" min="2000" max="2030" value="2024">
+                    </div>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="includeData" checked>
+                    <label for="includeData">Include data values (uncheck if data already exists in target)</label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="runAnalytics" checked>
+                    <label for="runAnalytics">Run analytics after import</label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showLogs">
+                    <label for="showLogs">Show detailed logs</label>
+                </div>
+            </div>
+            
+            <button type="submit" id="migrateBtn">
+                🚀 Start Migration
+            </button>
+        </form>
+        
+        <div class="progress" id="progress">
+            <div class="progress-step" id="step1">
+                <span class="progress-icon">⏳</span>
+                <span>Exporting dashboard metadata...</span>
+            </div>
+            <div class="progress-step" id="step2">
+                <span class="progress-icon">⏳</span>
+                <span>Importing dashboard metadata...</span>
+            </div>
+            <div class="progress-step" id="step3">
+                <span class="progress-icon">⏳</span>
+                <span>Exporting data values...</span>
+            </div>
+            <div class="progress-step" id="step4">
+                <span class="progress-icon">⏳</span>
+                <span>Importing data values...</span>
+            </div>
+            <div class="progress-step" id="step5">
+                <span class="progress-icon">⏳</span>
+                <span>Running analytics...</span>
+            </div>
+        </div>
+        
+        <div class="logs" id="logs"></div>
+        
+        <div class="result" id="result"></div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('migrationForm');
+        const progress = document.getElementById('progress');
+        const result = document.getElementById('result');
+        const migrateBtn = document.getElementById('migrateBtn');
+        const logs = document.getElementById('logs');
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateStep(stepNum, status, icon, message) {
+            const step = document.getElementById(`step${stepNum}`);
+            if (!step) return;
+            
+            step.className = `progress-step ${status}`;
+            step.querySelector('.progress-icon').textContent = icon;
+            step.querySelector('span:last-child').textContent = message;
+        }
+        
+        function showResult(message, type) {
+            result.textContent = message;
+            result.className = `result show ${type}`;
+        }
+        
+        function resetUI() {
+            progress.classList.add('show');
+            result.classList.remove('show');
+            
+            if (document.getElementById('showLogs').checked) {
+                logs.classList.add('show');
+                logs.innerHTML = '';
+            }
+            
+            // Reset all steps
+            for (let i = 1; i <= 5; i++) {
+                updateStep(i, '', '⏳', getStepDefaultMessage(i));
+            }
+        }
+        
+        function getStepDefaultMessage(stepNum) {
+            const messages = {
+                1: 'Exporting dashboard metadata...',
+                2: 'Importing dashboard metadata...',
+                3: 'Exporting data values...',
+                4: 'Importing data values...',
+                5: 'Running analytics...'
+            };
+            return messages[stepNum];
+        }
+        
+        async function fetchWithAuth(url, options, username, password) {
+            const headers = {
+                ...options.headers,
+                'Authorization': 'Basic ' + btoa(`${username}:${password}`),
+                'Content-Type': 'application/json'
+            };
+            
+            return fetch(url, { ...options, headers });
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Get form values
+            const config = {
+                sourceUrl: document.getElementById('sourceUrl').value.replace(/\/$/, ''),
+                sourceUsername: document.getElementById('sourceUsername').value,
+                sourcePassword: document.getElementById('sourcePassword').value,
+                targetUrl: document.getElementById('targetUrl').value.replace(/\/$/, ''),
+                targetUsername: document.getElementById('targetUsername').value,
+                targetPassword: document.getElementById('targetPassword').value,
+                dashboardId: document.getElementById('dashboardId').value,
+                startYear: document.getElementById('startYear').value,
+                endYear: document.getElementById('endYear').value,
+                includeData: document.getElementById('includeData').checked,
+                runAnalytics: document.getElementById('runAnalytics').checked
+            };
+            
+            resetUI();
+            migrateBtn.disabled = true;
+            
+            try {
+                // Step 1: Export dashboard metadata
+                log('Starting dashboard metadata export...');
+                updateStep(1, 'active', '⏳', 'Exporting dashboard metadata...');
+                
+                const metadataUrl = `${config.sourceUrl}/api/metadata.json?` + 
+                    `dashboards:filter=id:eq:${config.dashboardId}&` +
+                    `dashboards=true&dashboardItems=true&visualizations=true&` +
+                    `charts=true&reportTables=true&maps=true&indicators=true&` +
+                    `dataElements=true&dataSets=true&organisationUnits=true&` +
+                    `fields=:all&includeReferences=true`;
+                
+                const metadataResponse = await fetchWithAuth(
+                    metadataUrl,
+                    { method: 'GET' },
+                    config.sourceUsername,
+                    config.sourcePassword
+                );
+                
+                if (!metadataResponse.ok) {
+                    throw new Error(`Failed to export metadata: ${metadataResponse.status} ${metadataResponse.statusText}`);
+                }
+                
+                const metadataData = await metadataResponse.json();
+                log(`Exported metadata: ${JSON.stringify(metadataData).length} bytes`);
+                updateStep(1, 'complete', '✅', 'Dashboard metadata exported');
+                
+                // Step 2: Import dashboard metadata
+                log('Starting dashboard metadata import...');
+                updateStep(2, 'active', '⏳', 'Importing dashboard metadata...');
+                
+                const importMetadataUrl = `${config.targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE&atomicMode=NONE`;
+                
+                const importMetadataResponse = await fetchWithAuth(
+                    importMetadataUrl,
+                    {
+                        method: 'POST',
+                        body: JSON.stringify(metadataData)
+                    },
+                    config.targetUsername,
+                    config.targetPassword
+                );
+                
+                if (!importMetadataResponse.ok) {
+                    throw new Error(`Failed to import metadata: ${importMetadataResponse.status}`);
+                }
+                
+                const importResult = await importMetadataResponse.json();
+                log(`Import result: ${importResult.status}`);
+                updateStep(2, 'complete', '✅', 'Dashboard metadata imported');
+                
+                // Step 3 & 4: Data export/import (if enabled)
+                if (config.includeData) {
+                    log(`Starting data export for ${config.startYear}-${config.endYear}...`);
+                    updateStep(3, 'active', '⏳', `Exporting data (${config.startYear}-${config.endYear})...`);
+                    
+                    const dataUrl = `${config.sourceUrl}/api/dataValueSets.json?` +
+                        `startDate=${config.startYear}-01-01&endDate=${config.endYear}-12-31&children=true`;
+                    
+                    const dataResponse = await fetchWithAuth(
+                        dataUrl,
+                        { method: 'GET' },
+                        config.sourceUsername,
+                        config.sourcePassword
+                    );
+                    
+                    if (!dataResponse.ok) {
+                        throw new Error(`Failed to export data: ${dataResponse.status}`);
+                    }
+                    
+                    const dataValues = await dataResponse.json();
+                    log(`Exported ${dataValues.dataValues?.length || 0} data values`);
+                    updateStep(3, 'complete', '✅', 'Data values exported');
+                    
+                    log('Starting data import...');
+                    updateStep(4, 'active', '⏳', 'Importing data values...');
+                    
+                    const importDataUrl = `${config.targetUrl}/api/dataValueSets?importStrategy=CREATE_AND_UPDATE`;
+                    
+                    const importDataResponse = await fetchWithAuth(
+                        importDataUrl,
+                        {
+                            method: 'POST',
+                            body: JSON.stringify(dataValues)
+                        },
+                        config.targetUsername,
+                        config.targetPassword
+                    );
+                    
+                    if (!importDataResponse.ok) {
+                        throw new Error(`Failed to import data: ${importDataResponse.status}`);
+                    }
+                    
+                    const dataImportResult = await importDataResponse.json();
+                    log(`Data import: ${dataImportResult.status}`);
+                    updateStep(4, 'complete', '✅', 'Data values imported');
+                } else {
+                    log('Skipping data export/import (disabled)');
+                    updateStep(3, 'complete', '⏭️', 'Skipped (data already exists)');
+                    updateStep(4, 'complete', '⏭️', 'Skipped (data already exists)');
+                }
+                
+                // Step 5: Run analytics
+                if (config.runAnalytics) {
+                    log('Starting analytics...');
+                    updateStep(5, 'active', '⏳', 'Running analytics (this may take a while)...');
+                    
+                    const analyticsUrl = `${config.targetUrl}/api/resourceTables/analytics`;
+                    
+                    const analyticsResponse = await fetchWithAuth(
+                        analyticsUrl,
+                        { method: 'POST' },
+                        config.targetUsername,
+                        config.targetPassword
+                    );
+                    
+                    if (!analyticsResponse.ok) {
+                        log(`Warning: Analytics may have failed: ${analyticsResponse.status}`);
+                        updateStep(5, 'complete', '⚠️', 'Analytics may need manual trigger');
+                    } else {
+                        log('Analytics completed successfully');
+                        updateStep(5, 'complete', '✅', 'Analytics completed');
+                    }
+                } else {
+                    log('Skipping analytics (disabled)');
+                    updateStep(5, 'complete', '⏭️', 'Skipped');
+                }
+                
+                showResult('🎉 Migration completed successfully!', 'success');
+                log('Migration process completed');
+                
+            } catch (error) {
+                console.error('Migration error:', error);
+                log(`ERROR: ${error.message}`);
+                showResult(`❌ Migration failed: ${error.message}`, 'error');
+                
+                // Mark current step as error
+                for (let i = 1; i <= 5; i++) {
+                    const step = document.getElementById(`step${i}`);
+                    if (step.classList.contains('active')) {
+                        updateStep(i, 'error', '❌', `Failed: ${error.message}`);
+                        break;
+                    }
+                }
+            } finally {
+                migrateBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
