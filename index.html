@@ -868,58 +868,66 @@
                 label: '🏢 Organisation Units',
                 endpoint: 'organisationUnits',
                 fields: 'id,displayName,name,level,parent',
-                description: 'Copy all org units with hierarchy',
+                description: 'Copy ALL org units automatically (with attributes)',
                 copyAll: true,
-                includeAttributes: true
+                includeAttributes: true,
+                autoExpand: false
             },
             dataElements: {
                 label: '📊 Data Elements',
                 endpoint: 'dataElements',
                 fields: 'id,displayName,name,valueType,aggregationType',
-                description: 'Copy selected data elements',
-                copyAll: false
+                description: 'Select specific data elements to copy',
+                copyAll: false,
+                autoExpand: true
             },
             dataSets: {
                 label: '📋 Datasets',
                 endpoint: 'dataSets',
                 fields: 'id,displayName,name,periodType',
-                description: 'Copy selected datasets',
-                copyAll: false
+                description: 'Select specific datasets to copy',
+                copyAll: false,
+                autoExpand: true
             },
             indicators: {
                 label: '📈 Indicators',
                 endpoint: 'indicators',
                 fields: 'id,displayName,name,indicatorType',
-                description: 'Copy selected indicators',
-                copyAll: false
+                description: 'Select specific indicators to copy',
+                copyAll: false,
+                autoExpand: true
             },
             dashboards: {
                 label: '📱 Dashboards',
                 endpoint: 'dashboards',
                 fields: 'id,displayName,name',
-                description: 'Copy selected dashboards',
-                copyAll: false
+                description: 'Select specific dashboards to copy',
+                copyAll: false,
+                autoExpand: true
             },
             programs: {
                 label: '🎯 Programs',
                 endpoint: 'programs',
                 fields: 'id,displayName,name,programType',
-                description: 'Copy selected programs',
-                copyAll: false
+                description: 'Select specific programs to copy',
+                copyAll: false,
+                autoExpand: true
             },
             categoryOptions: {
                 label: '🏷️ Category Options',
                 endpoint: 'categoryOptions',
                 fields: 'id,displayName,name',
-                description: 'Copy selected category options',
-                copyAll: false
+                description: 'Select specific category options to copy',
+                copyAll: false,
+                autoExpand: true
             },
             validationRules: {
                 label: '✅ Validation Rules',
                 endpoint: 'validationRules',
                 fields: 'id,displayName,name',
-                description: 'Copy selected validation rules',
-                copyAll: false
+                description: 'Select specific validation rules to copy',
+                copyAll: false,
+                autoExpand: true
             }
         };
 
@@ -937,9 +945,18 @@
                 <form id="copyMetadataForm">
                     <div class="form-group">
                         <label class="form-label">Select Metadata Types to Copy <span class="required">*</span></label>
-                        <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;">
+                        <p style="color: #8b949e; font-size: 13px; margin-bottom: 10px;">
                             Check the metadata types you want to copy. For items with checkboxes, you can select specific items.
                         </p>
+                        
+                        <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button type="button" class="toolbar-btn btn-select-all" onclick="selectAllMetadataTypes()" style="padding: 8px 16px; font-size: 13px;">
+                                ✓ Select All Metadata Types
+                            </button>
+                            <button type="button" class="toolbar-btn btn-clear-all" onclick="clearAllMetadataTypes()" style="padding: 8px 16px; font-size: 13px;">
+                                ✗ Clear All Metadata Types
+                            </button>
+                        </div>
                         
                         <div id="metadataTypesContainer">
                             ${Object.keys(METADATA_TYPES).map(key => createMetadataTypeCard(key)).join('')}
@@ -997,8 +1014,12 @@
                     </div>
                     <div class="metadata-items-container" id="items-${key}">
                         ${type.copyAll ? 
-                            '<p style="color: #8b949e; font-size: 13px; margin-top: 10px;">✓ All items will be copied automatically</p>' :
-                            `<button type="button" class="load-items-btn" onclick="loadMetadataItems('${key}')">
+                            '<p style="color: #2ea043; font-size: 13px; margin-top: 10px; padding: 8px; background: rgba(46, 160, 67, 0.1); border-radius: 4px; border-left: 3px solid #2ea043;">✓ All org units will be copied automatically with their attributes</p>' :
+                            `<div style="background: rgba(88, 166, 255, 0.1); padding: 12px; border-radius: 6px; border-left: 3px solid #58a6ff; margin-bottom: 10px;">
+                                <p style="color: #58a6ff; font-size: 13px; font-weight: 600; margin-bottom: 5px;">⚠️ Required: You must select items to copy</p>
+                                <p style="color: #8b949e; font-size: 12px;">Click "Load" button below, then select the specific items you want to copy</p>
+                            </div>
+                            <button type="button" class="load-items-btn" onclick="loadMetadataItems('${key}')">
                                 📥 Load ${type.label}
                             </button>
                             <div class="items-list" id="list-${key}" style="display: none;"></div>
@@ -1025,11 +1046,18 @@
             
             const card = document.querySelector(`.metadata-type-card[data-type="${typeKey}"]`);
             const container = document.getElementById(`items-${typeKey}`);
+            const type = METADATA_TYPES[typeKey];
             
             if (checkbox.checked) {
                 selectedTypes.add(typeKey);
                 card.classList.add('selected');
-                container.classList.add('show');
+                
+                // Auto-expand for types that need selection (not copyAll)
+                if (type.autoExpand && !type.copyAll) {
+                    container.classList.add('show');
+                } else if (!type.copyAll) {
+                    container.classList.add('show');
+                }
             } else {
                 selectedTypes.delete(typeKey);
                 card.classList.remove('selected');
@@ -1191,6 +1219,51 @@
             }
         }
 
+        function selectAllMetadataTypes() {
+            Object.keys(METADATA_TYPES).forEach(typeKey => {
+                const checkbox = document.getElementById(`check-${typeKey}`);
+                if (checkbox && !checkbox.checked) {
+                    checkbox.checked = true;
+                    
+                    selectedTypes.add(typeKey);
+                    const card = document.querySelector(`.metadata-type-card[data-type="${typeKey}"]`);
+                    const container = document.getElementById(`items-${typeKey}`);
+                    const type = METADATA_TYPES[typeKey];
+                    
+                    card.classList.add('selected');
+                    
+                    if (type.autoExpand && !type.copyAll) {
+                        container.classList.add('show');
+                    } else if (!type.copyAll) {
+                        container.classList.add('show');
+                    }
+                }
+            });
+            showNotification('All metadata types selected', 'success');
+        }
+
+        function clearAllMetadataTypes() {
+            Object.keys(METADATA_TYPES).forEach(typeKey => {
+                const checkbox = document.getElementById(`check-${typeKey}`);
+                if (checkbox && checkbox.checked) {
+                    checkbox.checked = false;
+                    
+                    selectedTypes.delete(typeKey);
+                    const card = document.querySelector(`.metadata-type-card[data-type="${typeKey}"]`);
+                    const container = document.getElementById(`items-${typeKey}`);
+                    
+                    card.classList.remove('selected');
+                    container.classList.remove('show');
+                    
+                    if (selectedItems[typeKey]) {
+                        delete selectedItems[typeKey];
+                        updateItemCount(typeKey);
+                    }
+                }
+            });
+            showNotification('All metadata types cleared', 'info');
+        }
+
         async function handleCopyMetadataSubmit(e) {
             e.preventDefault();
             
@@ -1249,24 +1322,28 @@
                             }
                         }
                     } else {
-                        if (selectedItems[typeKey] && selectedItems[typeKey].size > 0) {
-                            const selectedIds = Array.from(selectedItems[typeKey]);
-                            log(`  Fetching ${selectedIds.length} selected items...`, 'info');
-                            
-                            const filter = selectedIds.map(id => `id:eq:${id}`).join(',');
-                            const url = `${config.instanceUrl}/api/metadata.json?${type.endpoint}:filter=${filter}&fields=:all`;
-                            const response = await fetchWithAuth(url);
-                            
-                            if (response.ok) {
-                                const data = await response.json();
-                                if (data[type.endpoint]) {
-                                    metadata[type.endpoint] = data[type.endpoint];
-                                    totalItems += data[type.endpoint].length;
-                                    log(`  ✓ Added ${data[type.endpoint].length} ${type.label}`, 'success');
-                                }
+                        // For non-copyAll types, user MUST select items
+                        if (!selectedItems[typeKey] || selectedItems[typeKey].size === 0) {
+                            log(`  ⚠️ WARNING: No items selected for ${type.label}!`, 'error');
+                            log(`     You must load and select items for ${type.label}`, 'error');
+                            log(`     Skipping this type...`, 'info');
+                            continue;
+                        }
+                        
+                        const selectedIds = Array.from(selectedItems[typeKey]);
+                        log(`  Fetching ${selectedIds.length} selected items...`, 'info');
+                        
+                        const filter = selectedIds.map(id => `id:eq:${id}`).join(',');
+                        const url = `${config.instanceUrl}/api/metadata.json?${type.endpoint}:filter=${filter}&fields=:all`;
+                        const response = await fetchWithAuth(url);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data[type.endpoint]) {
+                                metadata[type.endpoint] = data[type.endpoint];
+                                totalItems += data[type.endpoint].length;
+                                log(`  ✓ Added ${data[type.endpoint].length} ${type.label}`, 'success');
                             }
-                        } else {
-                            log(`  ⚠ No items selected for ${type.label}, skipping...`, 'info');
                         }
                     }
                 }
