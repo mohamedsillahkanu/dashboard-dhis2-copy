@@ -1500,10 +1500,8 @@
                 checkbox.checked = selectedDatasets.has(ds.id);
                 checkbox.dataset.id = ds.id;
                 
-                // Checkbox click handler
                 checkbox.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    console.log('Checkbox clicked for:', ds.id, 'Checked:', this.checked);
                     toggleDatasetSelection(ds.id);
                 });
                 
@@ -1512,12 +1510,8 @@
                 const periodType = ds.periodType ? ` (${ds.periodType})` : '';
                 name.textContent = (ds.displayName || ds.name || ds.id) + periodType;
                 
-                // Item click handler (for clicking the whole row)
                 item.addEventListener('click', function(e) {
-                    // Don't toggle if clicking the checkbox itself
                     if (e.target.type === 'checkbox') return;
-                    
-                    console.log('Item clicked for:', ds.id);
                     checkbox.checked = !checkbox.checked;
                     toggleDatasetSelection(ds.id);
                 });
@@ -1531,23 +1525,12 @@
         }
 
         function toggleDatasetSelection(id) {
-            console.log('=== toggleDatasetSelection START ===');
-            console.log('ID:', id);
-            console.log('Before - selectedDatasets size:', selectedDatasets.size);
-            console.log('Before - selectedDatasets has id:', selectedDatasets.has(id));
-            
             if (selectedDatasets.has(id)) {
                 selectedDatasets.delete(id);
-                console.log('ACTION: REMOVED from selection');
             } else {
                 selectedDatasets.add(id);
-                console.log('ACTION: ADDED to selection');
             }
             
-            console.log('After - selectedDatasets size:', selectedDatasets.size);
-            console.log('After - All selected IDs:', Array.from(selectedDatasets));
-            
-            // Update the visual state
             const item = document.querySelector(`.dataset-item[data-id="${id}"]`);
             const checkbox = item?.querySelector('.dataset-checkbox');
             
@@ -1555,18 +1538,13 @@
                 if (selectedDatasets.has(id)) {
                     item.classList.add('selected');
                     checkbox.checked = true;
-                    console.log('VISUAL: Item marked as selected');
                 } else {
                     item.classList.remove('selected');
                     checkbox.checked = false;
-                    console.log('VISUAL: Item marked as unselected');
                 }
-            } else {
-                console.log('ERROR: Could not find item or checkbox in DOM');
             }
             
             updateDatasetSelectionSummary();
-            console.log('=== toggleDatasetSelection END ===');
         }
 
         function updateDatasetSelectionSummary() {
@@ -1574,49 +1552,32 @@
             const count = document.getElementById('datasetSelectionCount');
             
             const numSelected = selectedDatasets.size;
-            console.log('📊 updateDatasetSelectionSummary:', numSelected, 'datasets selected');
-            console.log('   Selected IDs:', Array.from(selectedDatasets));
             
             if (numSelected > 0) {
                 summary.style.display = 'block';
                 count.textContent = `${numSelected} dataset${numSelected === 1 ? '' : 's'} selected`;
-                console.log('   Summary box shown:', count.textContent);
             } else {
                 summary.style.display = 'none';
-                console.log('   Summary box hidden (no selection)');
             }
         }
 
         function selectAllDatasets() {
-            console.log('=== selectAllDatasets CALLED ===');
-            console.log('datasetsData length:', datasetsData.length);
-            console.log('selectedDatasets before:', Array.from(selectedDatasets));
-            
             datasetsData.forEach(ds => {
-                console.log('  Adding dataset:', ds.id, ds.displayName || ds.name);
                 selectedDatasets.add(ds.id);
             });
             
-            console.log('selectedDatasets after:', Array.from(selectedDatasets));
-            console.log('selectedDatasets.size:', selectedDatasets.size);
-            
             document.querySelectorAll('.dataset-checkbox').forEach(cb => {
                 cb.checked = true;
-                console.log('  Checkbox checked:', cb.dataset.id);
             });
             document.querySelectorAll('.dataset-item').forEach(item => {
                 item.classList.add('selected');
-                console.log('  Item marked selected:', item.dataset.id);
             });
             
             updateDatasetSelectionSummary();
-            console.log('=== selectAllDatasets COMPLETE ===');
         }
 
         function clearAllDatasets() {
-            console.log('clearAllDatasets called');
             selectedDatasets.clear();
-            console.log('After clearAll, selectedDatasets:', Array.from(selectedDatasets));
             
             document.querySelectorAll('.dataset-checkbox').forEach(cb => cb.checked = false);
             document.querySelectorAll('.dataset-item').forEach(item => item.classList.remove('selected'));
@@ -1650,94 +1611,7 @@
         }
 
         function getSelectedDatasets() {
-            console.log('=== getSelectedDatasets CALLED ===');
-            console.log('Type of selectedDatasets:', typeof selectedDatasets);
-            console.log('selectedDatasets instanceof Set:', selectedDatasets instanceof Set);
-            console.log('selectedDatasets value:', selectedDatasets);
-            console.log('selectedDatasets.size:', selectedDatasets ? selectedDatasets.size : 'N/A');
-            
-            const selected = Array.from(selectedDatasets);
-            console.log('Converted to array:', selected);
-            console.log('Array length:', selected.length);
-            console.log('=== getSelectedDatasets RETURN ===');
-            return selected;
-        }
-
-        function getSelectedOrgUnitsFromTree() {
-            console.log('=== getSelectedOrgUnitsFromTree CALLED ===');
-            console.log('Type of selectedOrgUnits:', typeof selectedOrgUnits);
-            console.log('selectedOrgUnits instanceof Set:', selectedOrgUnits instanceof Set);
-            console.log('selectedOrgUnits value:', selectedOrgUnits);
-            console.log('selectedOrgUnits.size:', selectedOrgUnits ? selectedOrgUnits.size : 'N/A');
-            
-            const selected = Array.from(selectedOrgUnits);
-            console.log('Converted to array:', selected);
-            console.log('Array length:', selected.length);
-            console.log('=== getSelectedOrgUnitsFromTree RETURN ===');
-            return selected;
-        }
-
-        // Load datasets from DHIS2 (old function for backwards compatibility)
-        async function loadDatasets() {
-            try {
-                log('Fetching datasets from DHIS2...', 'info');
-                showNotification('Loading datasets...', 'info');
-                
-                const url = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName,name&paging=false`;
-                log(`Request URL: ${url}`, 'info');
-                
-                const response = await fetchWithAuth(url);
-                
-                log(`Response status: ${response.status} ${response.statusText}`, 'info');
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    log(`Error response: ${errorText}`, 'error');
-                    throw new Error(`Failed to fetch datasets: ${response.status} - ${errorText}`);
-                }
-                
-                const data = await response.json();
-                log(`Raw response data: ${JSON.stringify(data).substring(0, 200)}...`, 'info');
-                
-                if (!data.dataSets || !Array.isArray(data.dataSets)) {
-                    log('Warning: No dataSets array in response', 'error');
-                    showNotification('No datasets found in response', 'error');
-                    return;
-                }
-                
-                const select = document.getElementById('datasetSelect');
-                if (!select) {
-                    log('Error: datasetSelect element not found', 'error');
-                    return;
-                }
-                
-                select.innerHTML = '';
-                select.disabled = false;
-                
-                if (data.dataSets.length === 0) {
-                    const option = document.createElement('option');
-                    option.value = '';
-                    option.textContent = 'No datasets found in this instance';
-                    select.appendChild(option);
-                    log('No datasets available in this DHIS2 instance', 'info');
-                    showNotification('No datasets found', 'info');
-                    return;
-                }
-                
-                data.dataSets.forEach(ds => {
-                    const option = document.createElement('option');
-                    option.value = ds.id;
-                    option.textContent = ds.displayName || ds.name || ds.id;
-                    select.appendChild(option);
-                });
-                
-                log(`Successfully loaded ${data.dataSets.length} datasets`, 'success');
-                showNotification(`Loaded ${data.dataSets.length} datasets`, 'success');
-            } catch (error) {
-                log(`Error loading datasets: ${error.message}`, 'error');
-                console.error('Full error:', error);
-                showNotification(`Failed to load datasets: ${error.message}`, 'error');
-            }
+            return Array.from(selectedDatasets);
         }
 
         // Load organisation units as hierarchical tree
@@ -1755,7 +1629,6 @@
                 const data = await response.json();
                 orgUnitsData = data.organisationUnits;
                 
-                // Build tree structure
                 const tree = buildOrgUnitTree(orgUnitsData);
                 renderOrgUnitTree(tree);
                 
@@ -1771,12 +1644,10 @@
             const orgUnitMap = {};
             const rootUnits = [];
             
-            // Create map of all org units
             orgUnits.forEach(ou => {
                 orgUnitMap[ou.id] = { ...ou, children: [] };
             });
             
-            // Build tree structure
             orgUnits.forEach(ou => {
                 if (ou.parent && orgUnitMap[ou.parent.id]) {
                     orgUnitMap[ou.parent.id].children.push(orgUnitMap[ou.id]);
@@ -1804,7 +1675,6 @@
             itemDiv.className = `org-unit-item org-unit-level-${orgUnit.level}`;
             itemDiv.dataset.id = orgUnit.id;
             
-            // Toggle button for children
             const toggle = document.createElement('span');
             toggle.className = 'org-unit-toggle';
             if (orgUnit.children && orgUnit.children.length > 0) {
@@ -1818,7 +1688,6 @@
                 toggle.style.cursor = 'default';
             }
             
-            // Checkbox
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.className = 'org-unit-checkbox';
@@ -1829,7 +1698,6 @@
                 toggleOrgUnitSelection(orgUnit.id, e.target.checked);
             };
             
-            // Label
             const label = document.createElement('span');
             label.className = 'org-unit-label';
             label.textContent = orgUnit.displayName;
@@ -1843,7 +1711,6 @@
             itemDiv.appendChild(label);
             div.appendChild(itemDiv);
             
-            // Children container
             if (orgUnit.children && orgUnit.children.length > 0) {
                 const childrenDiv = document.createElement('div');
                 childrenDiv.className = 'org-unit-children';
@@ -1935,49 +1802,6 @@
             return Array.from(selectedOrgUnits);
         }
 
-        // Load organisation units from DHIS2 (old method - keep for backwards compatibility)
-        async function loadOrgUnits(context) {
-            try {
-                log('Fetching organisation units...', 'info');
-                const url = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,level&paging=false`;
-                const response = await fetchWithAuth(url);
-                
-                if (!response.ok) throw new Error('Failed to fetch organisation units');
-                
-                const data = await response.json();
-                
-                // Determine which select to populate based on context
-                let selectId = 'orgUnitSelect';
-                if (context === 'downloadDatasets') {
-                    selectId = 'orgUnitSelectDatasets';
-                }
-                
-                const select = document.getElementById(selectId);
-                select.innerHTML = '';
-                select.disabled = false;
-                
-                // Sort by level then name
-                data.organisationUnits.sort((a, b) => {
-                    if (a.level !== b.level) return a.level - b.level;
-                    return a.displayName.localeCompare(b.displayName);
-                });
-                
-                data.organisationUnits.forEach(ou => {
-                    const option = document.createElement('option');
-                    option.value = ou.id;
-                    option.textContent = `${'  '.repeat(ou.level - 1)}${ou.displayName}`;
-                    select.appendChild(option);
-                });
-                
-                log(`Loaded ${data.organisationUnits.length} organisation units`, 'success');
-                showNotification(`Loaded ${data.organisationUnits.length} organisation units`, 'success');
-            } catch (error) {
-                log(`Error: ${error.message}`, 'error');
-                showNotification('Failed to load organisation units', 'error');
-            }
-        }
-
-        // Select all options in a select element
         function selectAllOptions(selectId) {
             const select = document.getElementById(selectId);
             if (!select || !select.options) return;
@@ -1987,7 +1811,6 @@
             }
         }
 
-        // Clear all options in a select element
         function clearAllOptions(selectId) {
             const select = document.getElementById(selectId);
             if (!select || !select.options) return;
@@ -1997,7 +1820,6 @@
             }
         }
 
-        // Get selected option IDs from a multi-select
         function getSelectedOptions(selectId) {
             const select = document.getElementById(selectId);
             if (!select || !select.options) return [];
@@ -2011,14 +1833,13 @@
             return selected;
         }
 
-        // Login
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const instanceUrl = document.getElementById('instanceUrl').value.trim().replace(/\/$/, '');
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
-            const useCorsProxy = true; // Always use CORS proxy
+            const useCorsProxy = true;
 
             state.config = {
                 instanceUrl,
@@ -2027,7 +1848,6 @@
                 useCorsProxy
             };
 
-            // Test connection
             try {
                 const testUrl = useCorsProxy 
                     ? `https://corsproxy.io/?${encodeURIComponent(instanceUrl + '/api/me')}`
@@ -2052,7 +1872,6 @@
             }
         });
 
-        // Logout
         document.getElementById('logoutBtn').addEventListener('click', () => {
             state.isLoggedIn = false;
             state.config = null;
@@ -2061,35 +1880,23 @@
             document.getElementById('loginForm').reset();
         });
 
-        // Open modal
         function openModal(type) {
             const config = modalConfigs[type];
             if (!config) return;
-
-            console.log('=== OPENING MODAL ===');
-            console.log('Modal type:', type);
-            console.log('Current selectedDatasets before opening:', Array.from(selectedDatasets));
-            console.log('Current selectedOrgUnits before opening:', Array.from(selectedOrgUnits));
 
             document.getElementById('modalTitle').textContent = config.title;
             document.getElementById('modalBody').innerHTML = config.fields;
             document.getElementById('modal').classList.add('show');
             document.getElementById('progressSection').classList.remove('show');
             
-            // Store current action
             document.getElementById('modalForm').dataset.action = type;
-            
-            console.log('Modal opened successfully');
-            console.log('=== MODAL OPEN COMPLETE ===');
         }
 
-        // Close modal
         function closeModal() {
             document.getElementById('modal').classList.remove('show');
             document.getElementById('modalForm').reset();
         }
 
-        // Handle form submission
         document.getElementById('modalForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -2101,7 +1908,6 @@
             document.getElementById('modalSubmit').textContent = 'Processing...';
             
             try {
-                // Execute action
                 await executeAction(action, formData);
             } catch (error) {
                 log(`❌ FATAL ERROR: ${error.message}`, 'error');
@@ -2113,7 +1919,6 @@
             }
         });
 
-        // Execute DHIS2 action
         async function executeAction(action, formData) {
             clearLogs();
             setProgress(0);
@@ -2135,7 +1940,6 @@
                     case 'copyOrgUnits':
                         await copyOrgUnits(formData);
                         break;
-                    // Add more cases...
                     default:
                         log(`⚠️ Action "${action}" not implemented yet`, 'info');
                         showNotification('This feature is coming soon!', 'info');
@@ -2150,7 +1954,6 @@
             }
         }
 
-        // Download data elements
         async function downloadDataElements() {
             const selectedDataElements = getSelectedOptions('dataElementSelect');
             const selectedOrgUnits = getSelectedOptions('orgUnitSelect');
@@ -2168,7 +1971,6 @@
             log('Fetching selected data elements metadata...', 'info');
             setProgress(20);
             
-            // Build metadata URL with selected data elements
             const deFilter = selectedDataElements.map(id => `id:eq:${id}`).join(',');
             const url = `${state.config.instanceUrl}/api/metadata.json?dataElements:filter=${deFilter}&fields=:all&includeReferences=true`;
             const response = await fetchWithAuth(url);
@@ -2179,7 +1981,6 @@
             log(`Retrieved metadata for ${selectedDataElements.length} data elements`, 'success');
             setProgress(40);
             
-            // Create lookup maps for labels
             const dataElementMap = {};
             const orgUnitMap = {};
             const categoryOptionComboMap = {};
@@ -2191,7 +1992,6 @@
             log('Fetching organisation unit labels...', 'info');
             setProgress(50);
             
-            // Fetch org units for labels
             const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?filter=id:in:[${selectedOrgUnits.join(',')}]&fields=id,displayName&paging=false`;
             const ouResponse = await fetchWithAuth(ouUrl);
             if (ouResponse.ok) {
@@ -2201,14 +2001,12 @@
                 });
             }
             
-            // Check if we should include data values
             const includeData = document.getElementById('includeData')?.checked;
             
             if (includeData) {
                 log('Fetching data values for selected period...', 'info');
                 setProgress(60);
                 
-                // Get period
                 const period = getPeriodFromForm();
                 
                 if (!period) {
@@ -2216,7 +2014,6 @@
                     return;
                 }
                 
-                // Build data value URL
                 const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataElement=${selectedDataElements.join(',')}&orgUnit=${selectedOrgUnits.join(',')}&${period}`;
                 const dataResponse = await fetchWithAuth(dataUrl);
                 
@@ -2227,7 +2024,6 @@
                     setProgress(80);
                     
                     if (numValues > 0) {
-                        // Fetch category option combos for labels
                         log('Fetching category labels...', 'info');
                         const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName&paging=false`;
                         const cocResponse = await fetchWithAuth(cocUrl);
@@ -2238,10 +2034,8 @@
                             });
                         }
                         
-                        // Convert to long format CSV with labels
                         const csvData = convertToLongFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap);
                         
-                        // Download as CSV
                         const blob = new Blob([csvData], { type: 'text/csv' });
                         const link = document.createElement('a');
                         link.href = URL.createObjectURL(blob);
@@ -2259,7 +2053,6 @@
                 
                 setProgress(100);
             } else {
-                // Download metadata only as JSON
                 const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
@@ -2271,9 +2064,7 @@
             }
         }
 
-        // Convert data values to long format CSV with labels
         function convertToLongFormatCSV(dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap) {
-            // CSV Headers
             const headers = [
                 'Data Element',
                 'Organisation Unit',
@@ -2288,7 +2079,6 @@
             
             let csv = headers.join(',') + '\n';
             
-            // Add each data value as a row
             dataValues.forEach(dv => {
                 const row = [
                     escapeCSV(dataElementMap[dv.dataElement] || dv.dataElement),
@@ -2308,18 +2098,15 @@
             return csv;
         }
 
-        // Escape CSV values
         function escapeCSV(value) {
             if (value === null || value === undefined) return '';
             const stringValue = String(value);
-            // If value contains comma, quote, or newline, wrap in quotes and escape quotes
             if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
                 return '"' + stringValue.replace(/"/g, '""') + '"';
             }
             return stringValue;
         }
 
-        // Get period string from form
         function getPeriodFromForm() {
             const activeTab = document.querySelector('.period-tab.active');
             if (!activeTab) return '';
@@ -2371,36 +2158,40 @@
             return '';
         }
 
-        // Download datasets
         async function downloadDatasets() {
-            const selectedDatasets = getSelectedOptions('datasetSelect');
-            const selectedOrgUnits = getSelectedOptions('orgUnitSelectDatasets');
+            const selectedDatasetIds = getSelectedDatasets();
+            const selectedOrgUnitIds = getSelectedOrgUnitsFromTree();
             
-            if (selectedDatasets.length === 0) {
+            console.log('=== downloadDatasets START ===');
+            console.log('Selected datasets:', selectedDatasetIds);
+            console.log('Selected org units:', selectedOrgUnitIds);
+            
+            if (selectedDatasetIds.length === 0) {
+                log('No datasets selected', 'error');
                 showNotification('Please select at least one dataset', 'error');
                 return;
             }
             
-            if (selectedOrgUnits.length === 0) {
+            if (selectedOrgUnitIds.length === 0) {
+                log('No organisation units selected', 'error');
                 showNotification('Please select at least one organisation unit', 'error');
                 return;
             }
             
-            log('Fetching selected datasets metadata...', 'info');
+            log(`Fetching metadata for ${selectedDatasetIds.length} selected datasets...`, 'info');
             setProgress(20);
             
-            // Build metadata URL with selected datasets
-            const dsFilter = selectedDatasets.map(id => `id:eq:${id}`).join(',');
+            const dsFilter = selectedDatasetIds.map(id => `id:eq:${id}`).join(',');
             const url = `${state.config.instanceUrl}/api/metadata.json?dataSets:filter=${dsFilter}&fields=:all&includeReferences=true`;
+            log(`Metadata URL: ${url}`, 'info');
             const response = await fetchWithAuth(url);
             
             if (!response.ok) throw new Error('Failed to fetch datasets');
             
             const metadata = await response.json();
-            log(`Retrieved metadata for ${selectedDatasets.length} datasets`, 'success');
+            log(`Retrieved metadata for ${selectedDatasetIds.length} datasets`, 'success');
             setProgress(40);
             
-            // Get all data elements from the datasets
             const allDataElements = new Set();
             metadata.dataSets?.forEach(ds => {
                 ds.dataSetElements?.forEach(dse => {
@@ -2410,7 +2201,6 @@
             
             log(`Found ${allDataElements.size} data elements in datasets`, 'info');
             
-            // Create lookup maps for labels
             const dataElementMap = {};
             const orgUnitMap = {};
             const categoryOptionComboMap = {};
@@ -2422,8 +2212,7 @@
             log('Fetching organisation unit labels...', 'info');
             setProgress(50);
             
-            // Fetch org units for labels
-            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?filter=id:in:[${selectedOrgUnits.join(',')}]&fields=id,displayName&paging=false`;
+            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?filter=id:in:[${selectedOrgUnitIds.join(',')}]&fields=id,displayName&paging=false`;
             const ouResponse = await fetchWithAuth(ouUrl);
             if (ouResponse.ok) {
                 const ouData = await ouResponse.json();
@@ -2432,14 +2221,12 @@
                 });
             }
             
-            // Check if we should include data values
             const includeDataValues = document.getElementById('includeDataValues')?.checked;
             
             if (includeDataValues && allDataElements.size > 0) {
                 log('Fetching data values for selected period...', 'info');
                 setProgress(60);
                 
-                // Get period
                 const period = getPeriodFromForm();
                 
                 if (!period) {
@@ -2447,9 +2234,9 @@
                     return;
                 }
                 
-                // Build data value URL
                 const dataElementList = Array.from(allDataElements).join(',');
-                const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataSet=${selectedDatasets.join(',')}&orgUnit=${selectedOrgUnits.join(',')}&${period}`;
+                const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataSet=${selectedDatasetIds.join(',')}&orgUnit=${selectedOrgUnitIds.join(',')}&${period}`;
+                log(`Data values URL: ${dataUrl}`, 'info');
                 const dataResponse = await fetchWithAuth(dataUrl);
                 
                 if (dataResponse.ok) {
@@ -2459,7 +2246,6 @@
                     setProgress(80);
                     
                     if (numValues > 0) {
-                        // Fetch category option combos for labels
                         log('Fetching category labels...', 'info');
                         const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName&paging=false`;
                         const cocResponse = await fetchWithAuth(cocUrl);
@@ -2470,10 +2256,8 @@
                             });
                         }
                         
-                        // Convert to long format CSV with labels
                         const csvData = convertToLongFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap);
                         
-                        // Download as CSV
                         const blob = new Blob([csvData], { type: 'text/csv' });
                         const link = document.createElement('a');
                         link.href = URL.createObjectURL(blob);
@@ -2491,7 +2275,6 @@
                 
                 setProgress(100);
             } else {
-                // Download metadata only as JSON
                 const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
@@ -2503,7 +2286,6 @@
             }
         }
 
-        // Create data element
         async function createDataElement(formData) {
             log('Creating data element...', 'info');
             setProgress(30);
@@ -2532,7 +2314,6 @@
             setProgress(100);
         }
 
-        // Copy org units
         async function copyOrgUnits(formData) {
             log('Fetching organisation units from source...', 'info');
             setProgress(20);
@@ -2546,7 +2327,6 @@
             log(`Retrieved ${sourceData.organisationUnits.length} org units`, 'success');
             setProgress(50);
             
-            // Import to target
             log('Importing to target instance...', 'info');
             const targetUrl = formData.get('targetUrl').trim().replace(/\/$/, '');
             const targetUsername = formData.get('targetUsername');
@@ -2569,7 +2349,6 @@
             setProgress(100);
         }
 
-        // Utility functions
         async function fetchWithAuth(url, options = {}) {
             const apiUrl = state.config.useCorsProxy 
                 ? `https://corsproxy.io/?${encodeURIComponent(url)}`
