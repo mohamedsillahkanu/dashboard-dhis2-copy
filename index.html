@@ -492,17 +492,27 @@
             migrateBtn.disabled = true;
             
             try {
-                // Step 1: Export dashboard metadata
+                // Step 1: Export dashboard metadata with ALL dependencies
                 log('Starting dashboard metadata export...');
-                updateStep(1, 'active', '⏳', 'Exporting dashboard metadata...');
+                updateStep(1, 'active', '⏳', 'Exporting dashboard metadata with dependencies...');
                 
+                // First, get the dashboard and related objects
                 const metadataUrl = `${config.sourceUrl}/api/metadata.json?` + 
                     `dashboards:filter=id:eq:${config.dashboardId}&` +
                     `dashboards=true&dashboardItems=true&visualizations=true&` +
-                    `charts=true&reportTables=true&maps=true&indicators=true&` +
-                    `dataElements=true&dataSets=true&organisationUnits=true&` +
+                    `charts=true&reportTables=true&maps=true&eventCharts=true&eventReports=true&` +
+                    `indicators=true&indicatorTypes=true&` +
+                    `dataElements=true&dataElementGroups=true&` +
+                    `dataSets=true&sections=true&` +
+                    `categoryCombos=true&categories=true&categoryOptions=true&categoryOptionCombos=true&` +
+                    `optionSets=true&options=true&` +
+                    `legendSets=true&legends=true&` +
+                    `organisationUnits=true&organisationUnitGroups=true&organisationUnitGroupSets=true&` +
+                    `validationRules=true&validationRuleGroups=true&` +
+                    `predictors=true&programIndicators=true&` +
                     `fields=:all&includeReferences=true`;
                 
+                log('Fetching metadata with all dependencies...');
                 const metadataResponse = await fetchWithAuth(
                     metadataUrl,
                     { method: 'GET' },
@@ -524,13 +534,22 @@
                     throw new Error(`Dashboard with ID "${config.dashboardId}" not found. Please verify the ID.`);
                 }
                 
-                updateStep(1, 'complete', '✅', 'Dashboard metadata exported');
+                // Log what was exported
+                const exportedTypes = Object.keys(metadataData).filter(key => 
+                    Array.isArray(metadataData[key]) && metadataData[key].length > 0
+                );
+                log(`Exported types: ${exportedTypes.join(', ')}`);
+                exportedTypes.forEach(type => {
+                    log(`  - ${type}: ${metadataData[type].length} items`);
+                });
+                
+                updateStep(1, 'complete', '✅', 'Dashboard metadata exported with dependencies');
                 
                 // Step 2: Import dashboard metadata
                 log('Starting dashboard metadata import...');
                 updateStep(2, 'active', '⏳', 'Importing dashboard metadata...');
                 
-                const importMetadataUrl = `${config.targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE&atomicMode=NONE`;
+                const importMetadataUrl = `${config.targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE&atomicMode=NONE&mergeMode=MERGE`;
                 
                 const importMetadataResponse = await fetchWithAuth(
                     importMetadataUrl,
@@ -546,11 +565,45 @@
                 if (!importMetadataResponse.ok) {
                     const errorText = await importMetadataResponse.text();
                     log(`Import error: ${errorText}`);
-                    throw new Error(`Failed to import metadata: ${importMetadataResponse.status}`);
+                    throw new Error(`Failed to import metadata: ${importMetadataResponse.status}. Error: ${errorText}`);
                 }
                 
                 const importResult = await importMetadataResponse.json();
                 log(`Import result: ${importResult.status}`);
+                
+                // Log import summary
+                if (importResult.stats) {
+                    log('Import statistics:');
+                    Object.keys(importResult.stats).forEach(type => {
+                        const stats = importResult.stats[type];
+                        if (stats.total > 0) {
+                            log(`  - ${type}: created=${stats.created}, updated=${stats.updated}, ignored=${stats.ignored}`);
+                        }
+                    });
+                }
+                
+                // Check for type reports with errors
+                if (importResult.typeReports) {
+                    const errorsFound = importResult.typeReports.some(tr => 
+                        tr.objectReports && tr.objectReports.some(or => or.errorReports && or.errorReports.length > 0)
+                    );
+                    
+                    if (errorsFound) {
+                        log('⚠️ Some items had errors during import:');
+                        importResult.typeReports.forEach(tr => {
+                            if (tr.objectReports) {
+                                tr.objectReports.forEach(or => {
+                                    if (or.errorReports && or.errorReports.length > 0) {
+                                        or.errorReports.forEach(err => {
+                                            log(`  - ${tr.klass}: ${err.message}`);
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }
+                
                 updateStep(2, 'complete', '✅', 'Dashboard metadata imported');
                 
                 // Step 3 & 4: Data export/import (if enabled)
