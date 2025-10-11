@@ -1522,18 +1522,28 @@
         }
 
         function toggleDatasetSelection(id) {
+            console.log('toggleDatasetSelection called with id:', id);
+            
             if (selectedDatasets.has(id)) {
                 selectedDatasets.delete(id);
+                console.log('  - Removed from selection');
             } else {
                 selectedDatasets.add(id);
+                console.log('  - Added to selection');
             }
+            
+            console.log('  - Total selected:', selectedDatasets.size);
+            console.log('  - Selected IDs:', Array.from(selectedDatasets));
             
             const item = document.querySelector(`.dataset-item[data-id="${id}"]`);
             if (item) {
+                const checkbox = item.querySelector('.dataset-checkbox');
                 if (selectedDatasets.has(id)) {
                     item.classList.add('selected');
+                    if (checkbox) checkbox.checked = true;
                 } else {
                     item.classList.remove('selected');
+                    if (checkbox) checkbox.checked = false;
                 }
             }
             
@@ -1544,6 +1554,8 @@
             const summary = document.getElementById('datasetSelectionSummary');
             const count = document.getElementById('datasetSelectionCount');
             
+            console.log('updateDatasetSelectionSummary:', selectedDatasets.size, 'datasets selected');
+            
             if (selectedDatasets.size > 0) {
                 summary.style.display = 'block';
                 count.textContent = `${selectedDatasets.size} dataset${selectedDatasets.size === 1 ? '' : 's'} selected`;
@@ -1553,14 +1565,22 @@
         }
 
         function selectAllDatasets() {
-            datasetsData.forEach(ds => selectedDatasets.add(ds.id));
+            console.log('selectAllDatasets called, datasetsData:', datasetsData.length);
+            datasetsData.forEach(ds => {
+                selectedDatasets.add(ds.id);
+            });
+            console.log('After selectAll, selectedDatasets:', Array.from(selectedDatasets));
+            
             document.querySelectorAll('.dataset-checkbox').forEach(cb => cb.checked = true);
             document.querySelectorAll('.dataset-item').forEach(item => item.classList.add('selected'));
             updateDatasetSelectionSummary();
         }
 
         function clearAllDatasets() {
+            console.log('clearAllDatasets called');
             selectedDatasets.clear();
+            console.log('After clearAll, selectedDatasets:', Array.from(selectedDatasets));
+            
             document.querySelectorAll('.dataset-checkbox').forEach(cb => cb.checked = false);
             document.querySelectorAll('.dataset-item').forEach(item => item.classList.remove('selected'));
             updateDatasetSelectionSummary();
@@ -1593,7 +1613,15 @@
         }
 
         function getSelectedDatasets() {
-            return Array.from(selectedDatasets);
+            const selected = Array.from(selectedDatasets);
+            console.log('getSelectedDatasets called, returning:', selected);
+            return selected;
+        }
+
+        function getSelectedOrgUnitsFromTree() {
+            const selected = Array.from(selectedOrgUnits);
+            console.log('getSelectedOrgUnitsFromTree called, returning:', selected);
+            return selected;
         }
 
         // Load datasets from DHIS2 (old function for backwards compatibility)
