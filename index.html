@@ -1989,15 +1989,24 @@
                 dataElementMap[de.id] = de.displayName || de.name;
             });
             
-            log('Fetching organisation unit labels...', 'info');
+            log('Fetching organisation unit hierarchy...', 'info');
             setProgress(50);
             
-            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?filter=id:in:[${selectedOrgUnits.join(',')}]&fields=id,displayName&paging=false`;
+            // Fetch ALL org units with hierarchy to build complete parent chain
+            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,name,level,parent[id]&paging=false`;
             const ouResponse = await fetchWithAuth(ouUrl);
+            const orgUnitHierarchy = {};
+            
             if (ouResponse.ok) {
                 const ouData = await ouResponse.json();
                 ouData.organisationUnits?.forEach(ou => {
-                    orgUnitMap[ou.id] = ou.displayName;
+                    orgUnitMap[ou.id] = ou.displayName || ou.name;
+                    orgUnitHierarchy[ou.id] = {
+                        id: ou.id,
+                        name: ou.displayName || ou.name,
+                        level: ou.level,
+                        parent: ou.parent ? ou.parent.id : null
+                    };
                 });
             }
             
@@ -2025,24 +2034,25 @@
                     
                     if (numValues > 0) {
                         log('Fetching category labels...', 'info');
-                        const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName&paging=false`;
+                        const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName,name&paging=false`;
                         const cocResponse = await fetchWithAuth(cocUrl);
                         if (cocResponse.ok) {
                             const cocData = await cocResponse.json();
                             cocData.categoryOptionCombos?.forEach(coc => {
-                                categoryOptionComboMap[coc.id] = coc.displayName;
+                                categoryOptionComboMap[coc.id] = coc.displayName || coc.name;
                             });
                         }
                         
-                        const csvData = convertToLongFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap);
+                        log('Converting to wide format CSV...', 'info');
+                        const csvData = convertToWideFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap, orgUnitHierarchy);
                         
                         const blob = new Blob([csvData], { type: 'text/csv' });
                         const link = document.createElement('a');
                         link.href = URL.createObjectURL(blob);
-                        link.download = `data-values-${new Date().toISOString().split('T')[0]}.csv`;
+                        link.download = `data-values-wide-${new Date().toISOString().split('T')[0]}.csv`;
                         link.click();
                         
-                        log('CSV download complete', 'success');
+                        log('CSV download complete (wide format)', 'success');
                     } else {
                         showNotification('No data values found for selected criteria', 'info');
                     }
@@ -2064,38 +2074,83 @@
             }
         }
 
-        function convertToLongFormatCSV(dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap) {
-            const headers = [
-                'Data Element',
-                'Organisation Unit',
-                'Period',
-                'Category Option Combo',
-                'Attribute Option Combo',
-                'Value',
-                'Stored By',
-                'Last Updated',
-                'Comment'
-            ];
-            
-            let csv = headers.join(',') + '\n';
+        function convertToWideFormatCSV(dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap, orgUnitHierarchy) {
+            // Group data by org unit and period
+            const groupedData = {};
             
             dataValues.forEach(dv => {
-                const row = [
-                    escapeCSV(dataElementMap[dv.dataElement] || dv.dataElement),
-                    escapeCSV(orgUnitMap[dv.orgUnit] || dv.orgUnit),
-                    escapeCSV(dv.period || ''),
-                    escapeCSV(categoryOptionComboMap[dv.categoryOptionCombo] || dv.categoryOptionCombo || 'default'),
-                    escapeCSV(categoryOptionComboMap[dv.attributeOptionCombo] || dv.attributeOptionCombo || 'default'),
-                    escapeCSV(dv.value || ''),
-                    escapeCSV(dv.storedBy || ''),
-                    escapeCSV(dv.lastUpdated || ''),
-                    escapeCSV(dv.comment || '')
-                ];
+                const key = `${dv.orgUnit}|${dv.period}`;
+                if (!groupedData[key]) {
+                    groupedData[key] = {
+                        orgUnit: dv.orgUnit,
+                        period: dv.period,
+                        values: {}
+                    };
+                }
                 
-                csv += row.join(',') + '\n';
+                // Create unique key for data element + category combo
+                const deKey = `${dataElementMap[dv.dataElement] || dv.dataElement}`;
+                const cocName = categoryOptionComboMap[dv.categoryOptionCombo] || 'default';
+                const fullKey = cocName !== 'default' ? `${deKey} (${cocName})` : deKey;
+                
+                groupedData[key].values[fullKey] = dv.value;
+            });
+            
+            // Get all unique data element columns
+            const allColumns = new Set();
+            Object.values(groupedData).forEach(row => {
+                Object.keys(row.values).forEach(col => allColumns.add(col));
+            });
+            const sortedColumns = Array.from(allColumns).sort();
+            
+            // Get max hierarchy depth
+            let maxLevel = 0;
+            Object.values(orgUnitHierarchy).forEach(ou => {
+                if (ou.level > maxLevel) maxLevel = ou.level;
+            });
+            
+            // Build headers with org unit hierarchy
+            const hierarchyHeaders = [];
+            for (let i = 1; i <= maxLevel; i++) {
+                hierarchyHeaders.push(`Level ${i}`);
+            }
+            const headers = [...hierarchyHeaders, 'Period', ...sortedColumns];
+            let csv = headers.join(',') + '\n';
+            
+            // Build rows
+            Object.values(groupedData).forEach(row => {
+                const csvRow = [];
+                
+                // Add org unit hierarchy
+                const hierarchy = getOrgUnitHierarchy(row.orgUnit, orgUnitHierarchy);
+                for (let i = 0; i < maxLevel; i++) {
+                    csvRow.push(escapeCSV(hierarchy[i] || ''));
+                }
+                
+                // Add period
+                csvRow.push(escapeCSV(row.period));
+                
+                // Add data element values
+                sortedColumns.forEach(col => {
+                    csvRow.push(escapeCSV(row.values[col] || ''));
+                });
+                
+                csv += csvRow.join(',') + '\n';
             });
             
             return csv;
+        }
+        
+        function getOrgUnitHierarchy(orgUnitId, orgUnitHierarchy) {
+            const hierarchy = [];
+            let current = orgUnitHierarchy[orgUnitId];
+            
+            while (current) {
+                hierarchy.unshift(current.name);
+                current = current.parent ? orgUnitHierarchy[current.parent] : null;
+            }
+            
+            return hierarchy;
         }
 
         function escapeCSV(value) {
@@ -2209,15 +2264,24 @@
                 dataElementMap[de.id] = de.displayName || de.name;
             });
             
-            log('Fetching organisation unit labels...', 'info');
+            log('Fetching organisation unit hierarchy...', 'info');
             setProgress(50);
             
-            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?filter=id:in:[${selectedOrgUnitIds.join(',')}]&fields=id,displayName&paging=false`;
+            // Fetch ALL org units with hierarchy to build complete parent chain
+            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,name,level,parent[id]&paging=false`;
             const ouResponse = await fetchWithAuth(ouUrl);
+            const orgUnitHierarchy = {};
+            
             if (ouResponse.ok) {
                 const ouData = await ouResponse.json();
                 ouData.organisationUnits?.forEach(ou => {
-                    orgUnitMap[ou.id] = ou.displayName;
+                    orgUnitMap[ou.id] = ou.displayName || ou.name;
+                    orgUnitHierarchy[ou.id] = {
+                        id: ou.id,
+                        name: ou.displayName || ou.name,
+                        level: ou.level,
+                        parent: ou.parent ? ou.parent.id : null
+                    };
                 });
             }
             
@@ -2247,24 +2311,25 @@
                     
                     if (numValues > 0) {
                         log('Fetching category labels...', 'info');
-                        const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName&paging=false`;
+                        const cocUrl = `${state.config.instanceUrl}/api/categoryOptionCombos.json?fields=id,displayName,name&paging=false`;
                         const cocResponse = await fetchWithAuth(cocUrl);
                         if (cocResponse.ok) {
                             const cocData = await cocResponse.json();
                             cocData.categoryOptionCombos?.forEach(coc => {
-                                categoryOptionComboMap[coc.id] = coc.displayName;
+                                categoryOptionComboMap[coc.id] = coc.displayName || coc.name;
                             });
                         }
                         
-                        const csvData = convertToLongFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap);
+                        log('Converting to wide format CSV...', 'info');
+                        const csvData = convertToWideFormatCSV(dataValues.dataValues, dataElementMap, orgUnitMap, categoryOptionComboMap, orgUnitHierarchy);
                         
                         const blob = new Blob([csvData], { type: 'text/csv' });
                         const link = document.createElement('a');
                         link.href = URL.createObjectURL(blob);
-                        link.download = `dataset-values-${new Date().toISOString().split('T')[0]}.csv`;
+                        link.download = `dataset-values-wide-${new Date().toISOString().split('T')[0]}.csv`;
                         link.click();
                         
-                        log('CSV download complete', 'success');
+                        log('CSV download complete (wide format)', 'success');
                     } else {
                         showNotification('No data values found for selected criteria', 'info');
                     }
