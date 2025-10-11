@@ -1752,48 +1752,43 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Select Metadata Type to Delete <span class="required">*</span></label>
-                        
-                        <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button type="button" class="toolbar-btn btn-select-all" onclick="selectAllMetadataTypes()" style="padding: 8px 16px; font-size: 13px;">
-                                Select All Types
-                            </button>
-                            <button type="button" class="toolbar-btn btn-clear-all" onclick="clearAllMetadataTypes()" style="padding: 8px 16px; font-size: 13px;">
-                                Clear All Types
-                            </button>
-                        </div>
-                        
-                        <div class="metadata-types-grid">
+                        <label class="form-label">Select Metadata Type <span class="required">*</span></label>
+                        <select class="form-select" id="metadataTypeSelect" onchange="handleMetadataTypeChange()">
+                            <option value="">-- Choose a metadata type --</option>
                             ${Object.keys(METADATA_TYPES).filter(key => key !== 'organisationUnits').map(key => {
                                 const type = METADATA_TYPES[key];
-                                return `
-                                    <div class="metadata-type-card" data-type="${key}">
-                                        <div class="metadata-type-header" onclick="toggleMetadataType('${key}', event)">
-                                            <input type="checkbox" class="metadata-checkbox" id="check-${key}" data-type="${key}">
-                                            <div class="metadata-type-info">
-                                                <span class="metadata-type-icon">${type.icon}</span>
-                                                <div class="metadata-type-title">${type.label}</div>
-                                                <div class="metadata-type-desc">Delete ${type.label.toLowerCase()}</div>
-                                            </div>
-                                        </div>
-                                        <div class="metadata-items-container" id="items-${key}">
-                                            <div style="background: rgba(248, 81, 73, 0.1); padding: 12px; border-radius: 6px; border-left: 3px solid #f85149; margin-bottom: 10px;">
-                                                <p style="color: #f85149; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Required: Select items to delete</p>
-                                                <p style="color: #8b949e; font-size: 12px;">Load items, then select what you want to permanently delete</p>
-                                            </div>
-                                            <button type="button" class="load-items-btn" onclick="loadMetadataItems('${key}')" style="background: #6e7681;">
-                                                Load ${type.label}
-                                            </button>
-                                            <div class="items-list" id="list-${key}" style="display: none;"></div>
-                                            <div class="items-toolbar" id="toolbar-${key}" style="display: none;">
-                                                <button type="button" class="toolbar-btn btn-select-all" onclick="selectAllItems('${key}')">Select All</button>
-                                                <button type="button" class="toolbar-btn btn-clear-all" onclick="clearAllItems('${key}')">Clear All</button>
-                                            </div>
-                                            <div class="selected-count" id="count-${key}" style="display: none;">0 items selected</div>
-                                        </div>
-                                    </div>
-                                `;
+                                return `<option value="${key}">${type.icon} ${type.label}</option>`;
                             }).join('')}
+                        </select>
+                    </div>
+
+                    <div id="itemsSelectionContainer" style="display: none;">
+                        <div class="form-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <label class="form-label" style="margin-bottom: 0;">Select Items to Delete <span class="required">*</span></label>
+                                <button type="button" class="load-items-btn" onclick="loadItemsForDelete()" id="loadItemsBtn">
+                                    Load Items
+                                </button>
+                            </div>
+                            
+                            <div style="background: rgba(248, 81, 73, 0.1); padding: 12px; border-radius: 6px; border-left: 3px solid #f85149; margin-bottom: 10px;">
+                                <p style="color: #f85149; font-size: 13px; font-weight: 600; margin-bottom: 5px;">Select items to permanently delete</p>
+                                <p style="color: #8b949e; font-size: 12px;">Click "Load Items" to fetch, then select what you want to delete</p>
+                            </div>
+
+                            <div id="itemsListContainer" style="display: none;">
+                                <input type="text" class="search-box" id="deleteSearchBox" placeholder="Search items..." onkeyup="filterDeleteItems()">
+                                
+                                <div class="dataset-checkbox-list" id="deleteItemsList" style="max-height: 400px;">
+                                    <p style="color: #8b949e; text-align: center; padding: 20px;">Loading...</p>
+                                </div>
+                                
+                                <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                                    <button type="button" class="toolbar-btn btn-select-all" onclick="selectAllDeleteItems()">Select All</button>
+                                    <button type="button" class="toolbar-btn btn-clear-all" onclick="clearAllDeleteItems()">Clear All</button>
+                                    <div class="selected-count" id="deleteSelectionCount" style="display: none; margin: 0;">0 items selected</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1817,6 +1812,194 @@
             `;
         }
 
+        let deleteItemsData = [];
+        let selectedDeleteItems = new Set();
+        let currentDeleteType = null;
+
+        function handleMetadataTypeChange() {
+            const select = document.getElementById('metadataTypeSelect');
+            const selectedType = select.value;
+            const container = document.getElementById('itemsSelectionContainer');
+            const itemsListContainer = document.getElementById('itemsListContainer');
+            
+            if (selectedType) {
+                currentDeleteType = selectedType;
+                container.style.display = 'block';
+                itemsListContainer.style.display = 'none';
+                selectedDeleteItems.clear();
+                deleteItemsData = [];
+                updateDeleteSelectionCount();
+            } else {
+                container.style.display = 'none';
+                itemsListContainer.style.display = 'none';
+                currentDeleteType = null;
+            }
+        }
+
+        async function loadItemsForDelete() {
+            if (!currentDeleteType) return;
+            
+            try {
+                const config = getConfig();
+                const type = METADATA_TYPES[currentDeleteType];
+                
+                showNotification('Loading ' + type.label + '...', 'info');
+                document.getElementById('loadItemsBtn').disabled = true;
+                document.getElementById('loadItemsBtn').textContent = 'Loading...';
+                
+                const url = config.instanceUrl + '/api/' + type.endpoint + '.json?fields=' + type.fields + '&paging=false';
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch ' + type.label);
+                }
+                
+                const data = await response.json();
+                const items = data[type.endpoint] || [];
+                
+                if (items.length === 0) {
+                    showNotification('No ' + type.label + ' found', 'info');
+                    return;
+                }
+                
+                deleteItemsData = items;
+                renderDeleteItemsList(items);
+                
+                document.getElementById('itemsListContainer').style.display = 'block';
+                showNotification('Loaded ' + items.length + ' items', 'success');
+                
+            } catch (error) {
+                showNotification('Failed to load items: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loadItemsBtn').disabled = false;
+                document.getElementById('loadItemsBtn').textContent = 'Load Items';
+            }
+        }
+
+        function renderDeleteItemsList(items) {
+            const container = document.getElementById('deleteItemsList');
+            container.innerHTML = '';
+            
+            if (items.length === 0) {
+                container.innerHTML = '<p style="color: #8b949e; text-align: center; padding: 20px;">No items match your search</p>';
+                return;
+            }
+            
+            items.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'dataset-item';
+                row.dataset.id = item.id;
+                
+                if (selectedDeleteItems.has(item.id)) {
+                    row.classList.add('selected');
+                }
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'dataset-checkbox';
+                checkbox.checked = selectedDeleteItems.has(item.id);
+                checkbox.dataset.id = item.id;
+                
+                checkbox.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleDeleteItemSelection(item.id);
+                });
+                
+                const name = document.createElement('span');
+                name.className = 'dataset-name';
+                name.textContent = item.displayName || item.name || item.id;
+                
+                row.addEventListener('click', function(e) {
+                    if (e.target.type === 'checkbox') return;
+                    checkbox.checked = !checkbox.checked;
+                    toggleDeleteItemSelection(item.id);
+                });
+                
+                row.appendChild(checkbox);
+                row.appendChild(name);
+                container.appendChild(row);
+            });
+            
+            updateDeleteSelectionCount();
+        }
+
+        function toggleDeleteItemSelection(id) {
+            if (selectedDeleteItems.has(id)) {
+                selectedDeleteItems.delete(id);
+            } else {
+                selectedDeleteItems.add(id);
+            }
+            
+            const item = document.querySelector('#deleteItemsList .dataset-item[data-id="' + id + '"]');
+            const checkbox = item?.querySelector('.dataset-checkbox');
+            
+            if (item && checkbox) {
+                if (selectedDeleteItems.has(id)) {
+                    item.classList.add('selected');
+                    checkbox.checked = true;
+                } else {
+                    item.classList.remove('selected');
+                    checkbox.checked = false;
+                }
+            }
+            
+            updateDeleteSelectionCount();
+        }
+
+        function selectAllDeleteItems() {
+            deleteItemsData.forEach(item => {
+                selectedDeleteItems.add(item.id);
+            });
+            
+            document.querySelectorAll('#deleteItemsList .dataset-checkbox').forEach(cb => {
+                cb.checked = true;
+            });
+            document.querySelectorAll('#deleteItemsList .dataset-item').forEach(item => {
+                item.classList.add('selected');
+            });
+            
+            updateDeleteSelectionCount();
+        }
+
+        function clearAllDeleteItems() {
+            selectedDeleteItems.clear();
+            
+            document.querySelectorAll('#deleteItemsList .dataset-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+            document.querySelectorAll('#deleteItemsList .dataset-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            updateDeleteSelectionCount();
+        }
+
+        function filterDeleteItems() {
+            const searchTerm = document.getElementById('deleteSearchBox').value.toLowerCase();
+            const items = document.querySelectorAll('#deleteItemsList .dataset-item');
+            
+            items.forEach(item => {
+                const name = item.querySelector('.dataset-name').textContent.toLowerCase();
+                if (name.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function updateDeleteSelectionCount() {
+            const countElement = document.getElementById('deleteSelectionCount');
+            const count = selectedDeleteItems.size;
+            
+            if (count > 0) {
+                countElement.style.display = 'block';
+                countElement.textContent = count + ' item' + (count === 1 ? '' : 's') + ' selected';
+            } else {
+                countElement.style.display = 'none';
+            }
+        }
+
         function setupDeleteMetadataListeners() {
             document.getElementById('deleteMetadataForm').addEventListener('submit', handleDeleteSubmit);
         }
@@ -1824,8 +2007,13 @@
         async function handleDeleteSubmit(e) {
             e.preventDefault();
             
-            if (selectedTypes.size === 0) {
-                showNotification('Please select at least one metadata type', 'error');
+            if (!currentDeleteType) {
+                showNotification('Please select a metadata type', 'error');
+                return;
+            }
+            
+            if (selectedDeleteItems.size === 0) {
+                showNotification('Please select at least one item to delete', 'error');
                 return;
             }
             
@@ -1835,8 +2023,11 @@
                 return;
             }
             
+            const type = METADATA_TYPES[currentDeleteType];
+            const itemCount = selectedDeleteItems.size;
+            
             // Double confirmation for safety
-            const userConfirmed = confirm('ARE YOU SURE? This will permanently delete the selected items. This cannot be undone!');
+            const userConfirmed = confirm('ARE YOU SURE?\n\nYou are about to PERMANENTLY DELETE ' + itemCount + ' ' + type.label + '.\n\nThis CANNOT be undone!\n\nClick OK to proceed with deletion.');
             if (!userConfirmed) {
                 showNotification('Deletion cancelled', 'info');
                 return;
@@ -1854,89 +2045,63 @@
                 const config = getConfig();
                 
                 log('Starting deletion process...', 'info');
-                log('Selected types: ' + Array.from(selectedTypes).map(t => METADATA_TYPES[t].label).join(', '), 'info');
-                setProgress(10);
+                log('Type: ' + type.label, 'info');
+                log('Items to delete: ' + itemCount, 'info');
+                setProgress(5);
                 
                 let totalDeleted = 0;
                 let totalFailed = 0;
-                let totalItems = 0;
+                const selectedIds = Array.from(selectedDeleteItems);
                 
-                // Calculate total items
-                for (const typeKey of selectedTypes) {
-                    if (selectedItems[typeKey]) {
-                        totalItems += selectedItems[typeKey].size;
-                    }
-                }
+                log('', 'info');
+                log('Deleting items...', 'info');
                 
-                if (totalItems === 0) {
-                    throw new Error('No items selected for deletion');
-                }
-                
-                log('Total items to delete: ' + totalItems, 'info');
-                let processedItems = 0;
-                
-                for (const typeKey of selectedTypes) {
-                    const type = METADATA_TYPES[typeKey];
-                    log('', 'info');
-                    log('Processing ' + type.label + '...', 'info');
+                for (let i = 0; i < selectedIds.length; i++) {
+                    const itemId = selectedIds[i];
                     
-                    if (!selectedItems[typeKey] || selectedItems[typeKey].size === 0) {
-                        log('  WARNING: No items selected for ' + type.label, 'error');
-                        log('  Skipping this type...', 'info');
-                        continue;
-                    }
-                    
-                    const selectedIds = Array.from(selectedItems[typeKey]);
-                    log('  Deleting ' + selectedIds.length + ' items...', 'info');
-                    
-                    for (const itemId of selectedIds) {
-                        try {
-                            const deleteUrl = config.instanceUrl + '/api/' + type.endpoint + '/' + itemId;
-                            
-                            // Use CORS proxy for DELETE requests
-                            const proxiedUrl = config.useCorsProxy 
-                                ? 'https://corsproxy.io/?' + encodeURIComponent(deleteUrl)
-                                : deleteUrl;
-                            
-                            const response = await fetch(proxiedUrl, {
-                                method: 'DELETE',
-                                headers: {
-                                    'Authorization': 'Basic ' + btoa(config.username + ':' + config.password)
-                                }
-                            });
-                            
-                            processedItems++;
-                            const progress = 10 + Math.floor((processedItems / totalItems) * 80);
-                            setProgress(progress);
-                            
-                            if (response.ok || response.status === 204) {
-                                totalDeleted++;
-                                log('  [OK] Deleted: ' + itemId, 'success');
-                            } else if (response.status === 404) {
-                                totalFailed++;
-                                log('  [NOT FOUND] Item does not exist: ' + itemId, 'error');
-                            } else if (response.status === 409) {
-                                totalFailed++;
-                                log('  [CONFLICT] Item is in use and cannot be deleted: ' + itemId, 'error');
-                            } else {
-                                totalFailed++;
-                                try {
-                                    const errorData = await response.json();
-                                    const errorMsg = errorData.message || errorData.error || 'Unknown error';
-                                    log('  [FAILED] ' + itemId + ': ' + errorMsg, 'error');
-                                } catch {
-                                    log('  [FAILED] ' + itemId + ': HTTP ' + response.status, 'error');
-                                }
+                    try {
+                        const deleteUrl = config.instanceUrl + '/api/' + type.endpoint + '/' + itemId;
+                        
+                        // ALWAYS use CORS proxy for DELETE requests
+                        const proxiedUrl = 'https://corsproxy.io/?' + encodeURIComponent(deleteUrl);
+                        
+                        const response = await fetch(proxiedUrl, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': 'Basic ' + btoa(config.username + ':' + config.password),
+                                'Content-Type': 'application/json'
                             }
-                            
-                            // Small delay to avoid overwhelming the server
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                            
-                        } catch (error) {
+                        });
+                        
+                        const progress = 5 + Math.floor(((i + 1) / selectedIds.length) * 90);
+                        setProgress(progress);
+                        
+                        if (response.ok || response.status === 204) {
+                            totalDeleted++;
+                            log('[' + (i + 1) + '/' + selectedIds.length + '] SUCCESS: ' + itemId, 'success');
+                        } else if (response.status === 404) {
                             totalFailed++;
-                            processedItems++;
-                            log('  [ERROR] ' + itemId + ': ' + error.message, 'error');
+                            log('[' + (i + 1) + '/' + selectedIds.length + '] NOT FOUND: ' + itemId, 'error');
+                        } else if (response.status === 409) {
+                            totalFailed++;
+                            log('[' + (i + 1) + '/' + selectedIds.length + '] CONFLICT: ' + itemId + ' (item is in use)', 'error');
+                        } else {
+                            totalFailed++;
+                            try {
+                                const errorData = await response.json();
+                                const errorMsg = errorData.message || errorData.error || 'Unknown error';
+                                log('[' + (i + 1) + '/' + selectedIds.length + '] FAILED: ' + itemId + ' - ' + errorMsg, 'error');
+                            } catch {
+                                log('[' + (i + 1) + '/' + selectedIds.length + '] FAILED: ' + itemId + ' (HTTP ' + response.status + ')', 'error');
+                            }
                         }
+                        
+                        // Small delay to avoid overwhelming the server
+                        await new Promise(resolve => setTimeout(resolve, 150));
+                        
+                    } catch (error) {
+                        totalFailed++;
+                        log('[' + (i + 1) + '/' + selectedIds.length + '] ERROR: ' + itemId + ' - ' + error.message, 'error');
                     }
                 }
                 
@@ -1947,7 +2112,7 @@
                 log('========================================', totalFailed === 0 ? 'success' : 'info');
                 log('Total deleted: ' + totalDeleted, 'success');
                 log('Total failed: ' + totalFailed, totalFailed > 0 ? 'error' : 'info');
-                log('Success rate: ' + Math.round((totalDeleted / totalItems) * 100) + '%', 'info');
+                log('Success rate: ' + Math.round((totalDeleted / itemCount) * 100) + '%', 'info');
                 
                 if (totalDeleted > 0) {
                     showNotification(totalDeleted + ' items deleted successfully' + (totalFailed > 0 ? ', ' + totalFailed + ' failed' : ''), totalFailed > 0 ? 'info' : 'success');
@@ -1956,7 +2121,7 @@
                 }
                 
             } catch (error) {
-                log('ERROR: ' + error.message, 'error');
+                log('CRITICAL ERROR: ' + error.message, 'error');
                 showNotification('Error: ' + error.message, 'error');
             } finally {
                 submitBtn.disabled = false;
