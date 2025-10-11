@@ -554,30 +554,6 @@
             50% { opacity: 0.8; }
         }
 
-        @media (max-width: 768px) {
-            .cards-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .header h1 {
-                font-size: 28px;
-            }
-
-            .modal-content {
-                padding: 25px;
-            }
-
-            .logout-btn {
-                position: static;
-                margin-bottom: 20px;
-                width: 100%;
-            }
-        }
-
         .dataset-checkbox-list {
             background: #21262d;
             border: 1px solid #30363d;
@@ -782,6 +758,12 @@
                     <h3 class="card-title">Download Datasets</h3>
                     <p class="card-description">Export complete dataset configurations</p>
                 </div>
+
+                <div class="card" onclick="openModal('copyForm')">
+                    <span class="card-icon">🔄</span>
+                    <h3 class="card-title">Copy Form Between Instances</h3>
+                    <p class="card-description">Copy a dataset/form from this instance to another DHIS2 instance</p>
+                </div>
             </div>
         </div>
     </div>
@@ -821,6 +803,8 @@
         let selectedDatasets = new Set();
         let orgUnitsData = [];
         let selectedOrgUnits = new Set();
+        let copyDatasetsData = [];
+        let selectedCopyDataset = null;
 
         function getPeriodSelector() {
             return `
@@ -902,123 +886,143 @@
         const modalConfigs = {
             downloadDataElements: {
                 title: '📊 Download Data Elements',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Select Data Elements <span class="required">*</span></label>
-                        <div style="margin-bottom: 10px;">
-                            <button type="button" class="btn-primary" onclick="loadDataElements()" style="width: auto; padding: 10px 20px; font-size: 14px;">
-                                Load Data Elements
-                            </button>
-                        </div>
-                        <select class="form-select" id="dataElementSelect" multiple size="10" style="height: 200px;" disabled>
-                            <option value="">Click "Load Data Elements" to fetch...</option>
-                        </select>
-                        <div class="help-text">Hold Ctrl/Cmd to select multiple items</div>
-                        <div style="margin-top: 10px;">
-                            <button type="button" onclick="selectAllOptions('dataElementSelect')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
-                            <button type="button" onclick="clearAllOptions('dataElementSelect')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Organisation Units <span class="required">*</span></label>
-                        <div style="margin-bottom: 10px;">
-                            <button type="button" class="btn-primary" onclick="loadOrgUnitsTree('downloadDataElements')" style="width: auto; padding: 10px 20px; font-size: 14px;">
-                                Load Organisation Units
-                            </button>
-                        </div>
-                        <div style="background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 15px; max-height: 300px; overflow-y: auto;" id="orgUnitTreeDE">
-                            <p style="color: #8b949e; text-align: center;">Click "Load Organisation Units" to fetch...</p>
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <button type="button" onclick="expandAllOrgUnits('orgUnitTreeDE')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Expand All</button>
-                            <button type="button" onclick="collapseAllOrgUnits('orgUnitTreeDE')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Collapse All</button>
-                            <button type="button" onclick="selectAllOrgUnitsInTree('orgUnitTreeDE')" style="padding: 5px 10px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
-                            <button type="button" onclick="clearAllOrgUnitsInTree('orgUnitTreeDE')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
-                        </div>
-                    </div>
-
-                    ${getPeriodSelector()}
-
-                    <div class="form-group">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="includeDataValues" checked>
-                            <label>Include data values for selected period</label>
-                        </div>
-                    </div>
-                `
+                fields: 'DE_FIELDS_PLACEHOLDER'
             },
             downloadDatasets: {
                 title: '📋 Download Datasets',
-                fields: `
-                    <div class="form-group">
-                        <label class="form-label">Select Datasets <span class="required">*</span></label>
-                        <div style="margin-bottom: 10px;">
-                            <button type="button" class="btn-primary" onclick="loadDatasetsCheckbox()" style="width: auto; padding: 10px 20px; font-size: 14px;">
-                                Load Datasets
-                            </button>
-                        </div>
-                        
-                        <input type="text" class="search-box" id="datasetSearch" placeholder="🔍 Search datasets..." onkeyup="filterDatasets()" style="display: none;">
-                        
-                        <div class="dataset-checkbox-list" id="datasetCheckboxList">
-                            <p style="color: #8b949e; text-align: center; padding: 20px;">Click "Load Datasets" to fetch available datasets</p>
-                        </div>
-                        
-                        <div class="selection-summary" id="datasetSelectionSummary" style="display: none;">
-                            <span id="datasetSelectionCount">0 datasets selected</span>
-                        </div>
-                        
-                        <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button type="button" onclick="selectAllDatasets()" style="padding: 8px 15px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer;">✓ Select All</button>
-                            <button type="button" onclick="clearAllDatasets()" style="padding: 8px 15px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ Clear All</button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Organisation Units <span class="required">*</span></label>
-                        <div style="margin-bottom: 10px;">
-                            <button type="button" class="btn-primary" onclick="loadOrgUnitsTree('downloadDatasets')" style="width: auto; padding: 10px 20px; font-size: 14px;">
-                                Load Organisation Units
-                            </button>
-                        </div>
-                        <div style="background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 15px; max-height: 300px; overflow-y: auto;" id="orgUnitTree">
-                            <p style="color: #8b949e; text-align: center;">Click "Load Organisation Units" to fetch...</p>
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <button type="button" onclick="expandAllOrgUnits('orgUnitTree')" style="padding: 5px 10px; font-size: 12px; background: #58a6ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Expand All</button>
-                            <button type="button" onclick="collapseAllOrgUnits('orgUnitTree')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Collapse All</button>
-                            <button type="button" onclick="selectAllOrgUnitsInTree('orgUnitTree')" style="padding: 5px 10px; font-size: 12px; background: #2ea043; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Select All</button>
-                            <button type="button" onclick="clearAllOrgUnitsInTree('orgUnitTree')" style="padding: 5px 10px; font-size: 12px; background: #6e7681; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All</button>
-                        </div>
-                    </div>
-
-                    ${getPeriodSelector()}
-
-                    <div class="form-group">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="includeDataValuesDS" checked>
-                            <label>Include data values for selected period</label>
-                        </div>
-                    </div>
-                `
+                fields: 'DS_FIELDS_PLACEHOLDER'
+            },
+            copyForm: {
+                title: '🔄 Copy Form Between Instances',
+                fields: 'COPY_FIELDS_PLACEHOLDER'
             }
         };
 
+        // Initialize modal configs with actual HTML
+        modalConfigs.downloadDataElements.fields = `
+            <div class="form-group">
+                <label class="form-label">Select Data Elements <span class="required">*</span></label>
+                <div style="margin-bottom: 10px;">
+                    <button type="button" class="btn-primary" onclick="loadDataElements()" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                        Load Data Elements
+                    </button>
+                </div>
+                <select class="form-select" id="dataElementSelect" multiple size="10" style="height: 200px;" disabled>
+                    <option value="">Click "Load Data Elements" to fetch...</option>
+                </select>
+                <div class="help-text">Hold Ctrl/Cmd to select multiple items</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Organisation Units <span class="required">*</span></label>
+                <div style="margin-bottom: 10px;">
+                    <button type="button" class="btn-primary" onclick="loadOrgUnitsTree('downloadDataElements')" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                        Load Organisation Units
+                    </button>
+                </div>
+                <div style="background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 15px; max-height: 300px; overflow-y: auto;" id="orgUnitTreeDE">
+                    <p style="color: #8b949e; text-align: center;">Click to load...</p>
+                </div>
+            </div>
+
+            ${getPeriodSelector()}
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="includeDataValues" checked>
+                    <label>Include data values for selected period</label>
+                </div>
+            </div>
+        `;
+
+        modalConfigs.downloadDatasets.fields = `
+            <div class="form-group">
+                <label class="form-label">Select Datasets <span class="required">*</span></label>
+                <div style="margin-bottom: 10px;">
+                    <button type="button" class="btn-primary" onclick="loadDatasetsCheckbox()" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                        Load Datasets
+                    </button>
+                </div>
+                
+                <input type="text" class="search-box" id="datasetSearch" placeholder="🔍 Search datasets..." onkeyup="filterDatasets()" style="display: none;">
+                
+                <div class="dataset-checkbox-list" id="datasetCheckboxList">
+                    <p style="color: #8b949e; text-align: center; padding: 20px;">Click "Load Datasets" to fetch available datasets</p>
+                </div>
+                
+                <div class="selection-summary" id="datasetSelectionSummary" style="display: none;">
+                    <span id="datasetSelectionCount">0 datasets selected</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Organisation Units <span class="required">*</span></label>
+                <div style="margin-bottom: 10px;">
+                    <button type="button" class="btn-primary" onclick="loadOrgUnitsTree('downloadDatasets')" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                        Load Organisation Units
+                    </button>
+                </div>
+                <div style="background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 15px; max-height: 300px; overflow-y: auto;" id="orgUnitTree">
+                    <p style="color: #8b949e; text-align: center;">Click to load...</p>
+                </div>
+            </div>
+
+            ${getPeriodSelector()}
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="includeDataValuesDS" checked>
+                    <label>Include data values for selected period</label>
+                </div>
+            </div>
+        `;
+
+        modalConfigs.copyForm.fields = `
+            <div class="form-group">
+                <label class="form-label">Select Dataset to Copy <span class="required">*</span></label>
+                <div style="margin-bottom: 10px;">
+                    <button type="button" class="btn-primary" onclick="loadDatasetsForCopy()" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                        Load Datasets
+                    </button>
+                </div>
+                
+                <div style="background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 15px; max-height: 300px; overflow-y: auto;" id="copyDatasetList">
+                    <p style="color: #8b949e; text-align: center; padding: 20px;">Click to load datasets</p>
+                </div>
+            </div>
+
+            <div style="background: #21262d; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h4 style="color: #58a6ff; margin-bottom: 15px;">🎯 Target Instance</h4>
+                
+                <div class="form-group">
+                    <label class="form-label">Target URL <span class="required">*</span></label>
+                    <input type="url" class="form-input" id="targetInstanceUrl" placeholder="https://target.dhis2.org" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Username <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="targetUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password <span class="required">*</span></label>
+                        <input type="password" class="form-input" id="targetPassword" required>
+                    </div>
+                </div>
+            </div>
+        `;
+
         async function loadDataElements() {
             try {
-                log('Fetching data elements from DHIS2...', 'info');
-                showNotification('Loading data elements...', 'info');
+                log('Fetching data elements...', 'info');
+                showNotification('Loading...', 'info');
                 
                 const url = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&paging=false`;
                 const response = await fetchWithAuth(url);
                 
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`Failed: ${response.status}`);
                 
                 const data = await response.json();
-                
                 const select = document.getElementById('dataElementSelect');
                 select.innerHTML = '';
                 select.disabled = false;
@@ -1036,24 +1040,22 @@
                 });
                 
                 log(`Loaded ${data.dataElements.length} data elements`, 'success');
-                showNotification(`Loaded ${data.dataElements.length} data elements`, 'success');
+                showNotification(`Loaded ${data.dataElements.length} items`, 'success');
             } catch (error) {
                 log(`Error: ${error.message}`, 'error');
-                showNotification('Failed to load data elements', 'error');
+                showNotification('Failed to load', 'error');
             }
         }
 
         async function loadDatasetsCheckbox() {
             try {
                 log('Fetching datasets...', 'info');
-                showNotification('Loading datasets...', 'info');
+                showNotification('Loading...', 'info');
                 
                 const url = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName,name,periodType&paging=false`;
                 const response = await fetchWithAuth(url);
                 
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`Failed: ${response.status}`);
                 
                 const data = await response.json();
                 
@@ -1070,7 +1072,7 @@
                 showNotification(`Loaded ${data.dataSets.length} datasets`, 'success');
             } catch (error) {
                 log(`Error: ${error.message}`, 'error');
-                showNotification('Failed to load datasets', 'error');
+                showNotification('Failed to load', 'error');
             }
         }
 
@@ -1139,24 +1141,6 @@
             }
         }
 
-        function selectAllDatasets() {
-            datasetsData.forEach(ds => selectedDatasets.add(ds.id));
-            document.querySelectorAll('.dataset-item').forEach(item => {
-                item.classList.add('selected');
-                item.querySelector('.dataset-checkbox').checked = true;
-            });
-            updateDatasetSelectionSummary();
-        }
-
-        function clearAllDatasets() {
-            selectedDatasets.clear();
-            document.querySelectorAll('.dataset-item').forEach(item => {
-                item.classList.remove('selected');
-                item.querySelector('.dataset-checkbox').checked = false;
-            });
-            updateDatasetSelectionSummary();
-        }
-
         function filterDatasets() {
             const search = document.getElementById('datasetSearch').value.toLowerCase();
             document.querySelectorAll('.dataset-item').forEach(item => {
@@ -1165,13 +1149,84 @@
             });
         }
 
+        async function loadDatasetsForCopy() {
+            try {
+                log('Fetching datasets...', 'info');
+                showNotification('Loading...', 'info');
+                
+                const url = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName,name,periodType&paging=false`;
+                const response = await fetchWithAuth(url);
+                
+                if (!response.ok) throw new Error(`Failed: ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (!data.dataSets || data.dataSets.length === 0) {
+                    document.getElementById('copyDatasetList').innerHTML = '<p style="color: #8b949e; text-align: center; padding: 20px;">No datasets found</p>';
+                    return;
+                }
+                
+                copyDatasetsData = data.dataSets;
+                renderCopyDatasetList(copyDatasetsData);
+                
+                log(`Loaded ${data.dataSets.length} datasets`, 'success');
+                showNotification(`Loaded ${data.dataSets.length} datasets`, 'success');
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                showNotification('Failed to load', 'error');
+            }
+        }
+
+        function renderCopyDatasetList(datasets) {
+            const container = document.getElementById('copyDatasetList');
+            container.innerHTML = '';
+            
+            datasets.forEach(ds => {
+                const item = document.createElement('div');
+                item.className = 'dataset-item';
+                item.dataset.id = ds.id;
+                if (selectedCopyDataset === ds.id) item.classList.add('selected');
+                
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'copyDataset';
+                radio.className = 'dataset-checkbox';
+                radio.checked = selectedCopyDataset === ds.id;
+                radio.onclick = (e) => {
+                    e.stopPropagation();
+                    selectCopyDataset(ds.id);
+                };
+                
+                const name = document.createElement('span');
+                name.className = 'dataset-name';
+                const periodType = ds.periodType ? ` (${ds.periodType})` : '';
+                name.textContent = `${ds.displayName || ds.name}${periodType}`;
+                
+                item.onclick = () => {
+                    radio.checked = true;
+                    selectCopyDataset(ds.id);
+                };
+                
+                item.appendChild(radio);
+                item.appendChild(name);
+                container.appendChild(item);
+            });
+        }
+
+        function selectCopyDataset(id) {
+            selectedCopyDataset = id;
+            document.querySelectorAll('#copyDatasetList .dataset-item').forEach(item => {
+                item.classList.toggle('selected', item.dataset.id === id);
+            });
+        }
+
         async function loadOrgUnitsTree(context) {
             try {
-                log('Fetching organisation units...', 'info');
+                log('Fetching org units...', 'info');
                 const url = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,level,parent[id],children[id]&paging=false`;
                 const response = await fetchWithAuth(url);
                 
-                if (!response.ok) throw new Error('Failed to fetch');
+                if (!response.ok) throw new Error('Failed');
                 
                 const data = await response.json();
                 orgUnitsData = data.organisationUnits;
@@ -1184,7 +1239,7 @@
                 showNotification(`Loaded ${orgUnitsData.length} org units`, 'success');
             } catch (error) {
                 log(`Error: ${error.message}`, 'error');
-                showNotification('Failed to load org units', 'error');
+                showNotification('Failed', 'error');
             }
         }
 
@@ -1292,58 +1347,6 @@
             }
         }
 
-        function expandAllOrgUnits(containerId) {
-            document.querySelectorAll(`#${containerId} .org-unit-children`).forEach(div => {
-                div.classList.add('expanded');
-            });
-            document.querySelectorAll(`#${containerId} .org-unit-toggle`).forEach(toggle => {
-                if (toggle.textContent === '▶') toggle.textContent = '▼';
-            });
-        }
-
-        function collapseAllOrgUnits(containerId) {
-            document.querySelectorAll(`#${containerId} .org-unit-children`).forEach(div => {
-                div.classList.remove('expanded');
-            });
-            document.querySelectorAll(`#${containerId} .org-unit-toggle`).forEach(toggle => {
-                if (toggle.textContent === '▼') toggle.textContent = '▶';
-            });
-        }
-
-        function selectAllOrgUnitsInTree(containerId) {
-            document.querySelectorAll(`#${containerId} .org-unit-checkbox`).forEach(cb => {
-                cb.checked = true;
-                selectedOrgUnits.add(cb.dataset.id);
-            });
-            document.querySelectorAll(`#${containerId} .org-unit-item`).forEach(item => {
-                item.classList.add('selected');
-            });
-        }
-
-        function clearAllOrgUnitsInTree(containerId) {
-            document.querySelectorAll(`#${containerId} .org-unit-checkbox`).forEach(cb => {
-                cb.checked = false;
-            });
-            selectedOrgUnits.clear();
-            document.querySelectorAll(`#${containerId} .org-unit-item`).forEach(item => {
-                item.classList.remove('selected');
-            });
-        }
-
-        function selectAllOptions(selectId) {
-            const select = document.getElementById(selectId);
-            for (let i = 0; i < select.options.length; i++) {
-                select.options[i].selected = true;
-            }
-        }
-
-        function clearAllOptions(selectId) {
-            const select = document.getElementById(selectId);
-            for (let i = 0; i < select.options.length; i++) {
-                select.options[i].selected = false;
-            }
-        }
-
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1392,7 +1395,6 @@
             document.getElementById('progressSection').classList.remove('show');
             document.getElementById('modalForm').dataset.action = type;
             
-            // Reset state
             selectedDatasets.clear();
             selectedOrgUnits.clear();
         }
@@ -1435,8 +1437,11 @@
                 case 'downloadDatasets':
                     await downloadDatasets();
                     break;
+                case 'copyForm':
+                    await copyFormBetweenInstances();
+                    break;
                 default:
-                    log('Feature not implemented', 'info');
+                    log('Not implemented', 'info');
                     setProgress(100);
             }
         }
@@ -1452,32 +1457,30 @@
             }
             
             if (selectedOrgUnitIds.length === 0) {
-                showNotification('Please select organisation units', 'error');
+                showNotification('Please select org units', 'error');
                 return;
             }
             
-            log(`Selected ${selectedIds.length} data elements`, 'info');
-            log(`Selected ${selectedOrgUnitIds.length} org units`, 'info');
+            log(`Processing ${selectedIds.length} data elements`, 'info');
             setProgress(20);
             
             const includeData = document.getElementById('includeDataValues')?.checked;
             
             if (!includeData) {
-                log('Downloading metadata only...', 'info');
+                log('Downloading metadata...', 'info');
                 const url = `${state.config.instanceUrl}/api/metadata.json?dataElements:filter=id:in:[${selectedIds.join(',')}]&fields=:all`;
                 const response = await fetchWithAuth(url);
                 
-                if (!response.ok) throw new Error('Failed to fetch metadata');
+                if (!response.ok) throw new Error('Failed');
                 
                 const metadata = await response.json();
                 downloadJSON(metadata, 'data-elements-metadata');
-                log('Download complete', 'success');
+                log('Complete', 'success');
                 setProgress(100);
                 return;
             }
             
-            // Fetch data with values
-            log('Fetching data element details...', 'info');
+            log('Fetching details...', 'info');
             const deUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&filter=id:in:[${selectedIds.join(',')}]&paging=false`;
             const deResponse = await fetchWithAuth(deUrl);
             const deData = await deResponse.json();
@@ -1491,7 +1494,7 @@
             
             const period = getPeriodFromForm();
             if (!period) {
-                showNotification('Please select a period', 'error');
+                showNotification('Select period', 'error');
                 return;
             }
             
@@ -1499,21 +1502,20 @@
             const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataElement=${selectedIds.join(',')}&orgUnit=${selectedOrgUnitIds.join(',')}&${period}`;
             const dataResponse = await fetchWithAuth(dataUrl);
             
-            if (!dataResponse.ok) throw new Error('Failed to fetch data');
+            if (!dataResponse.ok) throw new Error('Failed');
             
             const dataValues = await dataResponse.json();
             const numValues = dataValues.dataValues?.length || 0;
-            log(`Retrieved ${numValues} data values`, 'success');
+            log(`Got ${numValues} values`, 'success');
             setProgress(60);
             
             if (numValues === 0) {
-                showNotification('No data values found', 'info');
+                showNotification('No data found', 'info');
                 setProgress(100);
                 return;
             }
             
-            // Fetch org unit hierarchy
-            log('Building org unit hierarchy...', 'info');
+            log('Building hierarchy...', 'info');
             const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,name,level,parent[id]&paging=false`;
             const ouResponse = await fetchWithAuth(ouUrl);
             const ouData = await ouResponse.json();
@@ -1530,12 +1532,11 @@
             
             setProgress(80);
             
-            // Convert to CSV
             log('Converting to CSV...', 'info');
             const csv = convertToCSV(dataValues.dataValues, dataElementMap, orgUnitHierarchy);
             downloadCSV(csv, 'data-elements-export');
             
-            log('Download complete', 'success');
+            log('Complete!', 'success');
             setProgress(100);
         }
 
@@ -1544,39 +1545,37 @@
             const selectedOrgUnitIds = Array.from(selectedOrgUnits);
             
             if (selectedDatasetIds.length === 0) {
-                showNotification('Please select datasets', 'error');
+                showNotification('Select datasets', 'error');
                 return;
             }
             
             if (selectedOrgUnitIds.length === 0) {
-                showNotification('Please select org units', 'error');
+                showNotification('Select org units', 'error');
                 return;
             }
             
-            log(`Selected ${selectedDatasetIds.length} datasets`, 'info');
-            log(`Selected ${selectedOrgUnitIds.length} org units`, 'info');
+            log(`Processing ${selectedDatasetIds.length} datasets`, 'info');
             setProgress(20);
             
             const includeData = document.getElementById('includeDataValuesDS')?.checked;
             
             if (!includeData) {
-                log('Downloading metadata only...', 'info');
+                log('Downloading metadata...', 'info');
                 const url = `${state.config.instanceUrl}/api/metadata.json?dataSets:filter=id:in:[${selectedDatasetIds.join(',')}]&fields=:all`;
                 const response = await fetchWithAuth(url);
                 
-                if (!response.ok) throw new Error('Failed to fetch metadata');
+                if (!response.ok) throw new Error('Failed');
                 
                 const metadata = await response.json();
                 downloadJSON(metadata, 'datasets-metadata');
-                log('Download complete', 'success');
+                log('Complete', 'success');
                 setProgress(100);
                 return;
             }
             
-            // Fetch with data values
             const period = getPeriodFromForm();
             if (!period) {
-                showNotification('Please select a period', 'error');
+                showNotification('Select period', 'error');
                 return;
             }
             
@@ -1586,20 +1585,19 @@
             const dataUrl = `${state.config.instanceUrl}/api/dataValueSets.json?dataSet=${selectedDatasetIds.join(',')}&orgUnit=${selectedOrgUnitIds.join(',')}&${period}`;
             const dataResponse = await fetchWithAuth(dataUrl);
             
-            if (!dataResponse.ok) throw new Error('Failed to fetch data');
+            if (!dataResponse.ok) throw new Error('Failed');
             
             const dataValues = await dataResponse.json();
             const numValues = dataValues.dataValues?.length || 0;
-            log(`Retrieved ${numValues} data values`, 'success');
+            log(`Got ${numValues} values`, 'success');
             setProgress(60);
             
             if (numValues === 0) {
-                showNotification('No data values found', 'info');
+                showNotification('No data found', 'info');
                 setProgress(100);
                 return;
             }
             
-            // Get data element names
             const uniqueDEs = [...new Set(dataValues.dataValues.map(dv => dv.dataElement))];
             const deUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id,displayName,name&filter=id:in:[${uniqueDEs.join(',')}]&paging=false`;
             const deResponse = await fetchWithAuth(deUrl);
@@ -1610,8 +1608,7 @@
                 dataElementMap[de.id] = de.displayName || de.name;
             });
             
-            // Get org unit hierarchy
-            log('Building org unit hierarchy...', 'info');
+            log('Building hierarchy...', 'info');
             const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id,displayName,name,level,parent[id]&paging=false`;
             const ouResponse = await fetchWithAuth(ouUrl);
             const ouData = await ouResponse.json();
@@ -1632,12 +1629,84 @@
             const csv = convertToCSV(dataValues.dataValues, dataElementMap, orgUnitHierarchy);
             downloadCSV(csv, 'datasets-export');
             
-            log('Download complete', 'success');
+            log('Complete!', 'success');
             setProgress(100);
         }
 
+        async function copyFormBetweenInstances() {
+            if (!selectedCopyDataset) {
+                showNotification('Select a dataset', 'error');
+                return;
+            }
+            
+            const targetUrl = document.getElementById('targetInstanceUrl').value.trim().replace(/\/$/, '');
+            const targetUsername = document.getElementById('targetUsername').value.trim();
+            const targetPassword = document.getElementById('targetPassword').value.trim();
+            
+            if (!targetUrl || !targetUsername || !targetPassword) {
+                showNotification('Provide target credentials', 'error');
+                return;
+            }
+            
+            log('Starting copy...', 'info');
+            log(`Source: ${state.config.instanceUrl}`, 'info');
+            log(`Target: ${targetUrl}`, 'info');
+            
+            setProgress(10);
+            
+            log('Fetching metadata...', 'info');
+            const metadataUrl = `${state.config.instanceUrl}/api/metadata.json?dataSets:filter=id:eq:${selectedCopyDataset}&fields=:all&includeReferences=true`;
+            const metadataResponse = await fetchWithAuth(metadataUrl);
+            
+            if (!metadataResponse.ok) throw new Error('Failed to fetch metadata');
+            
+            const metadata = await metadataResponse.json();
+            log(`Got dataset: ${metadata.dataSets?.[0]?.displayName}`, 'success');
+            
+            setProgress(30);
+            
+            log('Testing target connection...', 'info');
+            const testResponse = await fetch(`${targetUrl}/api/me`, {
+                headers: {
+                    'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`)
+                }
+            });
+            
+            if (!testResponse.ok) throw new Error('Target auth failed');
+            
+            const userInfo = await testResponse.json();
+            log(`Connected as: ${userInfo.displayName}`, 'success');
+            
+            setProgress(50);
+            
+            log('Importing to target...', 'info');
+            const importResponse = await fetch(`${targetUrl}/api/metadata?importStrategy=CREATE_AND_UPDATE`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(metadata)
+            });
+            
+            if (!importResponse.ok) throw new Error('Import failed');
+            
+            const importResult = await importResponse.json();
+            log(`Status: ${importResult.status}`, 'success');
+            
+            if (importResult.stats) {
+                Object.entries(importResult.stats).forEach(([key, value]) => {
+                    if (value > 0) log(`  ${key}: ${value}`, 'info');
+                });
+            }
+            
+            setProgress(100);
+            
+            log('Copy complete!', 'success');
+            showNotification('Form copied successfully!', 'success');
+        }
+
         function convertToCSV(dataValues, dataElementMap, orgUnitHierarchy) {
-            // Group by org unit and period
             const grouped = {};
             
             dataValues.forEach(dv => {
@@ -1654,20 +1723,17 @@
                 grouped[key].values[deName] = dv.value;
             });
             
-            // Get all unique data element columns
             const allColumns = new Set();
             Object.values(grouped).forEach(row => {
                 Object.keys(row.values).forEach(col => allColumns.add(col));
             });
             const sortedColumns = Array.from(allColumns).sort();
             
-            // Get max hierarchy level
             let maxLevel = 0;
             Object.values(orgUnitHierarchy).forEach(ou => {
                 if (ou.level > maxLevel) maxLevel = ou.level;
             });
             
-            // Build headers
             const hierarchyHeaders = [];
             for (let i = 1; i <= maxLevel; i++) {
                 hierarchyHeaders.push(`Level ${i}`);
@@ -1675,20 +1741,16 @@
             const headers = [...hierarchyHeaders, 'Period', ...sortedColumns];
             let csv = headers.join(',') + '\n';
             
-            // Build rows
             Object.values(grouped).forEach(row => {
                 const csvRow = [];
                 
-                // Add org unit hierarchy
                 const hierarchy = getOrgUnitHierarchy(row.orgUnit, orgUnitHierarchy);
                 for (let i = 0; i < maxLevel; i++) {
                     csvRow.push(escapeCSV(hierarchy[i] || ''));
                 }
                 
-                // Add period
                 csvRow.push(escapeCSV(row.period));
                 
-                // Add data values
                 sortedColumns.forEach(col => {
                     csvRow.push(escapeCSV(row.values[col] || ''));
                 });
