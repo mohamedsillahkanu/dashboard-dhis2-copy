@@ -1845,13 +1845,12 @@
                 instanceUrl,
                 username,
                 password,
-                useCorsProxy
+                useCorsProxy: false  // Set to false for testing
             };
 
             try {
-                const testUrl = useCorsProxy 
-                    ? `https://corsproxy.io/?${encodeURIComponent(instanceUrl + '/api/me')}`
-                    : `${instanceUrl}/api/me`;
+                // Always try direct connection first for login test
+                const testUrl = `${instanceUrl}/api/me`;
 
                 const response = await fetch(testUrl, {
                     headers: {
@@ -1868,7 +1867,7 @@
                     showNotification('Authentication failed. Check your credentials.', 'error');
                 }
             } catch (error) {
-                showNotification('Connection failed. Check URL and try enabling CORS proxy.', 'error');
+                showNotification('Connection failed. Check URL and network connection.', 'error');
             }
         });
 
@@ -2884,9 +2883,8 @@
         }
 
         async function fetchWithAuth(url, options = {}) {
-            const apiUrl = state.config.useCorsProxy 
-                ? `https://corsproxy.io/?${encodeURIComponent(url)}`
-                : url;
+            // Always try direct connection first (no CORS proxy)
+            const apiUrl = url;
             
             return fetch(apiUrl, {
                 ...options,
