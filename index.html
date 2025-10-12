@@ -1861,23 +1861,38 @@
                         showNotification(`✅ Copy successful! All ${itemsIgnored} items already exist`, 'success');
                     } else {
                         // Truly nothing was processed
-                        log(`❌ Import completed but no items were processed`, 'error');
-                        log(`DHIS2 Status: ${result.status}`, 'error');
+                        log(`\n❌ Import completed but no items were processed`, 'error');
+                        log(`DHIS2 Status: ${importResult.status}`, 'error');
                         log(`Stats received:`, 'error');
                         log(`  Created: ${itemsCreated}`, 'error');
                         log(`  Updated: ${itemsUpdated}`, 'error');
                         log(`  Ignored: ${itemsIgnored}`, 'error');
                         log(`  Deleted: ${itemsDeleted}`, 'error');
                         
+                        // Log the raw response for debugging
+                        console.error('Import failed - raw response:', importResult);
+                        
                         // Check if there are typeReports with more info
-                        if (result.typeReports && result.typeReports.length > 0) {
+                        if (importResult.typeReports && importResult.typeReports.length > 0) {
                             log(`\nTypeReports found - checking details:`, 'error');
-                            result.typeReports.forEach(report => {
+                            importResult.typeReports.forEach(report => {
                                 log(`  ${report.klass}: created=${report.stats?.created || 0}, updated=${report.stats?.updated || 0}, ignored=${report.stats?.ignored || 0}`, 'error');
+                                
+                                // Check for error reports
+                                if (report.objectReports && report.objectReports.length > 0) {
+                                    report.objectReports.forEach(objReport => {
+                                        if (objReport.errorReports && objReport.errorReports.length > 0) {
+                                            log(`\n  Errors for ${objReport.displayName || objReport.uid}:`, 'error');
+                                            objReport.errorReports.forEach(err => {
+                                                log(`    - [${err.errorCode}] ${err.message}`, 'error');
+                                            });
+                                        }
+                                    });
+                                }
                             });
                         }
                         
-                        showNotification('Import completed but nothing was changed', 'error');
+                        showNotification('Import completed but nothing was changed - check logs', 'error');
                     }
                 }
 
