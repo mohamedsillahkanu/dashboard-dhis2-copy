@@ -918,7 +918,8 @@
                 icon: '🏢',
                 endpoint: 'organisationUnits',
                 fields: 'id,displayName,name,level,parent',
-                copyAll: true
+                copyAll: true,
+                showLevels: true
             },
             dataElements: {
                 label: 'Data Elements',
@@ -987,9 +988,8 @@
                     <div class="metadata-type-tabs" id="metadataTypeTabs">
                         ${Object.keys(METADATA_TYPES).map(key => {
                             const type = METADATA_TYPES[key];
-                            return `<div class="metadata-type-tab ${type.copyAll ? 'copy-all' : ''}" data-type="${key}">
+                            return `<div class="metadata-type-tab" data-type="${key}">
                                 ${type.icon} ${type.label}
-                                ${type.copyAll ? '<span style="font-size: 10px;">(Auto)</span>' : ''}
                             </div>`;
                         }).join('')}
                     </div>
@@ -1058,25 +1058,6 @@
                         <label class="form-label">Target Password <span class="required">*</span></label>
                         <input type="password" class="form-input" id="targetPassword" required>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Import Strategy</label>
-                    <select class="form-select" id="importStrategy">
-                        <option value="CREATE_AND_UPDATE" selected>Create and Update (Override existing + Add new)</option>
-                        <option value="CREATE">Create Only</option>
-                        <option value="UPDATE">Update Only</option>
-                        <option value="DELETE">Delete</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Merge Mode</label>
-                    <select class="form-select" id="mergeMode">
-                        <option value="REPLACE" selected>Replace (Override existing completely)</option>
-                        <option value="MERGE">Merge (Keep existing + add new)</option>
-                    </select>
-                    <div class="help-text">Default: Replace mode will override any existing data and add new items</div>
                 </div>
 
                 <div class="progress-section" id="progressSection">
@@ -1171,9 +1152,35 @@
                 }
 
                 const data = await response.json();
-                const items = data[type.endpoint] || [];
+                let items = data[type.endpoint] || [];
 
-                availableItems[currentMetadataType] = items;
+                // Special handling for Organisation Units - group by level
+                if (currentMetadataType === 'organisationUnits' && type.showLevels) {
+                    // Sort by level
+                    items.sort((a, b) => (a.level || 0) - (b.level || 0));
+                    
+                    // Group items by level
+                    const itemsByLevel = {};
+                    items.forEach(item => {
+                        const level = item.level || 0;
+                        if (!itemsByLevel[level]) {
+                            itemsByLevel[level] = [];
+                        }
+                        itemsByLevel[level].push(item);
+                    });
+                    
+                    // Store with level information
+                    availableItems[currentMetadataType] = {
+                        allItems: items,
+                        byLevel: itemsByLevel,
+                        levels: Object.keys(itemsByLevel).sort((a, b) => a - b)
+                    };
+                    
+                    showNotification(`Loaded ${items.length} ${type.label} across ${Object.keys(itemsByLevel).length} levels`, 'success');
+                } else {
+                    availableItems[currentMetadataType] = items;
+                    showNotification(`Loaded ${items.length} ${type.label}`, 'success');
+                }
 
                 // Initialize selected items array if not exists
                 if (!selectedItems[currentMetadataType]) {
@@ -1182,8 +1189,13 @@
 
                 renderAvailableItems();
                 
-                document.getElementById('addAllBtn').disabled = false;
-                showNotification(`Loaded ${items.length} ${type.label}`, 'success');
+                // For org units, auto-select all since we need all dependencies
+                if (currentMetadataType === 'organisationUnits' && type.showLevels) {
+                    document.getElementById('addAllBtn').disabled = true;
+                    log('ℹ️ Organisation Units require all items for dependencies', 'info');
+                } else {
+                    document.getElementById('addAllBtn').disabled = false;
+                }
 
             } catch (error) {
                 showNotification(`Failed to load ${type.label}`, 'error');
@@ -1208,10 +1220,57 @@
                 return;
             }
 
+            const type = METADATA_TYPES[currentMetadataType];
+
+            // Special rendering for Organisation Units with levels
+            if (currentMetadataType === 'organisationUnits' && type.showLevels) {
+                const orgData = availableItems[currentMetadataType];
+                const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
+                
+                let html = '<div style="padding: 10px; background: rgba(88, 166, 255, 0.1); border-radius: 6px; margin-bottom: 15px; border-left: 3px solid #58a6ff;">';
+                html += '<div style="color: #58a6ff; font-weight: 600; font-size: 13px; margin-bottom: 5px;">📊 Organisation Unit Levels</div>';
+                html += '<div style="color: #8b949e; font-size: 12px;">All org units must be copied together with their dependencies</div>';
+                html += '</div>';
+                
+                // Render by levels
+                orgData.levels.forEach(level => {
+                    const levelItems = orgData.byLevel[level];
+                    const levelName = `Level ${level}`;
+                    
+                    html += `
+                        <div style="margin-bottom: 20px;">
+                            <div style="background: #21262d; padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #2ea043;">
+                                <div style="color: #2ea043; font-weight: 600; font-size: 14px;">${levelName}</div>
+                                <div style="color: #8b949e; font-size: 12px;">${levelItems.length} org unit${levelItems.length === 1 ? '' : 's'}</div>
+                            </div>
+                    `;
+                    
+                    levelItems.forEach(item => {
+                        const isSelected = selectedIds.includes(item.id);
+                        if (!isSelected) {
+                            html += `
+                                <div class="item-row" data-id="${item.id}" style="margin-left: 15px;">
+                                    <div class="item-name">${item.displayName || item.name}</div>
+                                    <button class="item-action-btn" onclick="addItem('${item.id}')">➡️ Add</button>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    html += '</div>';
+                });
+                
+                container.innerHTML = html;
+                
+                const notSelectedCount = orgData.allItems.filter(item => !selectedIds.includes(item.id)).length;
+                document.getElementById('availableCount').textContent = `${notSelectedCount} items`;
+                return;
+            }
+
+            // Normal rendering for other metadata types
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
             
-            // Filter out already selected items and apply search
             const filteredItems = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
                 const matchesSearch = !searchTerm || 
@@ -1276,7 +1335,16 @@
         function addItem(itemId) {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
 
-            const item = availableItems[currentMetadataType].find(i => i.id === itemId);
+            const type = METADATA_TYPES[currentMetadataType];
+            let item;
+
+            // Handle org units with level structure
+            if (currentMetadataType === 'organisationUnits' && type.showLevels) {
+                item = availableItems[currentMetadataType].allItems.find(i => i.id === itemId);
+            } else {
+                item = availableItems[currentMetadataType].find(i => i.id === itemId);
+            }
+
             if (!item) return;
 
             if (!selectedItems[currentMetadataType]) {
@@ -1301,8 +1369,17 @@
         function addAllAvailableItems() {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
 
-            const items = availableItems[currentMetadataType];
-            const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
+            const type = METADATA_TYPES[currentMetadataType];
+            let items, selectedIds;
+
+            // Handle org units with level structure
+            if (currentMetadataType === 'organisationUnits' && type.showLevels) {
+                items = availableItems[currentMetadataType].allItems;
+                selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
+            } else {
+                items = availableItems[currentMetadataType];
+                selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
+            }
             
             // Filter items applying search
             const itemsToAdd = items.filter(item => {
@@ -1368,13 +1445,17 @@
                 const targetUrl = document.getElementById('targetUrl').value.trim().replace(/\/$/, '');
                 const targetUsername = document.getElementById('targetUsername').value.trim();
                 const targetPassword = document.getElementById('targetPassword').value.trim();
-                const importStrategy = document.getElementById('importStrategy').value;
-                const mergeMode = document.getElementById('mergeMode').value;
+                
+                // Hardcoded defaults - override existing and add new
+                const importStrategy = 'CREATE_AND_UPDATE';
+                const mergeMode = 'REPLACE';
+                const atomicMode = 'NONE';
 
                 log('🔄 Starting metadata copy...', 'info');
                 setProgress(10);
 
                 const metadata = {};
+                const metadataWithDependencies = {};
 
                 // Process selected items for each type
                 for (const typeKey in selectedItems) {
@@ -1385,8 +1466,8 @@
                     log(`📦 Processing ${type.label}: ${itemCount} items`, 'info');
 
                     if (type.copyAll) {
-                        // For copy-all types, fetch everything
-                        log(`  Fetching all ${type.label}...`, 'info');
+                        // For copy-all types (like org units), fetch everything with all dependencies
+                        log(`  Fetching all ${type.label} with dependencies...`, 'info');
                         const url = `${config.instanceUrl}/api/${type.endpoint}.json?fields=:all&paging=false`;
                         const response = await fetchWithAuth(url);
                         
@@ -1395,20 +1476,57 @@
                             const items = data[type.endpoint] || [];
                             metadata[type.endpoint] = items;
                             log(`  ✓ Added ${items.length} ${type.label}`, 'success');
+                            
+                            // Fetch related org unit attributes and levels
+                            if (typeKey === 'organisationUnits') {
+                                log(`  Fetching organisation unit levels...`, 'info');
+                                const levelsUrl = `${config.instanceUrl}/api/organisationUnitLevels.json?fields=:all&paging=false`;
+                                const levelsResponse = await fetchWithAuth(levelsUrl);
+                                if (levelsResponse.ok) {
+                                    const levelsData = await levelsResponse.json();
+                                    metadataWithDependencies.organisationUnitLevels = levelsData.organisationUnitLevels || [];
+                                    log(`  ✓ Added ${metadataWithDependencies.organisationUnitLevels.length} org unit levels`, 'success');
+                                }
+                                
+                                log(`  Fetching related attributes...`, 'info');
+                                const attrUrl = `${config.instanceUrl}/api/attributes.json?fields=:all&filter=organisationUnitAttribute:eq:true&paging=false`;
+                                const attrResponse = await fetchWithAuth(attrUrl);
+                                if (attrResponse.ok) {
+                                    const attrData = await attrResponse.json();
+                                    metadataWithDependencies.attributes = attrData.attributes || [];
+                                    log(`  ✓ Added ${metadataWithDependencies.attributes.length} attributes`, 'success');
+                                }
+                            }
                         }
                     } else {
                         // For selected items, fetch each one individually to ensure we get them
                         const items = [];
-                        log(`  Fetching ${itemCount} selected items individually...`, 'info');
+                        log(`  Fetching ${itemCount} selected items with dependencies...`, 'info');
                         
                         for (const selectedItem of selectedItems[typeKey]) {
                             try {
-                                const url = `${config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all`;
+                                // Fetch with all dependencies
+                                const url = `${config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all,dataSetElements[dataElement[id,name,displayName,valueType,aggregationType,domainType,categoryCombo]]`;
                                 const response = await fetchWithAuth(url);
                                 
                                 if (response.ok) {
                                     const item = await response.json();
                                     items.push(item);
+                                    
+                                    // Extract and store dependencies
+                                    if (item.dataSetElements) {
+                                        item.dataSetElements.forEach(dse => {
+                                            if (dse.dataElement) {
+                                                if (!metadataWithDependencies.dataElements) {
+                                                    metadataWithDependencies.dataElements = [];
+                                                }
+                                                // Check if not already added
+                                                if (!metadataWithDependencies.dataElements.find(de => de.id === dse.dataElement.id)) {
+                                                    metadataWithDependencies.dataElements.push(dse.dataElement);
+                                                }
+                                            }
+                                        });
+                                    }
                                 } else {
                                     log(`  ⚠️ Failed to fetch item: ${selectedItem.displayName || selectedItem.name}`, 'error');
                                 }
@@ -1425,6 +1543,14 @@
                         }
                     }
                 }
+                
+                // Merge dependencies into metadata
+                for (const key in metadataWithDependencies) {
+                    if (metadataWithDependencies[key].length > 0) {
+                        metadata[key] = metadataWithDependencies[key];
+                        log(`  ✓ Added ${metadataWithDependencies[key].length} dependent ${key}`, 'success');
+                    }
+                }
 
                 if (Object.keys(metadata).length === 0) {
                     throw new Error('No items to copy');
@@ -1432,10 +1558,9 @@
 
                 setProgress(50);
                 log(`🚀 Importing to ${targetUrl}...`, 'info');
-                log(`Import Strategy: ${importStrategy}, Merge Mode: ${mergeMode}`, 'info');
                 setProgress(60);
 
-                const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=NONE')}`;
+                const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=' + atomicMode + '&importReportMode=FULL')}`;
 
                 log(`Sending ${Object.keys(metadata).length} metadata type(s)...`, 'info');
                 const importResponse = await fetch(importUrlWithProxy, {
