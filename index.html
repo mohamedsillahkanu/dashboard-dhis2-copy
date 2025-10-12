@@ -1,4 +1,4 @@
-<!DOCTYPE html>   
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1313,13 +1313,12 @@
             try {
                 log('🗑️ Starting metadata deletion...', 'info');
                 log(`⚠️ Target: ${state.config.instanceUrl}`, 'error');
-                log(`📝 Mode: DELETE (using metadata API)`, 'error');
+                log(`📝 Mode: DELETE (permanent removal)`, 'error');
                 setProgress(10);
 
                 let itemsDeleted = 0;
                 let itemsFailed = 0;
 
-                // Delete using metadata import API with IMPORT_MODE: DELETE
                 const deletionOrder = ['dashboards', 'indicators', 'dataSets', 'dataElements', 'validationRules', 'programs', 'categoryOptions', 'organisationUnits'];
                 
                 for (const typeKey of deletionOrder) {
@@ -1330,81 +1329,28 @@
                     
                     log(`\n🗑️ Deleting ${items.length} ${type.label}...`, 'info');
                     
-                    // Process in batches of 50 to avoid overwhelming the API
-                    const batchSize = 50;
-                    for (let i = 0; i < items.length; i += batchSize) {
-                        const batch = items.slice(i, i + batchSize);
-                        const batchNum = Math.floor(i / batchSize) + 1;
-                        const totalBatches = Math.ceil(items.length / batchSize);
-                        
-                        log(`  Processing batch ${batchNum}/${totalBatches} (${batch.length} items)...`, 'info');
-                        
-                        // Create metadata object with just IDs for deletion
-                        const metadataToDelete = {};
-                        metadataToDelete[type.endpoint] = batch.map(item => ({ id: item.id }));
-                        
+                    for (const item of items) {
                         try {
-                            // Use metadata import API with importMode=DELETE
-                            const deleteUrl = `${state.config.instanceUrl}/api/metadata?importMode=DELETE&atomicMode=NONE`;
-                            const deletePayload = JSON.stringify(metadataToDelete);
-                            
-                            const response = await fetchWithAuth(deleteUrl, {
-                                method: 'POST',
-                                body: deletePayload
-                            });
+                            const deleteUrl = `${state.config.instanceUrl}/api/${type.endpoint}/${item.id}`;
+                            const response = await fetchWithAuth(deleteUrl, { method: 'DELETE' });
                             
                             if (response.ok) {
-                                const result = await response.json();
-                                const deleteResult = result.response || result;
-                                
-                                // Parse the result
-                                if (deleteResult.typeReports && Array.isArray(deleteResult.typeReports)) {
-                                    deleteResult.typeReports.forEach(report => {
-                                        const deleted = report.stats?.deleted || 0;
-                                        const ignored = report.stats?.ignored || 0;
-                                        
-                                        itemsDeleted += deleted;
-                                        itemsFailed += (batch.length - deleted - ignored);
-                                        
-                                        if (deleted > 0) {
-                                            log(`    ✓ Deleted ${deleted} items`, 'success');
-                                        }
-                                        if (ignored > 0) {
-                                            log(`    ⓘ Ignored ${ignored} items (may not exist)`, 'info');
-                                        }
-                                        
-                                        // Log any errors
-                                        if (report.objectReports) {
-                                            report.objectReports.forEach(objReport => {
-                                                if (objReport.errorReports && objReport.errorReports.length > 0) {
-                                                    const itemName = batch.find(it => it.id === objReport.uid)?.displayName || objReport.uid;
-                                                    objReport.errorReports.forEach(err => {
-                                                        log(`    ✗ ${itemName}: ${err.message}`, 'error');
-                                                    });
-                                                }
-                                            });
-                                        }
-                                    });
-                                } else {
-                                    // Fallback if structure is different
-                                    const deleted = deleteResult.stats?.deleted || 0;
-                                    itemsDeleted += deleted;
-                                    itemsFailed += (batch.length - deleted);
-                                    log(`    ✓ Batch processed: ${deleted} deleted`, deleted > 0 ? 'success' : 'error');
-                                }
+                                itemsDeleted++;
+                                log(`  ✓ Deleted: ${item.displayName || item.name}`, 'success');
                             } else {
+                                itemsFailed++;
                                 const errorText = await response.text();
-                                log(`    ✗ Batch failed (HTTP ${response.status}): ${errorText.substring(0, 200)}`, 'error');
-                                itemsFailed += batch.length;
+                                log(`  ✗ Failed: ${item.displayName || item.name} (${response.status})`, 'error');
+                                try {
+                                    const errorJson = JSON.parse(errorText);
+                                    if (errorJson.message) {
+                                        log(`    Reason: ${errorJson.message}`, 'error');
+                                    }
+                                } catch (e) {}
                             }
                         } catch (error) {
-                            log(`    ✗ Batch error: ${error.message}`, 'error');
-                            itemsFailed += batch.length;
-                        }
-                        
-                        // Small delay between batches
-                        if (i + batchSize < items.length) {
-                            await new Promise(resolve => setTimeout(resolve, 500));
+                            itemsFailed++;
+                            log(`  ✗ Error deleting ${item.displayName || item.name}: ${error.message}`, 'error');
                         }
                     }
                     
@@ -1422,8 +1368,7 @@
                     log(`\nCommon reasons for failure:`, 'info');
                     log(`  • Item is referenced by other metadata`, 'info');
                     log(`  • Insufficient permissions`, 'info');
-                    log(`  • Item doesn't exist or already deleted`, 'info');
-                    log(`  • Delete order matters (delete dependent items first)`, 'info');
+                    log(`  • Item doesn't exist`, 'info');
                 }
 
                 const successMsg = itemsFailed > 0 
@@ -1969,8 +1914,30 @@
                     state.isLoggedIn = true;
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
-                    showNotification(`✅ Connected successfully as ${userData.displayName || userData.name || username}!`, 'success');
-                    console.log('Connected user:', userData);
+                    
+                    const isSuperuser = userData.authorities && userData.authorities.includes('ALL');
+                    const canImport = userData.authorities && userData.authorities.includes('F_METADATA_IMPORT');
+                    const canExport = userData.authorities && userData.authorities.includes('F_METADATA_EXPORT');
+                    
+                    let accessMessage = `✅ Connected as ${userData.displayName || userData.username}!`;
+                    if (isSuperuser) {
+                        accessMessage += '\n🔑 Superuser access (full permissions)';
+                    } else {
+                        accessMessage += '\n👤 Regular user';
+                        if (canImport) accessMessage += ' • Can import metadata ✅';
+                        if (canExport) accessMessage += ' • Can export metadata ✅';
+                        if (!canImport || !canExport) {
+                            accessMessage += '\n⚠️ Limited permissions - some operations may fail';
+                        }
+                    }
+                    
+                    showNotification(accessMessage, 'success');
+                    console.log('User details:', {
+                        username: userData.username,
+                        name: userData.displayName,
+                        isSuperuser: isSuperuser,
+                        authorities: userData.authorities
+                    });
                 } else if (response.status === 401) {
                     showNotification('❌ Invalid username or password', 'error');
                 } else if (response.status === 403) {
