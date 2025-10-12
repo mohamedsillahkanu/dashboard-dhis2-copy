@@ -1004,19 +1004,21 @@
                         </div>
                     </div>
                     <div class="help-text" style="margin-bottom: 15px; padding: 10px; background: rgba(124, 58, 237, 0.1); border-radius: 6px; border-left: 3px solid #7c3aed;">
-                        💡 <strong>Tip:</strong> Enable this to copy actual data values along with metadata. This ensures dashboards display properly, indicators calculate correctly, and your target instance has complete data for the selected period. All related data elements and org units will be automatically included.
+                        💡 <strong>Tip:</strong> Enable this to copy actual data values along with metadata. For dashboards/indicators, pre-calculated values are copied. For data elements/datasets, specify a time period. All related dependencies will be automatically included.
                     </div>
                     <div id="dataOptions" style="display: none;">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Start Period <span class="required">*</span></label>
-                                <input type="text" class="form-input" id="startPeriod" placeholder="e.g., 2024-01 or 202401">
-                                <div class="help-text">Format: YYYY-MM for monthly, YYYYQQ for quarterly, YYYY for yearly</div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">End Period <span class="required">*</span></label>
-                                <input type="text" class="form-input" id="endPeriod" placeholder="e.g., 2024-12 or 202412">
-                                <div class="help-text">Format: Same as start period</div>
+                        <div id="timePeriodSection">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Start Period</label>
+                                    <input type="text" class="form-input" id="startPeriod" placeholder="e.g., 2024-01 or 202401">
+                                    <div class="help-text">Leave empty to copy all available data. Format: YYYY-MM, YYYYQQ, or YYYY</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">End Period</label>
+                                    <input type="text" class="form-input" id="endPeriod" placeholder="e.g., 2024-12 or 202412">
+                                    <div class="help-text">Leave empty to copy all available data</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1260,14 +1262,17 @@
             }
 
             const includeData = document.getElementById('includeDataCheckbox').checked;
-            if (includeData) {
-                const startPeriod = document.getElementById('startPeriod').value.trim();
-                const endPeriod = document.getElementById('endPeriod').value.trim();
-                if (!startPeriod || !endPeriod) {
-                    showNotification('Please specify start and end periods for data', 'error');
-                    return;
-                }
-            }
+            
+            // Check if we need time period (only for data elements and datasets, not for dashboards/indicators)
+            const needsTimePeriod = includeData && (
+                (selectedItems['dataElements'] && selectedItems['dataElements'].length > 0) ||
+                (selectedItems['dataSets'] && selectedItems['dataSets'].length > 0)
+            );
+            
+            const hasDashboardsOrIndicators = includeData && (
+                (selectedItems['dashboards'] && selectedItems['dashboards'].length > 0) ||
+                (selectedItems['indicators'] && selectedItems['indicators'].length > 0)
+            );
 
             const copyBtn = document.getElementById('copyMetadataBtn');
             copyBtn.disabled = true;
@@ -1516,13 +1521,24 @@
                     const startPeriod = document.getElementById('startPeriod').value.trim();
                     const endPeriod = document.getElementById('endPeriod').value.trim();
                     
-                    log(`  Period: ${startPeriod} to ${endPeriod}`, 'info');
+                    // For dashboards and indicators, use indicator values (pre-calculated)
+                    const useDashboardIndicatorData = (selectedItems['dashboards'] && selectedItems['dashboards'].length > 0) || 
+                                                      (selectedItems['indicators'] && selectedItems['indicators'].length > 0);
+                    
+                    if (useDashboardIndicatorData) {
+                        log(`  Mode: Copying pre-calculated indicator/dashboard data (no time period needed)`, 'info');
+                    } else if (startPeriod && endPeriod) {
+                        log(`  Period: ${startPeriod} to ${endPeriod}`, 'info');
+                    } else {
+                        log(`  Period: All available data`, 'info');
+                    }
                     
                     // Collect all data elements from various sources
                     const allDataElementIds = new Set(selectedDataElementIds);
                     const allOrgUnitIds = new Set(selectedOrgUnitIds);
+                    const indicatorValuesToFetch = [];
                     
-                    // Extract data elements and org units from dashboards
+                    // For dashboards - fetch indicator values directly
                     if (selectedItems['dashboards'] && selectedItems['dashboards'].length > 0) {
                         log(`\n  Analyzing ${selectedItems['dashboards'].length} dashboards for dependencies...`, 'info');
                         for (const dashboard of selectedItems['dashboards']) {
@@ -1533,14 +1549,14 @@
                                     const dashData = await dashResponse.json();
                                     if (dashData.dashboardItems) {
                                         dashData.dashboardItems.forEach(item => {
-                                            // Extract data elements
+                                            // Extract data elements for raw data
                                             if (item.visualization && item.visualization.dataDimensionItems) {
                                                 item.visualization.dataDimensionItems.forEach(dimItem => {
                                                     if (dimItem.dataElement && dimItem.dataElement.id) {
                                                         allDataElementIds.add(dimItem.dataElement.id);
                                                     }
                                                     if (dimItem.indicator && dimItem.indicator.id) {
-                                                        relatedIndicators.add(dimItem.indicator.id);
+                                                        indicatorValuesToFetch.push(dimItem.indicator.id);
                                                     }
                                                 });
                                             }
@@ -1557,40 +1573,16 @@
                                 log(`    ⚠️ Could not analyze dashboard: ${dashboard.displayName || dashboard.name}`, 'error');
                             }
                         }
-                        log(`    ✓ Found ${allDataElementIds.size} data elements and ${allOrgUnitIds.size} org units from dashboards`, 'success');
+                        log(`    ✓ Found ${allDataElementIds.size} data elements, ${indicatorValuesToFetch.length} indicators, ${allOrgUnitIds.size} org units`, 'success');
                     }
                     
-                    // Extract data elements from indicators
+                    // For indicators - add them to fetch list
                     if (selectedItems['indicators'] && selectedItems['indicators'].length > 0) {
-                        log(`\n  Analyzing ${selectedItems['indicators'].length} indicators for dependencies...`, 'info');
-                        for (const indicator of selectedItems['indicators']) {
-                            try {
-                                const indUrl = `${state.config.instanceUrl}/api/indicators/${indicator.id}.json?fields=:owner,numerator,denominator`;
-                                const indResponse = await fetchWithAuth(indUrl);
-                                if (indResponse.ok) {
-                                    const indData = await indResponse.json();
-                                    // Extract data element IDs from formulas (format: #{dataElementId.categoryOptionComboId})
-                                    const numeratorMatches = (indData.numerator || '').match(/#{([^.}]+)/g);
-                                    const denominatorMatches = (indData.denominator || '').match(/#{([^.}]+)/g);
-                                    
-                                    if (numeratorMatches) {
-                                        numeratorMatches.forEach(match => {
-                                            const deId = match.replace('#{', '');
-                                            allDataElementIds.add(deId);
-                                        });
-                                    }
-                                    if (denominatorMatches) {
-                                        denominatorMatches.forEach(match => {
-                                            const deId = match.replace('#{', '');
-                                            allDataElementIds.add(deId);
-                                        });
-                                    }
-                                }
-                            } catch (err) {
-                                log(`    ⚠️ Could not analyze indicator: ${indicator.displayName || indicator.name}`, 'error');
-                            }
-                        }
-                        log(`    ✓ Found ${allDataElementIds.size} total data elements including indicators`, 'success');
+                        log(`\n  Analyzing ${selectedItems['indicators'].length} indicators...`, 'info');
+                        selectedItems['indicators'].forEach(indicator => {
+                            indicatorValuesToFetch.push(indicator.id);
+                        });
+                        log(`    ✓ Added ${selectedItems['indicators'].length} indicators to fetch`, 'success');
                     }
                     
                     // Extract data elements from validation rules
@@ -1602,7 +1594,6 @@
                                 const ruleResponse = await fetchWithAuth(ruleUrl);
                                 if (ruleResponse.ok) {
                                     const ruleData = await ruleResponse.json();
-                                    // Extract data element IDs from expressions
                                     const leftMatches = (ruleData.leftSide?.expression || '').match(/#{([^.}]+)/g);
                                     const rightMatches = (ruleData.rightSide?.expression || '').match(/#{([^.}]+)/g);
                                     
@@ -1651,79 +1642,68 @@
                     const finalDataElementIds = Array.from(allDataElementIds);
                     let finalOrgUnitIds = Array.from(allOrgUnitIds);
                     
-                    if (finalDataElementIds.length === 0) {
-                        log(`\n  No specific data elements found, fetching all data elements...`, 'info');
-                        const allDeUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id&paging=false`;
-                        const allDeResponse = await fetchWithAuth(allDeUrl);
-                        if (allDeResponse.ok) {
-                            const allDeData = await allDeResponse.json();
-                            finalDataElementIds.push(...allDeData.dataElements.map(de => de.id));
-                            log(`  ✓ Found ${finalDataElementIds.length} data elements in source instance`, 'success');
-                        }
-                    } else {
-                        log(`\n  ✅ Total data elements to fetch: ${finalDataElementIds.length}`, 'success');
-                    }
-                    
-                    if (finalOrgUnitIds.length === 0) {
-                        log(`  No specific org units found, fetching all org units...`, 'info');
-                        const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id&paging=false`;
-                        const ouResponse = await fetchWithAuth(ouUrl);
-                        if (ouResponse.ok) {
-                            const ouData = await ouResponse.json();
-                            finalOrgUnitIds = ouData.organisationUnits.map(ou => ou.id);
-                            log(`  ✓ Found ${finalOrgUnitIds.length} org units in source instance`, 'success');
-                        }
-                    } else {
-                        log(`  ✅ Total org units to fetch from: ${finalOrgUnitIds.length}`, 'success');
-                    }
-                    
-                    if (finalDataElementIds.length === 0) {
-                        log(`\n  ⚠️ No data elements found in source instance`, 'error');
-                    } else if (finalOrgUnitIds.length === 0) {
-                        log(`\n  ⚠️ No organisation units available for data fetch`, 'error');
-                    } else {
-                        log(`\n  📊 Fetching data for ${finalDataElementIds.length} data elements across ${finalOrgUnitIds.length} org units...`, 'info');
-                        const dataValues = await fetchDataValues(finalDataElementIds, finalOrgUnitIds, startPeriod, endPeriod);
-                        
-                        if (dataValues.length > 0) {
-                            log(`\n✅ Total data values fetched: ${dataValues.length}`, 'success');
-                            setProgress(85);
-                            
-                            log(`🚀 Importing ${dataValues.length} data values to target...`, 'info');
-                            const dataUrl = targetUrl + '/api/dataValueSets';
-                            const dataPayload = JSON.stringify({ dataValues: dataValues });
-                            
-                            const dataResponse = await makeProxyRequest(dataUrl, {
-                                method: 'POST',
-                                headers: { 'Authorization': targetAuthHeader, 'Content-Type': 'application/json' },
-                                body: dataPayload
-                            });
-                            
-                            setProgress(95);
-                            
-                            if (dataResponse.ok) {
-                                const dataResult = await dataResponse.json();
-                                console.log('DHIS2 Data Response:', dataResult);
-                                
-                                const dataImportSummary = dataResult.response || dataResult;
-                                const dataImported = dataImportSummary.importCount?.imported || 0;
-                                const dataUpdated = dataImportSummary.importCount?.updated || 0;
-                                const dataIgnored = dataImportSummary.importCount?.ignored || 0;
-                                
-                                log(`\n📊 Data Import Statistics:`, 'success');
-                                log(`  Imported: ${dataImported}`, 'success');
-                                log(`  Updated: ${dataUpdated}`, 'success');
-                                log(`  Ignored: ${dataIgnored}`, 'info');
-                                
-                                if (dataImported > 0 || dataUpdated > 0) {
-                                    log(`\n✅ Data values successfully imported!`, 'success');
-                                }
-                            } else {
-                                log(`⚠️ Data import failed (Status ${dataResponse.status})`, 'error');
+                    // Only fetch raw data values if we have data elements (not just indicators)
+                    if (finalDataElementIds.length > 0) {
+                        if (finalOrgUnitIds.length === 0) {
+                            log(`\n  No specific org units found, fetching all org units...`, 'info');
+                            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id&paging=false`;
+                            const ouResponse = await fetchWithAuth(ouUrl);
+                            if (ouResponse.ok) {
+                                const ouData = await ouResponse.json();
+                                finalOrgUnitIds = ouData.organisationUnits.map(ou => ou.id);
+                                log(`  ✓ Found ${finalOrgUnitIds.length} org units in source instance`, 'success');
                             }
                         } else {
-                            log(`\n⚠️ No data values found for the specified period`, 'info');
+                            log(`\n  ✅ Total data elements: ${finalDataElementIds.length}`, 'success');
+                            log(`  ✅ Total org units: ${finalOrgUnitIds.length}`, 'success');
                         }
+                        
+                        if (finalOrgUnitIds.length > 0) {
+                            log(`\n  📊 Fetching raw data values...`, 'info');
+                            const dataValues = await fetchDataValues(finalDataElementIds, finalOrgUnitIds, startPeriod || '', endPeriod || '');
+                            
+                            if (dataValues.length > 0) {
+                                log(`\n✅ Total raw data values fetched: ${dataValues.length}`, 'success');
+                                setProgress(85);
+                                
+                                log(`🚀 Importing ${dataValues.length} data values to target...`, 'info');
+                                const dataUrl = targetUrl + '/api/dataValueSets';
+                                const dataPayload = JSON.stringify({ dataValues: dataValues });
+                                
+                                const dataResponse = await makeProxyRequest(dataUrl, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': targetAuthHeader, 'Content-Type': 'application/json' },
+                                    body: dataPayload
+                                });
+                                
+                                setProgress(92);
+                                
+                                if (dataResponse.ok) {
+                                    const dataResult = await dataResponse.json();
+                                    console.log('DHIS2 Data Response:', dataResult);
+                                    
+                                    const dataImportSummary = dataResult.response || dataResult;
+                                    const dataImported = dataImportSummary.importCount?.imported || 0;
+                                    const dataUpdated = dataImportSummary.importCount?.updated || 0;
+                                    const dataIgnored = dataImportSummary.importCount?.ignored || 0;
+                                    
+                                    log(`\n📊 Raw Data Import Statistics:`, 'success');
+                                    log(`  Imported: ${dataImported}`, 'success');
+                                    log(`  Updated: ${dataUpdated}`, 'success');
+                                    log(`  Ignored: ${dataIgnored}`, 'info');
+                                } else {
+                                    log(`⚠️ Data import failed (Status ${dataResponse.status})`, 'error');
+                                }
+                            } else {
+                                log(`\n⚠️ No raw data values found for the specified criteria`, 'info');
+                            }
+                        }
+                    }
+                    
+                    // Note: Indicator values are already calculated in DHIS2, they don't need separate import
+                    // They will work automatically once the underlying data elements are imported
+                    if (indicatorValuesToFetch.length > 0) {
+                        log(`\n📈 Note: ${indicatorValuesToFetch.length} indicators detected - they will auto-calculate from imported data`, 'info');
                     }
                 }
 
