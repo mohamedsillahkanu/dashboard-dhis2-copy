@@ -1,4 +1,4 @@
-<!DOCTYPE html>          
+<!DOCTYPE html>   
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -394,7 +394,6 @@
             margin-top: 5px;
         }
 
-        /* TWO PANEL LAYOUT */
         .two-panel-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -825,23 +824,26 @@
 
     <script>
         // ============================================
-        // COMMON UTILITIES
+        // STATE MANAGEMENT - FIXED
         // ============================================
-        const DHIS2State = {
-            config: null
+        const state = {
+            config: null,
+            isLoggedIn: false
         };
 
         function getConfig() {
-            return DHIS2State.config;
+            return state.config;
         }
 
+        // ============================================
+        // FETCH WITH AUTH - FIXED
+        // ============================================
         async function fetchWithAuth(url, options = {}) {
-            const config = getConfig();
-            if (!config) {
+            if (!state.config) {
                 throw new Error('Not authenticated');
             }
 
-            const apiUrl = config.useCorsProxy 
+            const apiUrl = state.config.useCorsProxy 
                 ? `https://corsproxy.io/?${encodeURIComponent(url)}`
                 : url;
             
@@ -849,7 +851,7 @@
                 ...options,
                 headers: {
                     ...options.headers,
-                    'Authorization': 'Basic ' + btoa(`${config.username}:${config.password}`),
+                    'Authorization': 'Basic ' + btoa(`${state.config.username}:${state.config.password}`),
                     'Content-Type': 'application/json'
                 }
             });
@@ -996,12 +998,9 @@
                 </div>
 
                 <div class="two-panel-container">
-                    <!-- LEFT PANEL: Available Items -->
                     <div class="panel">
                         <div class="panel-header">
-                            <div class="panel-title">
-                                📋 Available Items
-                            </div>
+                            <div class="panel-title">📋 Available Items</div>
                             <div class="panel-count" id="availableCount">0 items</div>
                         </div>
                         
@@ -1020,12 +1019,9 @@
                         </div>
                     </div>
 
-                    <!-- RIGHT PANEL: Selected Items -->
                     <div class="panel">
                         <div class="panel-header">
-                            <div class="panel-title">
-                                ✅ Selected to Copy
-                            </div>
+                            <div class="panel-title">✅ Selected to Copy</div>
                             <div class="panel-count" id="selectedCount">0 items</div>
                         </div>
                         
@@ -1092,7 +1088,6 @@
         }
 
         function setupTwoPanelListeners() {
-            // Metadata type tabs
             document.querySelectorAll('.metadata-type-tab').forEach(tab => {
                 tab.addEventListener('click', function() {
                     const typeKey = this.dataset.type;
@@ -1100,16 +1095,10 @@
                 });
             });
 
-            // Load items button
             document.getElementById('loadItemsBtn').addEventListener('click', loadCurrentTypeItems);
-
-            // Add all button
             document.getElementById('addAllBtn').addEventListener('click', addAllAvailableItems);
-
-            // Clear all button
             document.getElementById('clearAllBtn').addEventListener('click', clearAllSelectedItems);
 
-            // Search boxes
             document.getElementById('searchAvailable').addEventListener('input', function(e) {
                 searchTerm = e.target.value.toLowerCase();
                 renderAvailableItems();
@@ -1120,7 +1109,6 @@
                 renderSelectedItems(searchTerm);
             });
 
-            // Copy button
             document.getElementById('copyMetadataBtn').addEventListener('click', handleCopyMetadata);
         }
 
@@ -1128,24 +1116,18 @@
             currentMetadataType = typeKey;
             const type = METADATA_TYPES[typeKey];
 
-            // Update active tab
             document.querySelectorAll('.metadata-type-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             document.querySelector(`[data-type="${typeKey}"]`).classList.add('active');
 
-            // Clear available items for this type
             availableItems[typeKey] = null;
-            
-            // Enable load button
             document.getElementById('loadItemsBtn').disabled = false;
             document.getElementById('addAllBtn').disabled = true;
 
-            // Clear and reset panels
             renderAvailableItems();
             renderSelectedItems();
 
-            // Show message for copy-all types
             if (type.copyAll) {
                 showNotification(`${type.label} will be copied automatically (all items)`, 'info');
             }
@@ -1155,7 +1137,6 @@
             if (!currentMetadataType) return;
 
             const type = METADATA_TYPES[currentMetadataType];
-            const config = getConfig();
 
             try {
                 document.getElementById('loadItemsBtn').disabled = true;
@@ -1163,7 +1144,7 @@
 
                 showNotification(`Loading ${type.label}...`, 'info');
 
-                const url = `${config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fields}&paging=false`;
+                const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fields}&paging=false`;
                 const response = await fetchWithAuth(url);
 
                 if (!response.ok) {
@@ -1175,7 +1156,6 @@
 
                 availableItems[currentMetadataType] = items;
 
-                // Initialize selected items array if not exists
                 if (!selectedItems[currentMetadataType]) {
                     selectedItems[currentMetadataType] = [];
                 }
@@ -1211,7 +1191,6 @@
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
             
-            // Filter out already selected items and apply search
             const filteredItems = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
                 const matchesSearch = !searchTerm || 
@@ -1257,7 +1236,6 @@
 
             const items = selectedItems[currentMetadataType];
             
-            // Apply search filter
             const filteredItems = search ? 
                 items.filter(item => (item.displayName || item.name || '').toLowerCase().includes(search.toLowerCase())) :
                 items;
@@ -1304,7 +1282,6 @@
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
             
-            // Filter items applying search
             const itemsToAdd = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
                 const matchesSearch = !searchTerm || 
@@ -1336,7 +1313,6 @@
         }
 
         async function handleCopyMetadata() {
-            // Count total selected items across all types
             let totalSelected = 0;
             for (const typeKey in selectedItems) {
                 if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) {
@@ -1344,7 +1320,6 @@
                 }
             }
 
-            // Check for copy-all types
             const copyAllTypes = Object.keys(METADATA_TYPES).filter(key => METADATA_TYPES[key].copyAll);
             const hasCopyAllSelected = copyAllTypes.some(key => 
                 selectedItems[key] !== undefined && selectedItems[key] !== null
@@ -1364,7 +1339,6 @@
             setProgress(0);
 
             try {
-                const config = getConfig();
                 const targetUrl = document.getElementById('targetUrl').value.trim().replace(/\/$/, '');
                 const targetUsername = document.getElementById('targetUsername').value.trim();
                 const targetPassword = document.getElementById('targetPassword').value.trim();
@@ -1376,7 +1350,6 @@
 
                 const metadata = {};
 
-                // Process selected items for each type
                 for (const typeKey in selectedItems) {
                     if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
 
@@ -1385,9 +1358,8 @@
                     log(`📦 Processing ${type.label}: ${itemCount} items`, 'info');
 
                     if (type.copyAll) {
-                        // For copy-all types, fetch everything
                         log(`  Fetching all ${type.label}...`, 'info');
-                        const url = `${config.instanceUrl}/api/${type.endpoint}.json?fields=:all&paging=false`;
+                        const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=:all&paging=false`;
                         const response = await fetchWithAuth(url);
                         
                         if (response.ok) {
@@ -1397,13 +1369,12 @@
                             log(`  ✓ Added ${items.length} ${type.label}`, 'success');
                         }
                     } else {
-                        // For selected items, fetch each one individually to ensure we get them
                         const items = [];
                         log(`  Fetching ${itemCount} selected items individually...`, 'info');
                         
                         for (const selectedItem of selectedItems[typeKey]) {
                             try {
-                                const url = `${config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all`;
+                                const url = `${state.config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all`;
                                 const response = await fetchWithAuth(url);
                                 
                                 if (response.ok) {
@@ -1454,7 +1425,6 @@
                 if (!importResponse.ok) {
                     log(`❌ Import failed (Status ${importResponse.status})`, 'error');
                     
-                    // Log detailed error information
                     if (result.message) {
                         log(`Error: ${result.message}`, 'error');
                     }
@@ -1517,7 +1487,7 @@
         }
 
         // ============================================
-        // LOGIN & MAIN APP
+        // LOGIN & MAIN APP - FIXED
         // ============================================
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1525,37 +1495,66 @@
             const instanceUrl = document.getElementById('instanceUrl').value.trim().replace(/\/$/, '');
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
+            const useCorsProxy = true;
+
+            // Validate URL format
+            if (!instanceUrl.startsWith('http://') && !instanceUrl.startsWith('https://')) {
+                showNotification('URL must start with http:// or https://', 'error');
+                return;
+            }
+
+            const submitBtn = e.target.querySelector('.btn-primary');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Connecting...';
 
             const config = {
                 instanceUrl,
                 username,
                 password,
-                useCorsProxy: true
+                useCorsProxy
             };
 
             try {
-                const testUrl = `https://corsproxy.io/?${encodeURIComponent(instanceUrl + '/api/me')}`;
+                const testUrl = useCorsProxy 
+                    ? `https://corsproxy.io/?${encodeURIComponent(instanceUrl + '/api/me')}`
+                    : `${instanceUrl}/api/me`;
+
+                console.log('Attempting to connect to:', instanceUrl);
+                
                 const response = await fetch(testUrl, {
                     headers: {
                         'Authorization': 'Basic ' + btoa(`${username}:${password}`)
                     }
                 });
 
+                console.log('Response status:', response.status);
+
                 if (response.ok) {
-                    DHIS2State.config = config;
+                    const userData = await response.json();
+                    console.log('Logged in as:', userData.displayName || userData.username);
+                    
+                    state.config = config;
+                    state.isLoggedIn = true;
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
                     showNotification('Connected successfully!', 'success');
                 } else {
-                    showNotification('Authentication failed. Check your credentials.', 'error');
+                    const errorText = await response.text();
+                    console.error('Auth failed:', response.status, errorText);
+                    showNotification(`Authentication failed (${response.status}). Check credentials.`, 'error');
                 }
             } catch (error) {
-                showNotification('Connection failed. Check URL and try again.', 'error');
+                console.error('Connection error:', error);
+                showNotification(`Connection failed: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Connect to DHIS2';
             }
         });
 
         document.getElementById('logoutBtn').addEventListener('click', () => {
-            DHIS2State.config = null;
+            state.config = null;
+            state.isLoggedIn = false;
             document.getElementById('mainContent').classList.remove('show');
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('loginForm').reset();
