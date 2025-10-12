@@ -1370,20 +1370,48 @@
                     if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
 
                     const type = METADATA_TYPES[typeKey];
-                    log(`📦 Processing ${type.label}: ${selectedItems[typeKey].length} items`, 'info');
+                    const itemCount = selectedItems[typeKey].length;
+                    log(`📦 Processing ${type.label}: ${itemCount} items`, 'info');
 
-                    // Fetch full details for selected items
-                    const ids = selectedItems[typeKey].map(item => item.id);
-                    const filterParams = ids.map(id => `filter=id:eq:${id}`).join('&');
-                    const url = `${config.instanceUrl}/api/${type.endpoint}.json?${filterParams}&fields=:all&paging=false`;
-                    
-                    const response = await fetchWithAuth(url);
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        const items = data[type.endpoint] || [];
-                        metadata[type.endpoint] = items;
-                        log(`  ✓ Added ${items.length} ${type.label}`, 'success');
+                    if (type.copyAll) {
+                        // For copy-all types, fetch everything
+                        log(`  Fetching all ${type.label}...`, 'info');
+                        const url = `${config.instanceUrl}/api/${type.endpoint}.json?fields=:all&paging=false`;
+                        const response = await fetchWithAuth(url);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            const items = data[type.endpoint] || [];
+                            metadata[type.endpoint] = items;
+                            log(`  ✓ Added ${items.length} ${type.label}`, 'success');
+                        }
+                    } else {
+                        // For selected items, fetch each one individually to ensure we get them
+                        const items = [];
+                        log(`  Fetching ${itemCount} selected items individually...`, 'info');
+                        
+                        for (const selectedItem of selectedItems[typeKey]) {
+                            try {
+                                const url = `${config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all`;
+                                const response = await fetchWithAuth(url);
+                                
+                                if (response.ok) {
+                                    const item = await response.json();
+                                    items.push(item);
+                                } else {
+                                    log(`  ⚠️ Failed to fetch item: ${selectedItem.displayName || selectedItem.name}`, 'error');
+                                }
+                            } catch (err) {
+                                log(`  ⚠️ Error fetching item: ${selectedItem.displayName || selectedItem.name}`, 'error');
+                            }
+                        }
+                        
+                        if (items.length > 0) {
+                            metadata[type.endpoint] = items;
+                            log(`  ✓ Added ${items.length} ${type.label}`, 'success');
+                        } else {
+                            log(`  ❌ No items fetched for ${type.label}`, 'error');
+                        }
                     }
                 }
 
