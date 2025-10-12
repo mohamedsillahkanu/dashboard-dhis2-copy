@@ -1716,8 +1716,16 @@
 
                 const result = await importResponse.json();
                 
-                // Log the full response for debugging
-                console.log('Full import response:', result);
+                // Log full response to browser console (F12)
+                console.log('═══════════════════════════════════════');
+                console.log('DHIS2 IMPORT RESPONSE:');
+                console.log('═══════════════════════════════════════');
+                console.log('Full Response Object:', result);
+                console.log('Status:', result.status);
+                console.log('Stats:', result.stats);
+                console.log('TypeReports:', result.typeReports);
+                console.log('═══════════════════════════════════════');
+                
                 log('📄 Raw response received from target DHIS2', 'info');
                 log(`Response status code: ${importResponse.status}`, 'info');
                 log(`Response OK: ${importResponse.ok}`, 'info');
@@ -1848,9 +1856,23 @@
                         log(`📊 All ${itemsIgnored} items already exist in target (up to date)`, 'success');
                         showNotification(`✅ Copy successful! All ${itemsIgnored} items already exist`, 'success');
                     } else {
+                        // Truly nothing was processed
                         log(`❌ Import completed but no items were processed`, 'error');
-                        log(`Status: ${result.status}`, 'error');
-                        log(`Total in stats: ${totalProcessed}`, 'error');
+                        log(`DHIS2 Status: ${result.status}`, 'error');
+                        log(`Stats received:`, 'error');
+                        log(`  Created: ${itemsCreated}`, 'error');
+                        log(`  Updated: ${itemsUpdated}`, 'error');
+                        log(`  Ignored: ${itemsIgnored}`, 'error');
+                        log(`  Deleted: ${itemsDeleted}`, 'error');
+                        
+                        // Check if there are typeReports with more info
+                        if (result.typeReports && result.typeReports.length > 0) {
+                            log(`\nTypeReports found - checking details:`, 'error');
+                            result.typeReports.forEach(report => {
+                                log(`  ${report.klass}: created=${report.stats?.created || 0}, updated=${report.stats?.updated || 0}, ignored=${report.stats?.ignored || 0}`, 'error');
+                            });
+                        }
+                        
                         showNotification('Import completed but nothing was changed', 'error');
                     }
                 }
