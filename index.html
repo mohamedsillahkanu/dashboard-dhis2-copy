@@ -1,4 +1,4 @@
-<!DOCTYPE html>       
+<!DOCTYPE html>   
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -885,18 +885,31 @@
                 throw new Error('Not authenticated');
             }
 
-            const apiUrl = state.config.useCorsProxy 
-                ? getProxyUrl(url)
-                : url;
+            const authHeader = 'Basic ' + btoa(`${state.config.username}:${state.config.password}`);
             
-            return fetch(apiUrl, {
-                ...options,
-                headers: {
-                    ...options.headers,
-                    'Authorization': 'Basic ' + btoa(`${state.config.username}:${state.config.password}`),
-                    'Content-Type': 'application/json'
-                }
-            });
+            if (state.config.useCorsProxy) {
+                // For Google Apps Script proxy, we need to pass the full URL with auth in headers
+                const proxyUrl = getProxyUrl(url);
+                
+                return fetch(proxyUrl, {
+                    ...options,
+                    headers: {
+                        ...options.headers,
+                        'Authorization': authHeader,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            } else {
+                // Direct connection
+                return fetch(url, {
+                    ...options,
+                    headers: {
+                        ...options.headers,
+                        'Authorization': authHeader,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
         }
 
         async function fetchWithRetry(url, options = {}, maxRetries = 2) {
