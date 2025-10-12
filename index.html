@@ -1,4 +1,4 @@
-<!DOCTYPE html>      
+<!DOCTYPE html>   
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -394,6 +394,7 @@
             margin-top: 5px;
         }
 
+        /* TWO PANEL LAYOUT */
         .two-panel-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -474,6 +475,12 @@
             border-color: #58a6ff;
             background: rgba(88, 166, 255, 0.15);
             color: #58a6ff;
+        }
+
+        .metadata-type-tab.copy-all {
+            border-color: #2ea043;
+            background: rgba(46, 160, 67, 0.1);
+            color: #2ea043;
         }
 
         .search-box {
@@ -817,6 +824,9 @@
     <div class="notification" id="notification"></div>
 
     <script>
+        // ============================================
+        // COMMON UTILITIES
+        // ============================================
         const DHIS2State = {
             config: null
         };
@@ -894,6 +904,9 @@
             document.getElementById('modal').classList.remove('show');
         }
 
+        // ============================================
+        // TWO PANEL SELECTION SYSTEM
+        // ============================================
         let availableItems = {};
         let selectedItems = {};
         let currentMetadataType = null;
@@ -905,8 +918,7 @@
                 icon: '🏢',
                 endpoint: 'organisationUnits',
                 fields: 'id,displayName,name,level,parent',
-                copyAll: true,
-                showLevels: true
+                copyAll: true
             },
             dataElements: {
                 label: 'Data Elements',
@@ -975,17 +987,21 @@
                     <div class="metadata-type-tabs" id="metadataTypeTabs">
                         ${Object.keys(METADATA_TYPES).map(key => {
                             const type = METADATA_TYPES[key];
-                            return `<div class="metadata-type-tab" data-type="${key}">
+                            return `<div class="metadata-type-tab ${type.copyAll ? 'copy-all' : ''}" data-type="${key}">
                                 ${type.icon} ${type.label}
+                                ${type.copyAll ? '<span style="font-size: 10px;">(Auto)</span>' : ''}
                             </div>`;
                         }).join('')}
                     </div>
                 </div>
 
                 <div class="two-panel-container">
+                    <!-- LEFT PANEL: Available Items -->
                     <div class="panel">
                         <div class="panel-header">
-                            <div class="panel-title">📋 Available Items</div>
+                            <div class="panel-title">
+                                📋 Available Items
+                            </div>
                             <div class="panel-count" id="availableCount">0 items</div>
                         </div>
                         
@@ -1004,9 +1020,12 @@
                         </div>
                     </div>
 
+                    <!-- RIGHT PANEL: Selected Items -->
                     <div class="panel">
                         <div class="panel-header">
-                            <div class="panel-title">✅ Selected to Copy</div>
+                            <div class="panel-title">
+                                ✅ Selected to Copy
+                            </div>
                             <div class="panel-count" id="selectedCount">0 items</div>
                         </div>
                         
@@ -1041,6 +1060,25 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label">Import Strategy</label>
+                    <select class="form-select" id="importStrategy">
+                        <option value="CREATE_AND_UPDATE" selected>Create and Update (Override existing + Add new)</option>
+                        <option value="CREATE">Create Only</option>
+                        <option value="UPDATE">Update Only</option>
+                        <option value="DELETE">Delete</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Merge Mode</label>
+                    <select class="form-select" id="mergeMode">
+                        <option value="REPLACE" selected>Replace (Override existing completely)</option>
+                        <option value="MERGE">Merge (Keep existing + add new)</option>
+                    </select>
+                    <div class="help-text">Default: Replace mode will override any existing data and add new items</div>
+                </div>
+
                 <div class="progress-section" id="progressSection">
                     <h3 style="color: #58a6ff; margin-bottom: 15px;">Progress</h3>
                     <div class="progress-bar">
@@ -1054,6 +1092,7 @@
         }
 
         function setupTwoPanelListeners() {
+            // Metadata type tabs
             document.querySelectorAll('.metadata-type-tab').forEach(tab => {
                 tab.addEventListener('click', function() {
                     const typeKey = this.dataset.type;
@@ -1061,10 +1100,16 @@
                 });
             });
 
+            // Load items button
             document.getElementById('loadItemsBtn').addEventListener('click', loadCurrentTypeItems);
+
+            // Add all button
             document.getElementById('addAllBtn').addEventListener('click', addAllAvailableItems);
+
+            // Clear all button
             document.getElementById('clearAllBtn').addEventListener('click', clearAllSelectedItems);
 
+            // Search boxes
             document.getElementById('searchAvailable').addEventListener('input', function(e) {
                 searchTerm = e.target.value.toLowerCase();
                 renderAvailableItems();
@@ -1075,6 +1120,7 @@
                 renderSelectedItems(searchTerm);
             });
 
+            // Copy button
             document.getElementById('copyMetadataBtn').addEventListener('click', handleCopyMetadata);
         }
 
@@ -1082,18 +1128,24 @@
             currentMetadataType = typeKey;
             const type = METADATA_TYPES[typeKey];
 
+            // Update active tab
             document.querySelectorAll('.metadata-type-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             document.querySelector(`[data-type="${typeKey}"]`).classList.add('active');
 
+            // Clear available items for this type
             availableItems[typeKey] = null;
+            
+            // Enable load button
             document.getElementById('loadItemsBtn').disabled = false;
             document.getElementById('addAllBtn').disabled = true;
 
+            // Clear and reset panels
             renderAvailableItems();
             renderSelectedItems();
 
+            // Show message for copy-all types
             if (type.copyAll) {
                 showNotification(`${type.label} will be copied automatically (all items)`, 'info');
             }
@@ -1119,44 +1171,19 @@
                 }
 
                 const data = await response.json();
-                let items = data[type.endpoint] || [];
+                const items = data[type.endpoint] || [];
 
-                if (currentMetadataType === 'organisationUnits' && type.showLevels) {
-                    items.sort((a, b) => (a.level || 0) - (b.level || 0));
-                    
-                    const itemsByLevel = {};
-                    items.forEach(item => {
-                        const level = item.level || 0;
-                        if (!itemsByLevel[level]) {
-                            itemsByLevel[level] = [];
-                        }
-                        itemsByLevel[level].push(item);
-                    });
-                    
-                    availableItems[currentMetadataType] = {
-                        allItems: items,
-                        byLevel: itemsByLevel,
-                        levels: Object.keys(itemsByLevel).sort((a, b) => a - b)
-                    };
-                    
-                    showNotification(`Loaded ${items.length} ${type.label} across ${Object.keys(itemsByLevel).length} levels`, 'success');
-                } else {
-                    availableItems[currentMetadataType] = items;
-                    showNotification(`Loaded ${items.length} ${type.label}`, 'success');
-                }
+                availableItems[currentMetadataType] = items;
 
+                // Initialize selected items array if not exists
                 if (!selectedItems[currentMetadataType]) {
                     selectedItems[currentMetadataType] = [];
                 }
 
                 renderAvailableItems();
                 
-                if (currentMetadataType === 'organisationUnits' && type.showLevels) {
-                    document.getElementById('addAllBtn').disabled = true;
-                    log('ℹ️ Organisation Units require all items for dependencies', 'info');
-                } else {
-                    document.getElementById('addAllBtn').disabled = false;
-                }
+                document.getElementById('addAllBtn').disabled = false;
+                showNotification(`Loaded ${items.length} ${type.label}`, 'success');
 
             } catch (error) {
                 showNotification(`Failed to load ${type.label}`, 'error');
@@ -1181,54 +1208,10 @@
                 return;
             }
 
-            const type = METADATA_TYPES[currentMetadataType];
-
-            if (currentMetadataType === 'organisationUnits' && type.showLevels) {
-                const orgData = availableItems[currentMetadataType];
-                const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
-                
-                let html = '<div style="padding: 10px; background: rgba(88, 166, 255, 0.1); border-radius: 6px; margin-bottom: 15px; border-left: 3px solid #58a6ff;">';
-                html += '<div style="color: #58a6ff; font-weight: 600; font-size: 13px; margin-bottom: 5px;">📊 Organisation Unit Levels</div>';
-                html += '<div style="color: #8b949e; font-size: 12px;">All org units must be copied together with their dependencies</div>';
-                html += '</div>';
-                
-                orgData.levels.forEach(level => {
-                    const levelItems = orgData.byLevel[level];
-                    const levelName = `Level ${level}`;
-                    
-                    html += `
-                        <div style="margin-bottom: 20px;">
-                            <div style="background: #21262d; padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #2ea043;">
-                                <div style="color: #2ea043; font-weight: 600; font-size: 14px;">${levelName}</div>
-                                <div style="color: #8b949e; font-size: 12px;">${levelItems.length} org unit${levelItems.length === 1 ? '' : 's'}</div>
-                            </div>
-                    `;
-                    
-                    levelItems.forEach(item => {
-                        const isSelected = selectedIds.includes(item.id);
-                        if (!isSelected) {
-                            html += `
-                                <div class="item-row" data-id="${item.id}" style="margin-left: 15px;">
-                                    <div class="item-name">${item.displayName || item.name}</div>
-                                    <button class="item-action-btn" onclick="addItem('${item.id}')">➡️ Add</button>
-                                </div>
-                            `;
-                        }
-                    });
-                    
-                    html += '</div>';
-                });
-                
-                container.innerHTML = html;
-                
-                const notSelectedCount = orgData.allItems.filter(item => !selectedIds.includes(item.id)).length;
-                document.getElementById('availableCount').textContent = `${notSelectedCount} items`;
-                return;
-            }
-
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
             
+            // Filter out already selected items and apply search
             const filteredItems = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
                 const matchesSearch = !searchTerm || 
@@ -1274,6 +1257,7 @@
 
             const items = selectedItems[currentMetadataType];
             
+            // Apply search filter
             const filteredItems = search ? 
                 items.filter(item => (item.displayName || item.name || '').toLowerCase().includes(search.toLowerCase())) :
                 items;
@@ -1292,15 +1276,7 @@
         function addItem(itemId) {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
 
-            const type = METADATA_TYPES[currentMetadataType];
-            let item;
-
-            if (currentMetadataType === 'organisationUnits' && type.showLevels) {
-                item = availableItems[currentMetadataType].allItems.find(i => i.id === itemId);
-            } else {
-                item = availableItems[currentMetadataType].find(i => i.id === itemId);
-            }
-
+            const item = availableItems[currentMetadataType].find(i => i.id === itemId);
             if (!item) return;
 
             if (!selectedItems[currentMetadataType]) {
@@ -1325,17 +1301,10 @@
         function addAllAvailableItems() {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
 
-            const type = METADATA_TYPES[currentMetadataType];
-            let items, selectedIds;
-
-            if (currentMetadataType === 'organisationUnits' && type.showLevels) {
-                items = availableItems[currentMetadataType].allItems;
-                selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
-            } else {
-                items = availableItems[currentMetadataType];
-                selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
-            }
+            const items = availableItems[currentMetadataType];
+            const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
             
+            // Filter items applying search
             const itemsToAdd = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
                 const matchesSearch = !searchTerm || 
@@ -1367,6 +1336,7 @@
         }
 
         async function handleCopyMetadata() {
+            // Count total selected items across all types
             let totalSelected = 0;
             for (const typeKey in selectedItems) {
                 if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) {
@@ -1374,6 +1344,7 @@
                 }
             }
 
+            // Check for copy-all types
             const copyAllTypes = Object.keys(METADATA_TYPES).filter(key => METADATA_TYPES[key].copyAll);
             const hasCopyAllSelected = copyAllTypes.some(key => 
                 selectedItems[key] !== undefined && selectedItems[key] !== null
@@ -1397,17 +1368,15 @@
                 const targetUrl = document.getElementById('targetUrl').value.trim().replace(/\/$/, '');
                 const targetUsername = document.getElementById('targetUsername').value.trim();
                 const targetPassword = document.getElementById('targetPassword').value.trim();
-                
-                const importStrategy = 'CREATE_AND_UPDATE';
-                const mergeMode = 'REPLACE';
-                const atomicMode = 'NONE';
+                const importStrategy = document.getElementById('importStrategy').value;
+                const mergeMode = document.getElementById('mergeMode').value;
 
                 log('🔄 Starting metadata copy...', 'info');
                 setProgress(10);
 
                 const metadata = {};
-                const metadataWithDependencies = {};
 
+                // Process selected items for each type
                 for (const typeKey in selectedItems) {
                     if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
 
@@ -1416,7 +1385,8 @@
                     log(`📦 Processing ${type.label}: ${itemCount} items`, 'info');
 
                     if (type.copyAll) {
-                        log(`  Fetching all ${type.label} with dependencies...`, 'info');
+                        // For copy-all types, fetch everything
+                        log(`  Fetching all ${type.label}...`, 'info');
                         const url = `${config.instanceUrl}/api/${type.endpoint}.json?fields=:all&paging=false`;
                         const response = await fetchWithAuth(url);
                         
@@ -1425,52 +1395,20 @@
                             const items = data[type.endpoint] || [];
                             metadata[type.endpoint] = items;
                             log(`  ✓ Added ${items.length} ${type.label}`, 'success');
-                            
-                            if (typeKey === 'organisationUnits') {
-                                log(`  Fetching organisation unit levels...`, 'info');
-                                const levelsUrl = `${config.instanceUrl}/api/organisationUnitLevels.json?fields=:all&paging=false`;
-                                const levelsResponse = await fetchWithAuth(levelsUrl);
-                                if (levelsResponse.ok) {
-                                    const levelsData = await levelsResponse.json();
-                                    metadataWithDependencies.organisationUnitLevels = levelsData.organisationUnitLevels || [];
-                                    log(`  ✓ Added ${metadataWithDependencies.organisationUnitLevels.length} org unit levels`, 'success');
-                                }
-                                
-                                log(`  Fetching related attributes...`, 'info');
-                                const attrUrl = `${config.instanceUrl}/api/attributes.json?fields=:all&filter=organisationUnitAttribute:eq:true&paging=false`;
-                                const attrResponse = await fetchWithAuth(attrUrl);
-                                if (attrResponse.ok) {
-                                    const attrData = await attrResponse.json();
-                                    metadataWithDependencies.attributes = attrData.attributes || [];
-                                    log(`  ✓ Added ${metadataWithDependencies.attributes.length} attributes`, 'success');
-                                }
-                            }
                         }
                     } else {
+                        // For selected items, fetch each one individually to ensure we get them
                         const items = [];
-                        log(`  Fetching ${itemCount} selected items with dependencies...`, 'info');
+                        log(`  Fetching ${itemCount} selected items individually...`, 'info');
                         
                         for (const selectedItem of selectedItems[typeKey]) {
                             try {
-                                const url = `${config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all,dataSetElements[dataElement[id,name,displayName,valueType,aggregationType,domainType,categoryCombo]]`;
+                                const url = `${config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all`;
                                 const response = await fetchWithAuth(url);
                                 
                                 if (response.ok) {
                                     const item = await response.json();
                                     items.push(item);
-                                    
-                                    if (item.dataSetElements) {
-                                        item.dataSetElements.forEach(dse => {
-                                            if (dse.dataElement) {
-                                                if (!metadataWithDependencies.dataElements) {
-                                                    metadataWithDependencies.dataElements = [];
-                                                }
-                                                if (!metadataWithDependencies.dataElements.find(de => de.id === dse.dataElement.id)) {
-                                                    metadataWithDependencies.dataElements.push(dse.dataElement);
-                                                }
-                                            }
-                                        });
-                                    }
                                 } else {
                                     log(`  ⚠️ Failed to fetch item: ${selectedItem.displayName || selectedItem.name}`, 'error');
                                 }
@@ -1487,13 +1425,6 @@
                         }
                     }
                 }
-                
-                for (const key in metadataWithDependencies) {
-                    if (metadataWithDependencies[key].length > 0) {
-                        metadata[key] = metadataWithDependencies[key];
-                        log(`  ✓ Added ${metadataWithDependencies[key].length} dependent ${key}`, 'success');
-                    }
-                }
 
                 if (Object.keys(metadata).length === 0) {
                     throw new Error('No items to copy');
@@ -1501,9 +1432,10 @@
 
                 setProgress(50);
                 log(`🚀 Importing to ${targetUrl}...`, 'info');
+                log(`Import Strategy: ${importStrategy}, Merge Mode: ${mergeMode}`, 'info');
                 setProgress(60);
 
-                const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=' + atomicMode + '&importReportMode=FULL')}`;
+                const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=NONE')}`;
 
                 log(`Sending ${Object.keys(metadata).length} metadata type(s)...`, 'info');
                 const importResponse = await fetch(importUrlWithProxy, {
@@ -1522,6 +1454,7 @@
                 if (!importResponse.ok) {
                     log(`❌ Import failed (Status ${importResponse.status})`, 'error');
                     
+                    // Log detailed error information
                     if (result.message) {
                         log(`Error: ${result.message}`, 'error');
                     }
@@ -1583,59 +1516,41 @@
             }
         }
 
+        // ============================================
+        // LOGIN & MAIN APP
+        // ============================================
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Connecting...';
 
             const instanceUrl = document.getElementById('instanceUrl').value.trim().replace(/\/$/, '');
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
-            const useCorsProxy = true;
 
             const config = {
                 instanceUrl,
                 username,
                 password,
-                useCorsProxy
+                useCorsProxy: true
             };
 
             try {
-                const testUrl = useCorsProxy 
-                    ? `https://corsproxy.io/?${encodeURIComponent(instanceUrl + '/api/me')}`
-                    : `${instanceUrl}/api/me`;
-                
-                console.log('Testing connection to:', testUrl);
-                
+                const testUrl = `https://corsproxy.io/?${encodeURIComponent(instanceUrl + '/api/me')}`;
                 const response = await fetch(testUrl, {
                     headers: {
                         'Authorization': 'Basic ' + btoa(`${username}:${password}`)
                     }
                 });
 
-                console.log('Response status:', response.status);
-
                 if (response.ok) {
-                    const userData = await response.json();
-                    console.log('Login successful, user:', userData.displayName || userData.name);
-                    
                     DHIS2State.config = config;
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
-                    showNotification(`Connected successfully as ${userData.displayName || userData.name}!`, 'success');
+                    showNotification('Connected successfully!', 'success');
                 } else {
-                    const errorText = await response.text();
-                    console.error('Authentication failed:', response.status, errorText);
                     showNotification('Authentication failed. Check your credentials.', 'error');
                 }
             } catch (error) {
-                console.error('Connection error:', error);
-                showNotification(`Connection failed: ${error.message}`, 'error');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Connect to DHIS2';
+                showNotification('Connection failed. Check URL and try again.', 'error');
             }
         });
 
