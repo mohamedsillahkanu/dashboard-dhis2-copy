@@ -1,4 +1,4 @@
-<!DOCTYPE html>     
+<!DOCTYPE html>   
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -812,10 +812,9 @@
     <div class="modal" id="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title" id="modalTitle">🔄 Universal Copy Metadata</h2>
+                <h2 class="modal-title">🔄 Universal Copy Metadata</h2>
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
-
             <div id="modalBody"></div>
         </div>
     </div>
@@ -823,101 +822,54 @@
     <div class="notification" id="notification"></div>
 
     <script>
-        // ============================================
-        // CONFIGURATION - UPDATE YOUR PROXY HERE
-        // ============================================
         const GOOGLE_APPS_SCRIPT_PROXY = 'https://script.google.com/macros/s/AKfycbyRXc68PYSmDSCYPakAS8Gc9R00kRjmsMYoDujPYMItyquXfwMAJUtRqXLiDlNWbSfDQQ/exec';
-
-        // ============================================
-        // STATE MANAGEMENT
-        // ============================================
-        const state = {
-            config: null,
-            isLoggedIn: false
-        };
-
-        // ============================================
-        // PROXY HELPER FUNCTIONS
-        // ============================================
+        
+        const state = { config: null, isLoggedIn: false };
+        
         function makeProxyRequest(targetUrl, options = {}) {
-            // Pass Authorization as a query parameter since Apps Script can't read POST headers easily
             let proxyUrl = `${GOOGLE_APPS_SCRIPT_PROXY}?url=${encodeURIComponent(targetUrl)}`;
-            
-            // Add Authorization to URL if present
             if (options.headers && options.headers.Authorization) {
                 proxyUrl += `&Authorization=${encodeURIComponent(options.headers.Authorization)}`;
             }
-            
-            // For GET requests
             if (!options.method || options.method === 'GET') {
-                return fetch(proxyUrl, {
-                    method: 'GET'
-                });
+                return fetch(proxyUrl, { method: 'GET' });
             }
-            
-            // For POST requests
             if (options.method === 'POST') {
-                return fetch(proxyUrl, {
-                    method: 'POST',
-                    body: options.body
-                });
+                return fetch(proxyUrl, { method: 'POST', body: options.body });
             }
-            
             return fetch(proxyUrl);
         }
 
         async function fetchWithAuth(url, options = {}) {
-            if (!state.config) {
-                throw new Error('Not authenticated');
-            }
-
+            if (!state.config) throw new Error('Not authenticated');
             const authHeader = 'Basic ' + btoa(`${state.config.username}:${state.config.password}`);
-            
-            const requestOptions = {
+            return makeProxyRequest(url, {
                 ...options,
-                headers: {
-                    'Authorization': authHeader,
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
-            };
-
-            return makeProxyRequest(url, requestOptions);
+                headers: { 'Authorization': authHeader, 'Content-Type': 'application/json', ...options.headers }
+            });
         }
 
-        // ============================================
-        // UI HELPER FUNCTIONS
-        // ============================================
         function showNotification(message, type) {
             const notification = document.getElementById('notification');
             if (!notification) return;
-            
             notification.textContent = message;
             notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 4000);
+            setTimeout(() => notification.classList.remove('show'), 4000);
         }
 
         function setProgress(percent) {
             const progressFill = document.getElementById('progressFill');
-            if (progressFill) {
-                progressFill.style.width = percent + '%';
-            }
+            if (progressFill) progressFill.style.width = percent + '%';
         }
 
         function showProgress() {
             const progressSection = document.getElementById('progressSection');
-            if (progressSection) {
-                progressSection.classList.add('show');
-            }
+            if (progressSection) progressSection.classList.add('show');
         }
 
         function log(message, type = 'info') {
             const container = document.getElementById('logContainer');
             if (!container) return;
-            
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
             entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
@@ -928,88 +880,27 @@
 
         function clearLogs() {
             const container = document.getElementById('logContainer');
-            if (container) {
-                container.innerHTML = '';
-            }
+            if (container) container.innerHTML = '';
         }
 
         function closeModal() {
             document.getElementById('modal').classList.remove('show');
         }
 
-        // ============================================
-        // TWO PANEL SELECTION SYSTEM
-        // ============================================
         let availableItems = {};
         let selectedItems = {};
         let currentMetadataType = null;
         let searchTerm = '';
 
         const METADATA_TYPES = {
-            organisationUnits: {
-                label: 'Organisation Units',
-                icon: '🏢',
-                endpoint: 'organisationUnits',
-                fields: 'id,displayName,name,level,parent',
-                copyAll: true,
-                fetchFields: ':owner'
-            },
-            dataElements: {
-                label: 'Data Elements',
-                icon: '📊',
-                endpoint: 'dataElements',
-                fields: 'id,displayName,name,valueType,aggregationType',
-                copyAll: false,
-                fetchFields: ':owner' // Includes categoryCombo, etc.
-            },
-            dataSets: {
-                label: 'Datasets',
-                icon: '📋',
-                endpoint: 'dataSets',
-                fields: 'id,displayName,name,periodType',
-                copyAll: false,
-                fetchFields: ':owner' // Includes dataElements, sections, etc.
-            },
-            indicators: {
-                label: 'Indicators',
-                icon: '📈',
-                endpoint: 'indicators',
-                fields: 'id,displayName,name,indicatorType',
-                copyAll: false,
-                fetchFields: ':owner' // Includes indicatorType, numerator, denominator
-            },
-            dashboards: {
-                label: 'Dashboards',
-                icon: '📱',
-                endpoint: 'dashboards',
-                fields: 'id,displayName,name',
-                copyAll: false,
-                fetchFields: ':owner' // Includes dashboardItems, charts, etc.
-            },
-            programs: {
-                label: 'Programs',
-                icon: '🎯',
-                endpoint: 'programs',
-                fields: 'id,displayName,name,programType',
-                copyAll: false,
-                fetchFields: ':owner' // Includes programStages, attributes, etc.
-            },
-            categoryOptions: {
-                label: 'Category Options',
-                icon: '🏷️',
-                endpoint: 'categoryOptions',
-                fields: 'id,displayName,name',
-                copyAll: false,
-                fetchFields: ':owner'
-            },
-            validationRules: {
-                label: 'Validation Rules',
-                icon: '✅',
-                endpoint: 'validationRules',
-                fields: 'id,displayName,name',
-                copyAll: false,
-                fetchFields: ':owner' // Includes left/right expressions
-            }
+            organisationUnits: { label: 'Organisation Units', icon: '🏢', endpoint: 'organisationUnits', fields: 'id,displayName,name,level,parent', copyAll: true, fetchFields: ':owner' },
+            dataElements: { label: 'Data Elements', icon: '📊', endpoint: 'dataElements', fields: 'id,displayName,name,valueType,aggregationType', copyAll: false, fetchFields: ':owner' },
+            dataSets: { label: 'Datasets', icon: '📋', endpoint: 'dataSets', fields: 'id,displayName,name,periodType', copyAll: false, fetchFields: ':owner' },
+            indicators: { label: 'Indicators', icon: '📈', endpoint: 'indicators', fields: 'id,displayName,name,indicatorType', copyAll: false, fetchFields: ':owner' },
+            dashboards: { label: 'Dashboards', icon: '📱', endpoint: 'dashboards', fields: 'id,displayName,name', copyAll: false, fetchFields: ':owner' },
+            programs: { label: 'Programs', icon: '🎯', endpoint: 'programs', fields: 'id,displayName,name,programType', copyAll: false, fetchFields: ':owner' },
+            categoryOptions: { label: 'Category Options', icon: '🏷️', endpoint: 'categoryOptions', fields: 'id,displayName,name', copyAll: false, fetchFields: ':owner' },
+            validationRules: { label: 'Validation Rules', icon: '✅', endpoint: 'validationRules', fields: 'id,displayName,name', copyAll: false, fetchFields: ':owner' }
         };
 
         function openCopyMetadata() {
@@ -1025,65 +916,46 @@
             return `
                 <div class="metadata-type-selector">
                     <label class="form-label">Select Metadata Type</label>
-                    <div class="metadata-type-tabs" id="metadataTypeTabs">
+                    <div class="metadata-type-tabs">
                         ${Object.keys(METADATA_TYPES).map(key => {
                             const type = METADATA_TYPES[key];
-                            return `<div class="metadata-type-tab ${type.copyAll ? 'copy-all' : ''}" data-type="${key}">
-                                ${type.icon} ${type.label}
-                                ${type.copyAll ? '<span style="font-size: 10px;">(Auto)</span>' : ''}
-                            </div>`;
+                            return `<div class="metadata-type-tab ${type.copyAll ? 'copy-all' : ''}" data-type="${key}">${type.icon} ${type.label}${type.copyAll ? ' <span style="font-size: 10px;">(Auto)</span>' : ''}</div>`;
                         }).join('')}
                     </div>
                 </div>
-
                 <div class="two-panel-container">
                     <div class="panel">
                         <div class="panel-header">
                             <div class="panel-title">📋 Available Items</div>
                             <div class="panel-count" id="availableCount">0 items</div>
                         </div>
-                        
                         <input type="text" class="search-box" id="searchAvailable" placeholder="🔍 Search available items...">
-                        
                         <div class="items-area" id="availableItemsArea">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📦</div>
-                                <div>Select a metadata type above and click "Load Items"</div>
-                            </div>
+                            <div class="empty-state"><div class="empty-state-icon">📦</div><div>Select a metadata type and click "Load Items"</div></div>
                         </div>
-                        
                         <div class="panel-actions">
                             <button class="panel-btn load" id="loadItemsBtn" disabled>📥 Load Items</button>
                             <button class="panel-btn add-all" id="addAllBtn" disabled>➡️ Add All</button>
                         </div>
                     </div>
-
                     <div class="panel">
                         <div class="panel-header">
                             <div class="panel-title">✅ Selected to Copy</div>
                             <div class="panel-count" id="selectedCount">0 items</div>
                         </div>
-                        
                         <input type="text" class="search-box" id="searchSelected" placeholder="🔍 Search selected items...">
-                        
                         <div class="items-area" id="selectedItemsArea">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">✨</div>
-                                <div>Add items from the left panel to copy them</div>
-                            </div>
+                            <div class="empty-state"><div class="empty-state-icon">✨</div><div>Add items from the left panel</div></div>
                         </div>
-                        
                         <div class="panel-actions">
                             <button class="panel-btn clear" id="clearAllBtn" disabled>✗ Clear All</button>
                         </div>
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label class="form-label">Target Instance URL <span class="required">*</span></label>
                     <input type="url" class="form-input" id="targetUrl" placeholder="https://target-instance.dhis2.org" required>
                 </div>
-                
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Target Username <span class="required">*</span></label>
@@ -1094,99 +966,57 @@
                         <input type="password" class="form-input" id="targetPassword" required>
                     </div>
                 </div>
-
-
-
                 <div class="progress-section" id="progressSection">
                     <h3 style="color: #58a6ff; margin-bottom: 15px;">Progress</h3>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-                    </div>
+                    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
                     <div class="log-container" id="logContainer"></div>
                 </div>
-
                 <button type="button" class="btn-primary" id="copyMetadataBtn">🚀 Copy Selected Metadata</button>
             `;
         }
 
         function setupTwoPanelListeners() {
             document.querySelectorAll('.metadata-type-tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const typeKey = this.dataset.type;
-                    selectMetadataType(typeKey);
-                });
+                tab.addEventListener('click', function() { selectMetadataType(this.dataset.type); });
             });
-
             document.getElementById('loadItemsBtn').addEventListener('click', loadCurrentTypeItems);
             document.getElementById('addAllBtn').addEventListener('click', addAllAvailableItems);
             document.getElementById('clearAllBtn').addEventListener('click', clearAllSelectedItems);
-
-            document.getElementById('searchAvailable').addEventListener('input', function(e) {
-                searchTerm = e.target.value.toLowerCase();
-                renderAvailableItems();
-            });
-
-            document.getElementById('searchSelected').addEventListener('input', function(e) {
-                const searchTerm = e.target.value.toLowerCase();
-                renderSelectedItems(searchTerm);
-            });
-
+            document.getElementById('searchAvailable').addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); renderAvailableItems(); });
+            document.getElementById('searchSelected').addEventListener('input', (e) => renderSelectedItems(e.target.value.toLowerCase()));
             document.getElementById('copyMetadataBtn').addEventListener('click', handleCopyMetadata);
         }
 
         function selectMetadataType(typeKey) {
             currentMetadataType = typeKey;
             const type = METADATA_TYPES[typeKey];
-
-            document.querySelectorAll('.metadata-type-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
+            document.querySelectorAll('.metadata-type-tab').forEach(tab => tab.classList.remove('active'));
             document.querySelector(`[data-type="${typeKey}"]`).classList.add('active');
-
             availableItems[typeKey] = null;
             document.getElementById('loadItemsBtn').disabled = false;
             document.getElementById('addAllBtn').disabled = true;
-
             renderAvailableItems();
             renderSelectedItems();
-
-            if (type.copyAll) {
-                showNotification(`${type.label} - use "Add All" to select all items with complete hierarchy`, 'info');
-            }
+            if (type.copyAll) showNotification(`${type.label} - use "Add All" to select all items with complete hierarchy`, 'info');
         }
 
         async function loadCurrentTypeItems() {
             if (!currentMetadataType) return;
-
             const type = METADATA_TYPES[currentMetadataType];
-
             try {
                 document.getElementById('loadItemsBtn').disabled = true;
                 document.getElementById('loadItemsBtn').textContent = '⏳ Loading...';
-
                 showNotification(`Loading ${type.label}...`, 'info');
-
                 const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fields}&paging=false`;
                 const response = await fetchWithAuth(url);
-
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch ${type.label} (Status: ${response.status})`);
-                }
-
+                if (!response.ok) throw new Error(`Failed to fetch ${type.label} (Status: ${response.status})`);
                 const data = await response.json();
                 const items = data[type.endpoint] || [];
-
                 availableItems[currentMetadataType] = items;
-
-                if (!selectedItems[currentMetadataType]) {
-                    selectedItems[currentMetadataType] = [];
-                }
-
+                if (!selectedItems[currentMetadataType]) selectedItems[currentMetadataType] = [];
                 renderAvailableItems();
-                
                 document.getElementById('addAllBtn').disabled = false;
                 showNotification(`Loaded ${items.length} ${type.label}`, 'success');
-
             } catch (error) {
                 showNotification(`Failed to load ${type.label}: ${error.message}`, 'error');
                 console.error(error);
@@ -1198,130 +1028,73 @@
 
         function renderAvailableItems() {
             const container = document.getElementById('availableItemsArea');
-            
             if (!currentMetadataType || !availableItems[currentMetadataType]) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📦</div>
-                        <div>Select a metadata type and click "Load Items"</div>
-                    </div>
-                `;
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div>Select a metadata type and click "Load Items"</div></div>';
                 document.getElementById('availableCount').textContent = '0 items';
                 return;
             }
-
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
-            
             const filteredItems = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
-                const matchesSearch = !searchTerm || 
-                    (item.displayName || item.name || '').toLowerCase().includes(searchTerm);
+                const matchesSearch = !searchTerm || (item.displayName || item.name || '').toLowerCase().includes(searchTerm);
                 return notSelected && matchesSearch;
             });
-
             if (filteredItems.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">✅</div>
-                        <div>${searchTerm ? 'No items match your search' : 'All items have been added'}</div>
-                    </div>
-                `;
+                container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><div>${searchTerm ? 'No items match your search' : 'All items have been added'}</div></div>`;
                 document.getElementById('availableCount').textContent = '0 items';
                 return;
             }
-
-            container.innerHTML = filteredItems.map(item => `
-                <div class="item-row" data-id="${item.id}">
-                    <div class="item-name">${item.displayName || item.name}</div>
-                    <button class="item-action-btn" onclick="addItem('${item.id}')">➡️ Add</button>
-                </div>
-            `).join('');
-
+            container.innerHTML = filteredItems.map(item => `<div class="item-row" data-id="${item.id}"><div class="item-name">${item.displayName || item.name}</div><button class="item-action-btn" onclick="addItem('${item.id}')">➡️ Add</button></div>`).join('');
             document.getElementById('availableCount').textContent = `${filteredItems.length} items`;
         }
 
         function renderSelectedItems(search = '') {
             const container = document.getElementById('selectedItemsArea');
-            
             if (!currentMetadataType || !selectedItems[currentMetadataType] || selectedItems[currentMetadataType].length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">✨</div>
-                        <div>Add items from the left panel</div>
-                    </div>
-                `;
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✨</div><div>Add items from the left panel</div></div>';
                 document.getElementById('selectedCount').textContent = '0 items';
                 document.getElementById('clearAllBtn').disabled = true;
                 return;
             }
-
             const items = selectedItems[currentMetadataType];
-            
-            const filteredItems = search ? 
-                items.filter(item => (item.displayName || item.name || '').toLowerCase().includes(search.toLowerCase())) :
-                items;
-
-            container.innerHTML = filteredItems.map(item => `
-                <div class="item-row" data-id="${item.id}">
-                    <div class="item-name">${item.displayName || item.name}</div>
-                    <button class="item-action-btn remove" onclick="removeItem('${item.id}')">✗ Remove</button>
-                </div>
-            `).join('');
-
+            const filteredItems = search ? items.filter(item => (item.displayName || item.name || '').toLowerCase().includes(search.toLowerCase())) : items;
+            container.innerHTML = filteredItems.map(item => `<div class="item-row" data-id="${item.id}"><div class="item-name">${item.displayName || item.name}</div><button class="item-action-btn remove" onclick="removeItem('${item.id}')">✗ Remove</button></div>`).join('');
             document.getElementById('selectedCount').textContent = `${items.length} items`;
             document.getElementById('clearAllBtn').disabled = false;
         }
 
         function addItem(itemId) {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
-
             const item = availableItems[currentMetadataType].find(i => i.id === itemId);
             if (!item) return;
-
-            if (!selectedItems[currentMetadataType]) {
-                selectedItems[currentMetadataType] = [];
-            }
-
+            if (!selectedItems[currentMetadataType]) selectedItems[currentMetadataType] = [];
             selectedItems[currentMetadataType].push(item);
-            
             renderAvailableItems();
             renderSelectedItems();
         }
 
         function removeItem(itemId) {
             if (!currentMetadataType || !selectedItems[currentMetadataType]) return;
-
             selectedItems[currentMetadataType] = selectedItems[currentMetadataType].filter(item => item.id !== itemId);
-            
             renderAvailableItems();
             renderSelectedItems();
         }
 
         function addAllAvailableItems() {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
-
             const type = METADATA_TYPES[currentMetadataType];
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
-            
             const itemsToAdd = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
-                const matchesSearch = !searchTerm || 
-                    (item.displayName || item.name || '').toLowerCase().includes(searchTerm);
+                const matchesSearch = !searchTerm || (item.displayName || item.name || '').toLowerCase().includes(searchTerm);
                 return notSelected && matchesSearch;
             });
-
-            if (!selectedItems[currentMetadataType]) {
-                selectedItems[currentMetadataType] = [];
-            }
-
+            if (!selectedItems[currentMetadataType]) selectedItems[currentMetadataType] = [];
             selectedItems[currentMetadataType].push(...itemsToAdd);
-            
             renderAvailableItems();
             renderSelectedItems();
-            
-            // Special message for Organisation Units
             if (currentMetadataType === 'organisationUnits') {
                 showNotification(`✅ Added all ${itemsToAdd.length} Organisation Units (complete hierarchy)`, 'success');
             } else {
@@ -1331,37 +1104,26 @@
 
         function clearAllSelectedItems() {
             if (!currentMetadataType) return;
-
             selectedItems[currentMetadataType] = [];
-            
             renderAvailableItems();
             renderSelectedItems();
-            
             showNotification('Cleared all selected items', 'info');
         }
 
         async function handleCopyMetadata() {
             let totalSelected = 0;
             for (const typeKey in selectedItems) {
-                if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) {
-                    totalSelected += selectedItems[typeKey].length;
-                }
+                if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) totalSelected += selectedItems[typeKey].length;
             }
-
             const copyAllTypes = Object.keys(METADATA_TYPES).filter(key => METADATA_TYPES[key].copyAll);
-            const hasCopyAllSelected = copyAllTypes.some(key => 
-                selectedItems[key] !== undefined && selectedItems[key] !== null
-            );
-
+            const hasCopyAllSelected = copyAllTypes.some(key => selectedItems[key] !== undefined && selectedItems[key] !== null);
             if (totalSelected === 0 && !hasCopyAllSelected) {
                 showNotification('Please select at least one item to copy', 'error');
                 return;
             }
-
             const copyBtn = document.getElementById('copyMetadataBtn');
             copyBtn.disabled = true;
             copyBtn.textContent = 'Processing...';
-
             showProgress();
             clearLogs();
             setProgress(0);
@@ -1370,8 +1132,6 @@
                 const targetUrl = document.getElementById('targetUrl').value.trim().replace(/\/$/, '');
                 const targetUsername = document.getElementById('targetUsername').value.trim();
                 const targetPassword = document.getElementById('targetPassword').value.trim();
-                
-                // Fixed strategy: always override existing and create new
                 const importStrategy = 'CREATE_AND_UPDATE';
                 const mergeMode = 'REPLACE';
 
@@ -1386,12 +1146,9 @@
                 const relatedCategoryCombos = new Set();
                 const relatedOptionSets = new Set();
                 const relatedIndicatorTypes = new Set();
-                const relatedProgramStages = new Set();
-                const relatedTrackedEntityAttributes = new Set();
 
                 for (const typeKey in selectedItems) {
                     if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
-
                     const type = METADATA_TYPES[typeKey];
                     const itemCount = selectedItems[typeKey].length;
                     log(`📦 Processing ${type.label}: ${itemCount} items`, 'info');
@@ -1400,141 +1157,48 @@
                         log(`  Fetching all ${type.label} with dependencies...`, 'info');
                         const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fetchFields}&paging=false`;
                         const response = await fetchWithAuth(url);
-                        
                         if (response.ok) {
                             const data = await response.json();
                             const items = data[type.endpoint] || [];
                             metadata[type.endpoint] = items;
-                            log(`  ✓ Added ${items.length} ${type.label} with all dependencies`, 'success');
+                            log(`  ✓ Added ${items.length} ${type.label}`, 'success');
                         }
                     } else {
                         const items = [];
-                        log(`  Fetching ${itemCount} items with all dependencies...`, 'info');
-                        
+                        log(`  Fetching ${itemCount} items with dependencies...`, 'info');
                         for (const selectedItem of selectedItems[typeKey]) {
                             try {
                                 const url = `${state.config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=${type.fetchFields}`;
                                 const response = await fetchWithAuth(url);
-                                
                                 if (response.ok) {
                                     const item = await response.json();
                                     items.push(item);
-                                    
-                                    // === EXTRACT DEPENDENCIES FROM DATASETS ===
                                     if (typeKey === 'dataSets') {
-                                        if (item.dataSetElements) {
-                                            item.dataSetElements.forEach(dse => {
-                                                if (dse.dataElement && dse.dataElement.id) {
-                                                    relatedDataElements.add(dse.dataElement.id);
-                                                }
-                                                if (dse.categoryCombo && dse.categoryCombo.id) {
-                                                    relatedCategoryCombos.add(dse.categoryCombo.id);
-                                                }
-                                            });
-                                        }
-                                        if (item.indicators) {
-                                            item.indicators.forEach(ind => {
-                                                if (ind.id) relatedIndicators.add(ind.id);
-                                            });
-                                        }
-                                        // Don't fetch org units - user will assign them later in DHIS2
+                                        if (item.dataSetElements) item.dataSetElements.forEach(dse => { if (dse.dataElement?.id) relatedDataElements.add(dse.dataElement.id); if (dse.categoryCombo?.id) relatedCategoryCombos.add(dse.categoryCombo.id); });
+                                        if (item.indicators) item.indicators.forEach(ind => { if (ind.id) relatedIndicators.add(ind.id); });
                                     }
-                                    
-                                    // === EXTRACT DEPENDENCIES FROM DATA ELEMENTS ===
                                     if (typeKey === 'dataElements') {
-                                        if (item.categoryCombo && item.categoryCombo.id) {
-                                            relatedCategoryCombos.add(item.categoryCombo.id);
-                                        }
-                                        if (item.optionSet && item.optionSet.id) {
-                                            relatedOptionSets.add(item.optionSet.id);
-                                        }
+                                        if (item.categoryCombo?.id) relatedCategoryCombos.add(item.categoryCombo.id);
+                                        if (item.optionSet?.id) relatedOptionSets.add(item.optionSet.id);
                                     }
-                                    
-                                    // === EXTRACT DEPENDENCIES FROM INDICATORS ===
                                     if (typeKey === 'indicators') {
-                                        if (item.indicatorType && item.indicatorType.id) {
-                                            relatedIndicatorTypes.add(item.indicatorType.id);
-                                        }
-                                        // Extract data elements from numerator/denominator expressions
-                                        if (item.numerator) {
-                                            const deMatches = item.numerator.match(/#{([^}]+)}/g);
-                                            if (deMatches) {
-                                                deMatches.forEach(match => {
-                                                    const deId = match.replace(/#{|}/g, '').split('.')[0];
-                                                    relatedDataElements.add(deId);
-                                                });
-                                            }
-                                        }
-                                        if (item.denominator) {
-                                            const deMatches = item.denominator.match(/#{([^}]+)}/g);
-                                            if (deMatches) {
-                                                deMatches.forEach(match => {
-                                                    const deId = match.replace(/#{|}/g, '').split('.')[0];
-                                                    relatedDataElements.add(deId);
-                                                });
-                                            }
-                                        }
+                                        if (item.indicatorType?.id) relatedIndicatorTypes.add(item.indicatorType.id);
                                     }
-                                    
-                                    // === EXTRACT DEPENDENCIES FROM PROGRAMS ===
-                                    if (typeKey === 'programs') {
-                                        if (item.programStages) {
-                                            item.programStages.forEach(ps => {
-                                                if (ps.id) relatedProgramStages.add(ps.id);
-                                            });
-                                        }
-                                        if (item.programTrackedEntityAttributes) {
-                                            item.programTrackedEntityAttributes.forEach(ptea => {
-                                                if (ptea.trackedEntityAttribute && ptea.trackedEntityAttribute.id) {
-                                                    relatedTrackedEntityAttributes.add(ptea.trackedEntityAttribute.id);
-                                                }
-                                            });
-                                        }
-                                        // Don't fetch org units - user will assign them later in DHIS2
-                                    }
-                                    
-                                    // === EXTRACT DEPENDENCIES FROM DASHBOARDS ===
-                                    if (typeKey === 'dashboards') {
-                                        if (item.dashboardItems) {
-                                            item.dashboardItems.forEach(di => {
-                                                // Extract visualizations, maps, etc.
-                                                if (di.visualization && di.visualization.id) {
-                                                    // Visualizations will be included via :owner
-                                                }
-                                            });
-                                        }
-                                    }
-                                    
-                                    // === EXTRACT CATEGORY COMBOS FROM ANY ITEM ===
-                                    if (item.categoryCombo && item.categoryCombo.id) {
-                                        relatedCategoryCombos.add(item.categoryCombo.id);
-                                    }
-                                    
+                                    if (item.categoryCombo?.id) relatedCategoryCombos.add(item.categoryCombo.id);
                                     log(`  ✓ ${selectedItem.displayName || selectedItem.name}`, 'success');
-                                } else {
-                                    log(`  ⚠️ Failed: ${selectedItem.displayName || selectedItem.name}`, 'error');
                                 }
-                            } catch (err) {
-                                log(`  ⚠️ Error: ${selectedItem.displayName || selectedItem.name}`, 'error');
-                            }
+                            } catch (err) {}
                         }
-                        
                         if (items.length > 0) {
                             metadata[type.endpoint] = items;
-                            log(`  ✓ Added ${items.length} ${type.label} with dependencies`, 'success');
-                        } else {
-                            log(`  ❌ No items fetched for ${type.label}`, 'error');
+                            log(`  ✓ Added ${items.length} ${type.label}`, 'success');
                         }
                     }
                 }
 
-                // === FETCH ALL RELATED DEPENDENCIES ===
-                
-                // Fetch related data elements
                 if (relatedDataElements.size > 0) {
                     log(`\n📊 Fetching ${relatedDataElements.size} related Data Elements...`, 'info');
                     const dataElements = [];
-                    
                     for (const deId of relatedDataElements) {
                         try {
                             const url = `${state.config.instanceUrl}/api/dataElements/${deId}.json?fields=:owner`;
@@ -1542,31 +1206,20 @@
                             if (response.ok) {
                                 const de = await response.json();
                                 dataElements.push(de);
-                                
-                                // Also get category combo and option set from data element
-                                if (de.categoryCombo && de.categoryCombo.id) {
-                                    relatedCategoryCombos.add(de.categoryCombo.id);
-                                }
-                                if (de.optionSet && de.optionSet.id) {
-                                    relatedOptionSets.add(de.optionSet.id);
-                                }
+                                if (de.categoryCombo?.id) relatedCategoryCombos.add(de.categoryCombo.id);
+                                if (de.optionSet?.id) relatedOptionSets.add(de.optionSet.id);
                             }
-                        } catch (err) {
-                            log(`  ⚠️ Failed to fetch data element: ${deId}`, 'error');
-                        }
+                        } catch (err) {}
                     }
-                    
                     if (dataElements.length > 0) {
                         metadata.dataElements = dataElements;
                         log(`  ✓ Added ${dataElements.length} related Data Elements`, 'success');
                     }
                 }
 
-                // Fetch related indicators
                 if (relatedIndicators.size > 0) {
                     log(`\n📈 Fetching ${relatedIndicators.size} related Indicators...`, 'info');
                     const indicators = [];
-                    
                     for (const indId of relatedIndicators) {
                         try {
                             const url = `${state.config.instanceUrl}/api/indicators/${indId}.json?fields=:owner`;
@@ -1574,326 +1227,149 @@
                             if (response.ok) {
                                 const ind = await response.json();
                                 indicators.push(ind);
-                                
-                                // Get indicator type
-                                if (ind.indicatorType && ind.indicatorType.id) {
-                                    relatedIndicatorTypes.add(ind.indicatorType.id);
-                                }
+                                if (ind.indicatorType?.id) relatedIndicatorTypes.add(ind.indicatorType.id);
                             }
-                        } catch (err) {
-                            log(`  ⚠️ Failed to fetch indicator: ${indId}`, 'error');
-                        }
+                        } catch (err) {}
                     }
-                    
                     if (indicators.length > 0) {
                         metadata.indicators = indicators;
                         log(`  ✓ Added ${indicators.length} related Indicators`, 'success');
                     }
                 }
 
-                // Fetch related category combos
                 if (relatedCategoryCombos.size > 0) {
                     log(`\n🏷️ Fetching ${relatedCategoryCombos.size} related Category Combos...`, 'info');
                     const categoryCombos = [];
-                    
                     for (const ccId of relatedCategoryCombos) {
                         try {
                             const url = `${state.config.instanceUrl}/api/categoryCombos/${ccId}.json?fields=:owner`;
                             const response = await fetchWithAuth(url);
-                            if (response.ok) {
-                                categoryCombos.push(await response.json());
-                            }
-                        } catch (err) {
-                            log(`  ⚠️ Failed to fetch category combo: ${ccId}`, 'error');
-                        }
+                            if (response.ok) categoryCombos.push(await response.json());
+                        } catch (err) {}
                     }
-                    
                     if (categoryCombos.length > 0) {
                         metadata.categoryCombos = categoryCombos;
                         log(`  ✓ Added ${categoryCombos.length} related Category Combos`, 'success');
                     }
                 }
 
-                // Fetch related option sets
                 if (relatedOptionSets.size > 0) {
                     log(`\n📋 Fetching ${relatedOptionSets.size} related Option Sets...`, 'info');
                     const optionSets = [];
-                    
                     for (const osId of relatedOptionSets) {
                         try {
                             const url = `${state.config.instanceUrl}/api/optionSets/${osId}.json?fields=:owner`;
                             const response = await fetchWithAuth(url);
-                            if (response.ok) {
-                                optionSets.push(await response.json());
-                            }
-                        } catch (err) {
-                            log(`  ⚠️ Failed to fetch option set: ${osId}`, 'error');
-                        }
+                            if (response.ok) optionSets.push(await response.json());
+                        } catch (err) {}
                     }
-                    
                     if (optionSets.length > 0) {
                         metadata.optionSets = optionSets;
                         log(`  ✓ Added ${optionSets.length} related Option Sets`, 'success');
                     }
                 }
 
-                // Fetch related indicator types
                 if (relatedIndicatorTypes.size > 0) {
                     log(`\n📊 Fetching ${relatedIndicatorTypes.size} related Indicator Types...`, 'info');
                     const indicatorTypes = [];
-                    
                     for (const itId of relatedIndicatorTypes) {
                         try {
                             const url = `${state.config.instanceUrl}/api/indicatorTypes/${itId}.json?fields=:owner`;
                             const response = await fetchWithAuth(url);
-                            if (response.ok) {
-                                indicatorTypes.push(await response.json());
-                            }
-                        } catch (err) {
-                            log(`  ⚠️ Failed to fetch indicator type: ${itId}`, 'error');
-                        }
+                            if (response.ok) indicatorTypes.push(await response.json());
+                        } catch (err) {}
                     }
-                    
                     if (indicatorTypes.length > 0) {
                         metadata.indicatorTypes = indicatorTypes;
                         log(`  ✓ Added ${indicatorTypes.length} related Indicator Types`, 'success');
                     }
                 }
 
-                // Fetch related tracked entity attributes
-                if (relatedTrackedEntityAttributes.size > 0) {
-                    log(`\n🎯 Fetching ${relatedTrackedEntityAttributes.size} related Tracked Entity Attributes...`, 'info');
-                    const trackedEntityAttributes = [];
-                    
-                    for (const teaId of relatedTrackedEntityAttributes) {
-                        try {
-                            const url = `${state.config.instanceUrl}/api/trackedEntityAttributes/${teaId}.json?fields=:owner`;
-                            const response = await fetchWithAuth(url);
-                            if (response.ok) {
-                                trackedEntityAttributes.push(await response.json());
-                            }
-                        } catch (err) {
-                            log(`  ⚠️ Failed to fetch tracked entity attribute: ${teaId}`, 'error');
-                        }
-                    }
-                    
-                    if (trackedEntityAttributes.length > 0) {
-                        metadata.trackedEntityAttributes = trackedEntityAttributes;
-                        log(`  ✓ Added ${trackedEntityAttributes.length} related Tracked Entity Attributes`, 'success');
-                    }
-                }
-
-                if (Object.keys(metadata).length === 0) {
-                    throw new Error('No items to copy');
-                }
+                if (Object.keys(metadata).length === 0) throw new Error('No items to copy');
 
                 setProgress(50);
                 log(`🚀 Importing to ${targetUrl}...`, 'info');
                 setProgress(60);
 
                 const importUrl = targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=NONE';
-                
-                log(`Sending ${Object.keys(metadata).length} metadata type(s) with all dependencies...`, 'info');
-                
-                // Log metadata size for debugging
                 const metadataJson = JSON.stringify(metadata);
-                log(`Metadata size: ${(metadataJson.length / 1024).toFixed(2)} KB`, 'info');
-                console.log('Metadata being sent:', metadata);
+                log(`Sending ${Object.keys(metadata).length} metadata types (${(metadataJson.length / 1024).toFixed(2)} KB)...`, 'info');
                 
                 const targetAuthHeader = 'Basic ' + btoa(`${targetUsername}:${targetPassword}`);
-                
-                // Use proxy for the import request too!
                 const importResponse = await makeProxyRequest(importUrl, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': targetAuthHeader,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': targetAuthHeader, 'Content-Type': 'application/json' },
                     body: metadataJson
                 });
 
                 setProgress(80);
-
                 const result = await importResponse.json();
-                
-                // DHIS2 response has nested structure: result.response contains the actual data
                 const importResult = result.response || result;
                 
-                // Log full response to browser console (F12)
-                console.log('═══════════════════════════════════════');
-                console.log('DHIS2 IMPORT RESPONSE:');
-                console.log('═══════════════════════════════════════');
-                console.log('Full Response Object:', result);
-                console.log('Import Result:', importResult);
-                console.log('Status:', importResult.status);
-                console.log('Stats:', importResult.stats);
-                console.log('TypeReports:', importResult.typeReports);
-                console.log('═══════════════════════════════════════');
+                console.log('DHIS2 Response:', importResult);
                 
-                log('📄 Raw response received from target DHIS2', 'info');
-                log(`Response status code: ${importResponse.status}`, 'info');
-                log(`Response OK: ${importResponse.ok}`, 'info');
-                
+                log('📄 Response received from target DHIS2', 'info');
+
                 if (!importResponse.ok) {
                     log(`❌ Import failed (Status ${importResponse.status})`, 'error');
-                    
-                    if (result.message) {
-                        log(`Error: ${result.message}`, 'error');
-                    }
-                    
-                    if (result.response && result.response.errorReports) {
-                        log('Detailed errors:', 'error');
-                        result.response.errorReports.forEach(err => {
-                            log(`  - ${err.message} (${err.errorCode})`, 'error');
-                        });
-                    }
-                    
-                    if (result.typeReports) {
-                        result.typeReports.forEach(report => {
-                            if (report.objectReports) {
-                                report.objectReports.forEach(objReport => {
-                                    if (objReport.errorReports && objReport.errorReports.length > 0) {
-                                        log(`\nErrors in ${report.klass}:`, 'error');
-                                        objReport.errorReports.forEach(err => {
-                                            log(`  - [${err.errorCode}] ${err.message}`, 'error');
-                                            if (err.errorProperty) {
-                                                log(`    Property: ${err.errorProperty}`, 'error');
-                                            }
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                    }
-                    
-                    throw new Error(`Import failed with status ${importResponse.status}. Check logs for details.`);
+                    throw new Error(`Import failed with status ${importResponse.status}`);
                 }
 
-                // Check if anything was actually created or updated
-                const itemsCreated = result.stats ? (result.stats.created || 0) : 0;
-                const itemsUpdated = result.stats ? (result.stats.updated || 0) : 0;
-                const itemsIgnored = result.stats ? (result.stats.ignored || 0) : 0;
-                
-                // Log detailed error reports even on ERROR status
-                if (result.status === 'ERROR') {
-                    log(`\n❌ DHIS2 Import returned ERROR status`, 'error');
-                    log(`Full status: ${result.status}`, 'error');
-                    
-                    // Log message if exists
-                    if (result.message) {
-                        log(`\nError Message: ${result.message}`, 'error');
-                    }
-                    
-                    if (result.typeReports) {
-                        log(`\nFound ${result.typeReports.length} type report(s)`, 'info');
-                        
-                        result.typeReports.forEach(report => {
-                            log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'error');
-                            log(`📦 Metadata Type: ${report.klass}`, 'error');
-                            
-                            if (report.stats) {
-                                log(`  Stats - Total: ${report.stats.total || 0}, Created: ${report.stats.created || 0}, Updated: ${report.stats.updated || 0}, Ignored: ${report.stats.ignored || 0}`, 'error');
-                            }
-                            
-                            if (report.objectReports) {
-                                log(`  Found ${report.objectReports.length} object report(s)`, 'error');
-                                
-                                report.objectReports.forEach(objReport => {
-                                    if (objReport.errorReports && objReport.errorReports.length > 0) {
-                                        log(`\n  ⚠️ ERRORS for: ${objReport.displayName || objReport.uid || 'Unknown'}`, 'error');
-                                        
-                                        objReport.errorReports.forEach(err => {
-                                            log(`    ❌ [${err.errorCode}] ${err.message}`, 'error');
-                                            if (err.errorProperty) {
-                                                log(`       Property causing error: "${err.errorProperty}"`, 'error');
-                                            }
-                                            if (err.value) {
-                                                log(`       Value: ${err.value}`, 'error');
-                                            }
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                        log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`, 'error');
-                    } else {
-                        log(`\n⚠️ No typeReports found in response`, 'error');
-                        log(`Full response keys: ${Object.keys(result).join(', ')}`, 'error');
-                    }
+                let itemsCreated = 0;
+                let itemsUpdated = 0;
+                let itemsIgnored = 0;
+                let itemsDeleted = 0;
+
+                if (importResult.typeReports && Array.isArray(importResult.typeReports) && importResult.typeReports.length > 0) {
+                    log(`\n📦 Processing ${importResult.typeReports.length} type reports...`, 'info');
+                    importResult.typeReports.forEach(report => {
+                        const created = (report.stats?.created) || 0;
+                        const updated = (report.stats?.updated) || 0;
+                        const ignored = (report.stats?.ignored) || 0;
+                        const deleted = (report.stats?.deleted) || 0;
+                        itemsCreated += created;
+                        itemsUpdated += updated;
+                        itemsIgnored += ignored;
+                        itemsDeleted += deleted;
+                        if (created > 0 || updated > 0 || ignored > 0) {
+                            log(`  ${report.klass}: Created=${created}, Updated=${updated}, Ignored=${ignored}`, 'info');
+                        }
+                    });
+                } else if (importResult.stats) {
+                    itemsCreated = importResult.stats.created || 0;
+                    itemsUpdated = importResult.stats.updated || 0;
+                    itemsIgnored = importResult.stats.ignored || 0;
+                    itemsDeleted = importResult.stats.deleted || 0;
                 }
-                
+
+                log(`\n📊 Final Statistics:`, 'info');
+                log(`  Created: ${itemsCreated}`, 'info');
+                log(`  Updated: ${itemsUpdated}`, 'info');
+                log(`  Ignored: ${itemsIgnored}`, 'info');
+
                 if (itemsCreated > 0 || itemsUpdated > 0) {
-                    // Success if anything was created or updated
                     log('\n═══════════════════════════════════════', 'success');
                     log('✅ COPY SUCCESSFUL!', 'success');
                     log('═══════════════════════════════════════', 'success');
-
-                    if (result.stats) {
-                        log('📊 Import Statistics:', 'success');
-                        if (itemsCreated > 0) {
-                            log(`  ✓ Created: ${itemsCreated} new items`, 'success');
-                        }
-                        if (itemsUpdated > 0) {
-                            log(`  ✓ Updated: ${itemsUpdated} existing items`, 'success');
-                        }
-                        if (itemsIgnored > 0) {
-                            log(`  ℹ️  Ignored: ${itemsIgnored} (already up to date)`, 'info');
-                        }
-                        log(`  📦 Total processed: ${itemsCreated + itemsUpdated + itemsIgnored}`, 'success');
-                    }
-
-                    // Build success message
+                    if (itemsCreated > 0) log(`  ✓ Created: ${itemsCreated} new items`, 'success');
+                    if (itemsUpdated > 0) log(`  ✓ Updated: ${itemsUpdated} existing items`, 'success');
+                    if (itemsIgnored > 0) log(`  ℹ️  Ignored: ${itemsIgnored} (already up to date)`, 'info');
                     let successMsg = '✅ Copy successful! ';
                     const parts = [];
                     if (itemsCreated > 0) parts.push(`${itemsCreated} created`);
                     if (itemsUpdated > 0) parts.push(`${itemsUpdated} updated`);
                     if (itemsIgnored > 0) parts.push(`${itemsIgnored} already exist`);
                     successMsg += parts.join(', ');
-                    
                     showNotification(successMsg, 'success');
+                } else if (itemsIgnored > 0) {
+                    log('\n═══════════════════════════════════════', 'success');
+                    log('✅ COPY SUCCESSFUL!', 'success');
+                    log('═══════════════════════════════════════', 'success');
+                    log(`📊 All ${itemsIgnored} items already exist (up to date)`, 'success');
+                    showNotification(`✅ Copy successful! All ${itemsIgnored} items already exist`, 'success');
                 } else {
-                    // Nothing was created or updated - check if items were ignored
-                    if (itemsIgnored > 0) {
-                        log('\n═══════════════════════════════════════', 'success');
-                        log('✅ COPY SUCCESSFUL!', 'success');
-                        log('═══════════════════════════════════════', 'success');
-                        log(`📊 All ${itemsIgnored} items already exist in target (up to date)`, 'success');
-                        showNotification(`✅ Copy successful! All ${itemsIgnored} items already exist`, 'success');
-                    } else {
-                        // Truly nothing was processed
-                        log(`\n❌ Import completed but no items were processed`, 'error');
-                        log(`DHIS2 Status: ${importResult.status}`, 'error');
-                        log(`Stats received:`, 'error');
-                        log(`  Created: ${itemsCreated}`, 'error');
-                        log(`  Updated: ${itemsUpdated}`, 'error');
-                        log(`  Ignored: ${itemsIgnored}`, 'error');
-                        log(`  Deleted: ${itemsDeleted}`, 'error');
-                        
-                        // Log the raw response for debugging
-                        console.error('Import failed - raw response:', importResult);
-                        
-                        // Check if there are typeReports with more info
-                        if (importResult.typeReports && importResult.typeReports.length > 0) {
-                            log(`\nTypeReports found - checking details:`, 'error');
-                            importResult.typeReports.forEach(report => {
-                                log(`  ${report.klass}: created=${report.stats?.created || 0}, updated=${report.stats?.updated || 0}, ignored=${report.stats?.ignored || 0}`, 'error');
-                                
-                                // Check for error reports
-                                if (report.objectReports && report.objectReports.length > 0) {
-                                    report.objectReports.forEach(objReport => {
-                                        if (objReport.errorReports && objReport.errorReports.length > 0) {
-                                            log(`\n  Errors for ${objReport.displayName || objReport.uid}:`, 'error');
-                                            objReport.errorReports.forEach(err => {
-                                                log(`    - [${err.errorCode}] ${err.message}`, 'error');
-                                            });
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                        
-                        showNotification('Import completed but nothing was changed - check logs', 'error');
-                    }
+                    log(`\n⚠️ Import completed but no changes made`, 'error');
+                    showNotification('Import completed but nothing was changed', 'error');
                 }
 
                 setProgress(100);
@@ -1901,9 +1377,6 @@
             } catch (error) {
                 console.error('Copy error:', error);
                 log(`❌ ERROR: ${error.message}`, 'error');
-                if (error.stack) {
-                    console.error('Error stack:', error.stack);
-                }
                 showNotification(`Error: ${error.message}`, 'error');
             } finally {
                 copyBtn.disabled = false;
@@ -1911,69 +1384,39 @@
             }
         }
 
-        // ============================================
-        // LOGIN & MAIN APP
-        // ============================================
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const instanceUrl = document.getElementById('instanceUrl').value.trim().replace(/\/$/, '');
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
-
             if (!instanceUrl.startsWith('http://') && !instanceUrl.startsWith('https://')) {
                 showNotification('URL must start with http:// or https://', 'error');
                 return;
             }
-
             const submitBtn = e.target.querySelector('.btn-primary');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Connecting...';
-
-            const config = {
-                instanceUrl,
-                username,
-                password
-            };
-
+            const config = { instanceUrl, username, password };
             try {
-                console.log('Attempting to connect to:', instanceUrl);
-                console.log('Using Google Apps Script proxy...');
-                
                 showNotification('Connecting via Google Apps Script...', 'info');
-                
                 const testUrl = `${instanceUrl}/api/me`;
                 const authHeader = 'Basic ' + btoa(`${username}:${password}`);
-                
-                const response = await makeProxyRequest(testUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': authHeader
-                    }
-                });
-
-                console.log(`Response status:`, response.status);
-
+                const response = await makeProxyRequest(testUrl, { method: 'GET', headers: { 'Authorization': authHeader } });
                 if (response.ok) {
                     const userData = await response.json();
-                    console.log('✅ Login successful! User:', userData.displayName || userData.username);
-                    
                     state.config = config;
                     state.isLoggedIn = true;
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
-                    showNotification(`✅ Connected successfully as ${userData.displayName || userData.username}!`, 'success');
+                    showNotification(`✅ Connected as ${userData.displayName || userData.username}!`, 'success');
                 } else if (response.status === 401) {
                     showNotification('❌ Invalid username or password', 'error');
                 } else if (response.status === 403) {
-                    showNotification('❌ Access forbidden - check your permissions', 'error');
+                    showNotification('❌ Access forbidden', 'error');
                 } else {
-                    const errorText = await response.text().catch(() => 'Unknown error');
-                    console.error('Auth failed:', response.status, errorText);
                     showNotification(`Authentication failed (${response.status})`, 'error');
                 }
             } catch (error) {
-                console.error('Connection error:', error);
                 showNotification(`Connection failed: ${error.message}`, 'error');
             } finally {
                 submitBtn.disabled = false;
