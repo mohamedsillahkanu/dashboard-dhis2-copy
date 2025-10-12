@@ -1,4 +1,4 @@
-<!DOCTYPE html>          
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -836,17 +836,29 @@
         <div class="container">
             <div class="header">
                 <h1>🔄 Universal Metadata & Data Copy</h1>
-                <p>Copy Organisation Units, Data Elements, Datasets, Indicators, Dashboards & Raw Data</p>
+                <p>Copy or Delete Organisation Units, Data Elements, Datasets, Indicators, Dashboards & Raw Data</p>
             </div>
 
-            <div class="card" onclick="openCopyMetadata()">
-                <span class="card-icon">🔄</span>
-                <h3 class="card-title">Universal Copy with Data</h3>
-                <p class="card-description">
-                    Select and copy any metadata type with raw data between DHIS2 instances:<br>
-                    Org Units • Data Elements • Datasets • Indicators • Dashboards • Programs • Categories • Validation Rules<br>
-                    <strong style="color: #7c3aed;">+ Actual Data Values for specified time period</strong>
-                </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1200px; margin: 0 auto;">
+                <div class="card" onclick="openCopyMetadata()">
+                    <span class="card-icon">🔄</span>
+                    <h3 class="card-title">Copy Metadata with Data</h3>
+                    <p class="card-description">
+                        Select and copy any metadata type with raw data between DHIS2 instances:<br>
+                        Org Units • Data Elements • Datasets • Indicators • Dashboards • Programs • Categories • Validation Rules<br>
+                        <strong style="color: #7c3aed;">+ Actual Data Values for specified time period</strong>
+                    </p>
+                </div>
+
+                <div class="card" onclick="openDeleteMetadata()" style="border-color: #f85149;">
+                    <span class="card-icon">🗑️</span>
+                    <h3 class="card-title" style="color: #f85149;">Delete Metadata</h3>
+                    <p class="card-description">
+                        Select and delete metadata from your DHIS2 instance:<br>
+                        Remove unwanted items safely<br>
+                        <strong style="color: #f85149;">⚠️ Warning: This action cannot be undone!</strong>
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -878,6 +890,9 @@
             }
             if (options.method === 'POST') {
                 return fetch(proxyUrl, { method: 'POST', body: options.body });
+            }
+            if (options.method === 'DELETE') {
+                return fetch(proxyUrl, { method: 'DELETE' });
             }
             return fetch(proxyUrl);
         }
@@ -946,15 +961,28 @@
         };
 
         function openCopyMetadata() {
-            document.getElementById('modalBody').innerHTML = getTwoPanelHTML();
+            document.getElementById('modalBody').innerHTML = getTwoPanelHTML('copy');
             document.getElementById('modal').classList.add('show');
             availableItems = {};
             selectedItems = {};
             currentMetadataType = null;
-            setupTwoPanelListeners();
+            setupTwoPanelListeners('copy');
         }
 
-        function getTwoPanelHTML() {
+        function openDeleteMetadata() {
+            document.getElementById('modalBody').innerHTML = getTwoPanelHTML('delete');
+            document.getElementById('modal').classList.add('show');
+            availableItems = {};
+            selectedItems = {};
+            currentMetadataType = null;
+            setupTwoPanelListeners('delete');
+        }
+
+        function getTwoPanelHTML(mode) {
+            const isDelete = mode === 'delete';
+            const buttonText = isDelete ? '🗑️ Delete Selected Metadata' : '🚀 Copy Selected Metadata & Data';
+            const buttonColor = isDelete ? 'background: linear-gradient(135deg, #f85149 0%, #da3633 100%);' : '';
+            
             return `
                 <div class="metadata-type-selector">
                     <label class="form-label">Select Metadata Type</label>
@@ -982,7 +1010,7 @@
                     </div>
                     <div class="panel">
                         <div class="panel-header">
-                            <div class="panel-title">✅ Selected to Copy</div>
+                            <div class="panel-title">${isDelete ? '🗑️' : '✅'} Selected to ${isDelete ? 'Delete' : 'Copy'}</div>
                             <div class="panel-count" id="selectedCount">0 items</div>
                         </div>
                         <input type="text" class="search-box" id="searchSelected" placeholder="🔍 Search selected items...">
@@ -995,6 +1023,7 @@
                     </div>
                 </div>
 
+                ${!isDelete ? `
                 <div class="data-section" id="dataSection">
                     <div class="data-section-header">
                         <h3>📊 Raw Data Options (Optional)</h3>
@@ -1038,16 +1067,22 @@
                         <input type="password" class="form-input" id="targetPassword" required>
                     </div>
                 </div>
+                ` : `
+                <div class="help-text" style="margin: 20px 0; padding: 15px; background: rgba(248, 81, 73, 0.1); border-radius: 6px; border-left: 3px solid #f85149;">
+                    ⚠️ <strong>Warning:</strong> Deleting metadata is permanent and cannot be undone! Make sure you have a backup before proceeding. Items will be deleted from your current instance: <strong>${state.config.instanceUrl}</strong>
+                </div>
+                `}
+                
                 <div class="progress-section" id="progressSection">
                     <h3 style="color: #58a6ff; margin-bottom: 15px;">Progress</h3>
                     <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
                     <div class="log-container" id="logContainer"></div>
                 </div>
-                <button type="button" class="btn-primary" id="copyMetadataBtn">🚀 Copy Selected Metadata & Data</button>
+                <button type="button" class="btn-primary" id="actionBtn" style="${buttonColor}" data-mode="${mode}">${buttonText}</button>
             `;
         }
 
-        function setupTwoPanelListeners() {
+        function setupTwoPanelListeners(mode) {
             document.querySelectorAll('.metadata-type-tab').forEach(tab => {
                 tab.addEventListener('click', function() { selectMetadataType(this.dataset.type); });
             });
@@ -1056,11 +1091,19 @@
             document.getElementById('clearAllBtn').addEventListener('click', clearAllSelectedItems);
             document.getElementById('searchAvailable').addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); renderAvailableItems(); });
             document.getElementById('searchSelected').addEventListener('input', (e) => renderSelectedItems(e.target.value.toLowerCase()));
-            document.getElementById('copyMetadataBtn').addEventListener('click', handleCopyMetadata);
             
-            document.getElementById('includeDataCheckbox').addEventListener('change', function() {
-                document.getElementById('dataOptions').style.display = this.checked ? 'block' : 'none';
-            });
+            const actionBtn = document.getElementById('actionBtn');
+            if (mode === 'delete') {
+                actionBtn.addEventListener('click', handleDeleteMetadata);
+            } else {
+                actionBtn.addEventListener('click', handleCopyMetadata);
+                const includeDataCheckbox = document.getElementById('includeDataCheckbox');
+                if (includeDataCheckbox) {
+                    includeDataCheckbox.addEventListener('change', function() {
+                        document.getElementById('dataOptions').style.display = this.checked ? 'block' : 'none';
+                    });
+                }
+            }
         }
 
         function selectMetadataType(typeKey) {
@@ -1075,10 +1118,6 @@
             renderSelectedItems();
             
             if (type.copyAll) showNotification(`${type.label} - use "Add All" to select all items with complete hierarchy`, 'info');
-        }
-
-        function updateDataSectionVisibility() {
-            // Data section is always visible now - no need to toggle
         }
 
         async function loadCurrentTypeItems() {
@@ -1153,7 +1192,6 @@
             selectedItems[currentMetadataType].push(item);
             renderAvailableItems();
             renderSelectedItems();
-            updateDataSectionVisibility();
         }
 
         function removeItem(itemId) {
@@ -1161,12 +1199,10 @@
             selectedItems[currentMetadataType] = selectedItems[currentMetadataType].filter(item => item.id !== itemId);
             renderAvailableItems();
             renderSelectedItems();
-            updateDataSectionVisibility();
         }
 
         function addAllAvailableItems() {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
-            const type = METADATA_TYPES[currentMetadataType];
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
             const itemsToAdd = items.filter(item => {
@@ -1178,7 +1214,6 @@
             selectedItems[currentMetadataType].push(...itemsToAdd);
             renderAvailableItems();
             renderSelectedItems();
-            updateDataSectionVisibility();
             if (currentMetadataType === 'organisationUnits') {
                 showNotification(`✅ Added all ${itemsToAdd.length} Organisation Units (complete hierarchy)`, 'success');
             } else {
@@ -1191,26 +1226,23 @@
             selectedItems[currentMetadataType] = [];
             renderAvailableItems();
             renderSelectedItems();
-            updateDataSectionVisibility();
             showNotification('Cleared all selected items', 'info');
         }
 
         async function fetchDataValues(dataElementIds, orgUnitIds, startPeriod, endPeriod) {
             log('📊 Fetching raw data values...', 'info');
             const dataValues = [];
-            const deBatchSize = 20; // Smaller batches for data elements
-            const ouBatchSize = 100; // Batch org units too to avoid URL length issues
+            const deBatchSize = 20;
+            const ouBatchSize = 100;
             
             let totalBatches = Math.ceil(dataElementIds.length / deBatchSize) * Math.ceil(orgUnitIds.length / ouBatchSize);
             let currentBatch = 0;
             
             log(`  Processing ${dataElementIds.length} data elements across ${orgUnitIds.length} org units in ${totalBatches} batches...`, 'info');
             
-            // Batch data elements
             for (let i = 0; i < dataElementIds.length; i += deBatchSize) {
                 const deBatch = dataElementIds.slice(i, i + deBatchSize);
                 
-                // Batch org units within each data element batch
                 for (let j = 0; j < orgUnitIds.length; j += ouBatchSize) {
                     const ouBatch = orgUnitIds.slice(j, j + ouBatchSize);
                     currentBatch++;
@@ -1218,7 +1250,6 @@
                     const deParam = deBatch.join(';');
                     const ouParam = ouBatch.join(';');
                     
-                    // Use analytics API which is more efficient for bulk data
                     const url = `${state.config.instanceUrl}/api/dataValueSets.json?dataElement=${deParam}&orgUnit=${ouParam}&startDate=${startPeriod}&endDate=${endPeriod}`;
                     
                     try {
@@ -1238,7 +1269,6 @@
                         log(`  ⚠️ Batch ${currentBatch}/${totalBatches} error: ${error.message}`, 'error');
                     }
                     
-                    // Small delay to avoid overwhelming the server
                     if (currentBatch % 10 === 0) {
                         await new Promise(resolve => setTimeout(resolve, 500));
                     }
@@ -1247,6 +1277,108 @@
             
             log(`  ✅ Completed all batches. Total values: ${dataValues.length}`, 'success');
             return dataValues;
+        }
+
+        async function handleDeleteMetadata() {
+            let totalSelected = 0;
+            for (const typeKey in selectedItems) {
+                if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) totalSelected += selectedItems[typeKey].length;
+            }
+            
+            if (totalSelected === 0) {
+                showNotification('Please select at least one item to delete', 'error');
+                return;
+            }
+
+            const confirmMsg = `⚠️ ARE YOU SURE?\n\nYou are about to DELETE ${totalSelected} items from:\n${state.config.instanceUrl}\n\nThis action CANNOT be undone!\n\nType 'DELETE' to confirm:`;
+            const userConfirm = prompt(confirmMsg);
+            
+            if (userConfirm !== 'DELETE') {
+                showNotification('Delete operation cancelled', 'info');
+                return;
+            }
+
+            const actionBtn = document.getElementById('actionBtn');
+            actionBtn.disabled = true;
+            actionBtn.textContent = 'Deleting...';
+            showProgress();
+            clearLogs();
+            setProgress(0);
+
+            try {
+                log('🗑️ Starting metadata deletion...', 'info');
+                log(`⚠️ Target: ${state.config.instanceUrl}`, 'error');
+                log(`📝 Mode: DELETE (permanent removal)`, 'error');
+                setProgress(10);
+
+                let itemsDeleted = 0;
+                let itemsFailed = 0;
+
+                const deletionOrder = ['dashboards', 'indicators', 'dataSets', 'dataElements', 'validationRules', 'programs', 'categoryOptions', 'organisationUnits'];
+                
+                for (const typeKey of deletionOrder) {
+                    if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
+                    
+                    const type = METADATA_TYPES[typeKey];
+                    const items = selectedItems[typeKey];
+                    
+                    log(`\n🗑️ Deleting ${items.length} ${type.label}...`, 'info');
+                    
+                    for (const item of items) {
+                        try {
+                            const deleteUrl = `${state.config.instanceUrl}/api/${type.endpoint}/${item.id}`;
+                            const response = await fetchWithAuth(deleteUrl, { method: 'DELETE' });
+                            
+                            if (response.ok) {
+                                itemsDeleted++;
+                                log(`  ✓ Deleted: ${item.displayName || item.name}`, 'success');
+                            } else {
+                                itemsFailed++;
+                                const errorText = await response.text();
+                                log(`  ✗ Failed: ${item.displayName || item.name} (${response.status})`, 'error');
+                                try {
+                                    const errorJson = JSON.parse(errorText);
+                                    if (errorJson.message) {
+                                        log(`    Reason: ${errorJson.message}`, 'error');
+                                    }
+                                } catch (e) {}
+                            }
+                        } catch (error) {
+                            itemsFailed++;
+                            log(`  ✗ Error deleting ${item.displayName || item.name}: ${error.message}`, 'error');
+                        }
+                    }
+                    
+                    setProgress(10 + (deletionOrder.indexOf(typeKey) / deletionOrder.length) * 80);
+                }
+
+                setProgress(100);
+
+                log('\n═══════════════════════════════════════', itemsFailed > 0 ? 'error' : 'success');
+                log(itemsFailed > 0 ? '⚠️ DELETION COMPLETED WITH ERRORS' : '✅ DELETION SUCCESSFUL!', itemsFailed > 0 ? 'error' : 'success');
+                log('═══════════════════════════════════════', itemsFailed > 0 ? 'error' : 'success');
+                log(`  🗑️ Deleted: ${itemsDeleted} items`, 'success');
+                if (itemsFailed > 0) {
+                    log(`  ✗ Failed: ${itemsFailed} items`, 'error');
+                    log(`\nCommon reasons for failure:`, 'info');
+                    log(`  • Item is referenced by other metadata`, 'info');
+                    log(`  • Insufficient permissions`, 'info');
+                    log(`  • Item doesn't exist`, 'info');
+                }
+
+                const successMsg = itemsFailed > 0 
+                    ? `⚠️ Deleted ${itemsDeleted} items, ${itemsFailed} failed`
+                    : `✅ Successfully deleted ${itemsDeleted} items`;
+                showNotification(successMsg, itemsFailed > 0 ? 'error' : 'success');
+
+            } catch (error) {
+                console.error('Delete error:', error);
+                log(`❌ ERROR: ${error.message}`, 'error');
+                showNotification(`Error: ${error.message}`, 'error');
+            } finally {
+                actionBtn.disabled = false;
+                actionBtn.textContent = '🗑️ Delete Selected Metadata';
+            }
         }
 
         async function handleCopyMetadata() {
@@ -1262,19 +1394,8 @@
             }
 
             const includeData = document.getElementById('includeDataCheckbox').checked;
-            
-            // Check if we need time period (only for data elements and datasets, not for dashboards/indicators)
-            const needsTimePeriod = includeData && (
-                (selectedItems['dataElements'] && selectedItems['dataElements'].length > 0) ||
-                (selectedItems['dataSets'] && selectedItems['dataSets'].length > 0)
-            );
-            
-            const hasDashboardsOrIndicators = includeData && (
-                (selectedItems['dashboards'] && selectedItems['dashboards'].length > 0) ||
-                (selectedItems['indicators'] && selectedItems['indicators'].length > 0)
-            );
 
-            const copyBtn = document.getElementById('copyMetadataBtn');
+            const copyBtn = document.getElementById('actionBtn');
             copyBtn.disabled = true;
             copyBtn.textContent = 'Processing...';
             showProgress();
@@ -1286,10 +1407,6 @@
                 const targetUsername = document.getElementById('targetUsername').value.trim();
                 const targetPassword = document.getElementById('targetPassword').value.trim();
                 
-                // Import settings explanation:
-                // importStrategy=CREATE_AND_UPDATE: Creates new items, updates existing ones (no errors if exists)
-                // mergeMode=REPLACE: Replaces the entire object with new data
-                // atomicMode=OBJECT: Process all objects, stop and show error if validation fails
                 const importStrategy = 'CREATE_AND_UPDATE';
                 const mergeMode = 'REPLACE';
                 const atomicMode = 'OBJECT';
@@ -1344,7 +1461,6 @@
                                     const item = await response.json();
                                     items.push(item);
                                     
-                                    // Extract UserGroups and Users from sharing settings
                                     if (item.sharing) {
                                         if (item.sharing.userGroups) {
                                             Object.keys(item.sharing.userGroups).forEach(ugId => {
@@ -1375,7 +1491,6 @@
                                             if (dse.categoryCombo?.id) relatedCategoryCombos.add(dse.categoryCombo.id);
                                         });
                                         if (item.indicators) item.indicators.forEach(ind => { if (ind.id) relatedIndicators.add(ind.id); });
-                                        // Keep dataset-orgunit relationships intact - they're already in the :owner fields
                                     }
                                     if (typeKey === 'dataElements') {
                                         if (item.categoryCombo?.id) relatedCategoryCombos.add(item.categoryCombo.id);
@@ -1495,7 +1610,6 @@
                             if (response.ok) {
                                 const ug = await response.json();
                                 userGroups.push(ug);
-                                // Extract users from user groups
                                 if (ug.users) {
                                     ug.users.forEach(user => {
                                         if (user.id) relatedUsers.add(user.id);
@@ -1613,138 +1727,10 @@
                     const startPeriod = document.getElementById('startPeriod').value.trim();
                     const endPeriod = document.getElementById('endPeriod').value.trim();
                     
-                    // For dashboards and indicators, use indicator values (pre-calculated)
-                    const useDashboardIndicatorData = (selectedItems['dashboards'] && selectedItems['dashboards'].length > 0) || 
-                                                      (selectedItems['indicators'] && selectedItems['indicators'].length > 0);
-                    
-                    if (useDashboardIndicatorData) {
-                        log(`  Mode: Copying pre-calculated indicator/dashboard data (no time period needed)`, 'info');
-                    } else if (startPeriod && endPeriod) {
-                        log(`  Period: ${startPeriod} to ${endPeriod}`, 'info');
-                    } else {
-                        log(`  Period: All available data`, 'info');
-                    }
-                    
-                    // Collect all data elements from various sources
                     const allDataElementIds = new Set(selectedDataElementIds);
                     const allOrgUnitIds = new Set(selectedOrgUnitIds);
                     const allDataSetIds = new Set();
-                    const indicatorValuesToFetch = [];
                     
-                    // For dashboards - fetch indicator values directly
-                    if (selectedItems['dashboards'] && selectedItems['dashboards'].length > 0) {
-                        log(`\n  Analyzing ${selectedItems['dashboards'].length} dashboards for dependencies...`, 'info');
-                        for (const dashboard of selectedItems['dashboards']) {
-                            try {
-                                const dashUrl = `${state.config.instanceUrl}/api/dashboards/${dashboard.id}.json?fields=:owner,dashboardItems[*,visualization[*,dataDimensionItems[*],organisationUnits[id],organisationUnitGroups[id]]]`;
-                                const dashResponse = await fetchWithAuth(dashUrl);
-                                if (dashResponse.ok) {
-                                    const dashData = await dashResponse.json();
-                                    if (dashData.dashboardItems) {
-                                        dashData.dashboardItems.forEach(item => {
-                                            // Extract data elements for raw data
-                                            if (item.visualization && item.visualization.dataDimensionItems) {
-                                                item.visualization.dataDimensionItems.forEach(dimItem => {
-                                                    if (dimItem.dataElement && dimItem.dataElement.id) {
-                                                        allDataElementIds.add(dimItem.dataElement.id);
-                                                    }
-                                                    if (dimItem.indicator && dimItem.indicator.id) {
-                                                        indicatorValuesToFetch.push(dimItem.indicator.id);
-                                                    }
-                                                });
-                                            }
-                                            // Extract org units
-                                            if (item.visualization && item.visualization.organisationUnits) {
-                                                item.visualization.organisationUnits.forEach(ou => {
-                                                    if (ou.id) allOrgUnitIds.add(ou.id);
-                                                });
-                                            }
-                                        });
-                                    }
-                                }
-                            } catch (err) {
-                                log(`    ⚠️ Could not analyze dashboard: ${dashboard.displayName || dashboard.name}`, 'error');
-                            }
-                        }
-                        
-                        // Now fetch the data elements from the indicators we found
-                        if (indicatorValuesToFetch.length > 0) {
-                            log(`\n  Extracting data elements from ${indicatorValuesToFetch.length} indicators in dashboards...`, 'info');
-                            for (const indicatorId of indicatorValuesToFetch) {
-                                try {
-                                    const indUrl = `${state.config.instanceUrl}/api/indicators/${indicatorId}.json?fields=:owner,numerator,denominator`;
-                                    const indResponse = await fetchWithAuth(indUrl);
-                                    if (indResponse.ok) {
-                                        const indData = await indResponse.json();
-                                        // Extract data element IDs from formulas (format: #{dataElementId} or #{dataElementId.categoryOptionComboId})
-                                        const numeratorMatches = (indData.numerator || '').match(/#{([^.}]+)/g);
-                                        const denominatorMatches = (indData.denominator || '').match(/#{([^.}]+)/g);
-                                        
-                                        if (numeratorMatches) {
-                                            numeratorMatches.forEach(match => {
-                                                const deId = match.replace('#{', '');
-                                                allDataElementIds.add(deId);
-                                            });
-                                        }
-                                        if (denominatorMatches) {
-                                            denominatorMatches.forEach(match => {
-                                                const deId = match.replace('#{', '');
-                                                allDataElementIds.add(deId);
-                                            });
-                                        }
-                                    }
-                                } catch (err) {
-                                    log(`    ⚠️ Could not fetch indicator formula`, 'error');
-                                }
-                            }
-                            log(`    ✓ Extracted ${allDataElementIds.size} data elements from indicator formulas`, 'success');
-                        }
-                        
-                        log(`    ✅ Total: ${allDataElementIds.size} data elements, ${indicatorValuesToFetch.length} indicators, ${allOrgUnitIds.size} org units`, 'success');
-                    }
-                    
-                    // For indicators - add them to fetch list
-                    if (selectedItems['indicators'] && selectedItems['indicators'].length > 0) {
-                        log(`\n  Analyzing ${selectedItems['indicators'].length} indicators...`, 'info');
-                        selectedItems['indicators'].forEach(indicator => {
-                            indicatorValuesToFetch.push(indicator.id);
-                        });
-                        log(`    ✓ Added ${selectedItems['indicators'].length} indicators to fetch`, 'success');
-                    }
-                    
-                    // Extract data elements from validation rules
-                    if (selectedItems['validationRules'] && selectedItems['validationRules'].length > 0) {
-                        log(`\n  Analyzing ${selectedItems['validationRules'].length} validation rules for dependencies...`, 'info');
-                        for (const rule of selectedItems['validationRules']) {
-                            try {
-                                const ruleUrl = `${state.config.instanceUrl}/api/validationRules/${rule.id}.json?fields=:owner,leftSide,rightSide`;
-                                const ruleResponse = await fetchWithAuth(ruleUrl);
-                                if (ruleResponse.ok) {
-                                    const ruleData = await ruleResponse.json();
-                                    const leftMatches = (ruleData.leftSide?.expression || '').match(/#{([^.}]+)/g);
-                                    const rightMatches = (ruleData.rightSide?.expression || '').match(/#{([^.}]+)/g);
-                                    
-                                    if (leftMatches) {
-                                        leftMatches.forEach(match => {
-                                            const deId = match.replace('#{', '');
-                                            allDataElementIds.add(deId);
-                                        });
-                                    }
-                                    if (rightMatches) {
-                                        rightMatches.forEach(match => {
-                                            const deId = match.replace('#{', '');
-                                            allDataElementIds.add(deId);
-                                        });
-                                    }
-                                }
-                            } catch (err) {
-                                log(`    ⚠️ Could not analyze validation rule: ${rule.displayName || rule.name}`, 'error');
-                            }
-                        }
-                        log(`    ✓ Found ${allDataElementIds.size} total data elements including validation rules`, 'success');
-                    }
-                    
-                    // Extract org units from datasets
                     if (selectedItems['dataSets'] && selectedItems['dataSets'].length > 0) {
                         log(`\n  Analyzing ${selectedItems['dataSets'].length} datasets for org unit assignments...`, 'info');
                         for (const dataset of selectedItems['dataSets']) {
@@ -1769,12 +1755,9 @@
                     const finalDataElementIds = Array.from(allDataElementIds);
                     let finalOrgUnitIds = Array.from(allOrgUnitIds);
                     
-                    // CRITICAL: Find which datasets contain these data elements
-                    // Data values are stored per dataset, not per data element alone!
                     if (finalDataElementIds.length > 0) {
                         log(`\n  🔍 Finding datasets that contain these ${finalDataElementIds.length} data elements...`, 'info');
                         
-                        // Fetch all datasets and check which ones contain our data elements
                         const allDatasetsUrl = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName,dataSetElements[dataElement[id]],organisationUnits[id]&paging=false`;
                         const allDatasetsResponse = await fetchWithAuth(allDatasetsUrl);
                         
@@ -1794,7 +1777,6 @@
                                 
                                 if (hasMatchingDE) {
                                     allDataSetIds.add(dataset.id);
-                                    // Also add org units assigned to this dataset
                                     if (dataset.organisationUnits) {
                                         dataset.organisationUnits.forEach(ou => {
                                             if (ou.id) allOrgUnitIds.add(ou.id);
@@ -1810,7 +1792,6 @@
                         }
                     }
                     
-                    // Only fetch raw data values if we have data elements (not just indicators)
                     if (finalDataElementIds.length > 0 && allDataSetIds.size > 0) {
                         if (finalOrgUnitIds.length === 0) {
                             log(`\n  No specific org units found, fetching all org units...`, 'info');
@@ -1875,12 +1856,6 @@
                         log(`   Data values in DHIS2 are stored per dataset, not per data element`, 'info');
                         log(`   These data elements may not have any data values`, 'info');
                     }
-                    
-                    // Note: Indicator values are already calculated in DHIS2, they don't need separate import
-                    // They will work automatically once the underlying data elements are imported
-                    if (indicatorValuesToFetch.length > 0) {
-                        log(`\n📈 Note: ${indicatorValuesToFetch.length} indicators detected - they will auto-calculate from imported data`, 'info');
-                    }
                 }
 
                 setProgress(100);
@@ -1934,7 +1909,30 @@
                     state.isLoggedIn = true;
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
-                    showNotification(`✅ Connected as ${userData.displayName || userData.username}!`, 'success');
+                    
+                    const isSuperuser = userData.authorities && userData.authorities.includes('ALL');
+                    const canImport = userData.authorities && userData.authorities.includes('F_METADATA_IMPORT');
+                    const canExport = userData.authorities && userData.authorities.includes('F_METADATA_EXPORT');
+                    
+                    let accessMessage = `✅ Connected as ${userData.displayName || userData.username}!`;
+                    if (isSuperuser) {
+                        accessMessage += '\n🔑 Superuser access (full permissions)';
+                    } else {
+                        accessMessage += '\n👤 Regular user';
+                        if (canImport) accessMessage += ' • Can import metadata ✅';
+                        if (canExport) accessMessage += ' • Can export metadata ✅';
+                        if (!canImport || !canExport) {
+                            accessMessage += '\n⚠️ Limited permissions - some operations may fail';
+                        }
+                    }
+                    
+                    showNotification(accessMessage, 'success');
+                    console.log('User details:', {
+                        username: userData.username,
+                        name: userData.displayName,
+                        isSuperuser: isSuperuser,
+                        authorities: userData.authorities
+                    });
                 } else if (response.status === 401) {
                     showNotification('❌ Invalid username or password', 'error');
                 } else if (response.status === 403) {
