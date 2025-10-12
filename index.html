@@ -1,4 +1,4 @@
-<!DOCTYPE html>      
+<!DOCTYPE html>   
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1063,10 +1063,20 @@
                 <div class="form-group">
                     <label class="form-label">Import Strategy</label>
                     <select class="form-select" id="importStrategy">
-                        <option value="CREATE_AND_UPDATE">Create and Update</option>
+                        <option value="CREATE_AND_UPDATE" selected>Create and Update (Override existing + Add new)</option>
                         <option value="CREATE">Create Only</option>
                         <option value="UPDATE">Update Only</option>
+                        <option value="DELETE">Delete</option>
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Merge Mode</label>
+                    <select class="form-select" id="mergeMode">
+                        <option value="REPLACE" selected>Replace (Override existing completely)</option>
+                        <option value="MERGE">Merge (Keep existing + add new)</option>
+                    </select>
+                    <div class="help-text">Default: Replace mode will override any existing data and add new items</div>
                 </div>
 
                 <div class="progress-section" id="progressSection">
@@ -1359,6 +1369,7 @@
                 const targetUsername = document.getElementById('targetUsername').value.trim();
                 const targetPassword = document.getElementById('targetPassword').value.trim();
                 const importStrategy = document.getElementById('importStrategy').value;
+                const mergeMode = document.getElementById('mergeMode').value;
 
                 log('🔄 Starting metadata copy...', 'info');
                 setProgress(10);
@@ -1421,10 +1432,12 @@
 
                 setProgress(50);
                 log(`🚀 Importing to ${targetUrl}...`, 'info');
+                log(`Import Strategy: ${importStrategy}, Merge Mode: ${mergeMode}`, 'info');
                 setProgress(60);
 
-                const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&atomicMode=NONE')}`;
+                const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=NONE')}`;
 
+                log(`Sending ${Object.keys(metadata).length} metadata type(s)...`, 'info');
                 const importResponse = await fetch(importUrlWithProxy, {
                     method: 'POST',
                     headers: {
@@ -1436,13 +1449,43 @@
 
                 setProgress(80);
 
-                if (!importResponse.ok) {
-                    const errorText = await importResponse.text();
-                    log(`❌ Import failed (Status ${importResponse.status})`, 'error');
-                    throw new Error(`Import failed with status ${importResponse.status}`);
-                }
-
                 const result = await importResponse.json();
+                
+                if (!importResponse.ok) {
+                    log(`❌ Import failed (Status ${importResponse.status})`, 'error');
+                    
+                    // Log detailed error information
+                    if (result.message) {
+                        log(`Error: ${result.message}`, 'error');
+                    }
+                    
+                    if (result.response && result.response.errorReports) {
+                        log('Detailed errors:', 'error');
+                        result.response.errorReports.forEach(err => {
+                            log(`  - ${err.message} (${err.errorCode})`, 'error');
+                        });
+                    }
+                    
+                    if (result.typeReports) {
+                        result.typeReports.forEach(report => {
+                            if (report.objectReports) {
+                                report.objectReports.forEach(objReport => {
+                                    if (objReport.errorReports && objReport.errorReports.length > 0) {
+                                        log(`\nErrors in ${report.klass}:`, 'error');
+                                        objReport.errorReports.forEach(err => {
+                                            log(`  - [${err.errorCode}] ${err.message}`, 'error');
+                                            if (err.errorProperty) {
+                                                log(`    Property: ${err.errorProperty}`, 'error');
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    
+                    throw new Error(`Import failed with status ${importResponse.status}. Check logs for details.`);
+                }
 
                 if (result.status === 'OK' || result.status === 'SUCCESS') {
                     log('\n═══════════════════════════════════════', 'success');
