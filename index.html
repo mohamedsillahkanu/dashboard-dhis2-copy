@@ -824,62 +824,44 @@
 
     <script>
         // ============================================
-        // STATE MANAGEMENT - FIXED
+        // CONFIGURATION - UPDATE YOUR PROXY HERE
+        // ============================================
+        const GOOGLE_APPS_SCRIPT_PROXY = 'https://script.google.com/macros/s/AKfycbyRXc68PYSmDSCYPakAS8Gc9R00kRjmsMYoDujPYMItyquXfwMAJUtRqXLiDlNWbSfDQQ/exec';
+
+        // ============================================
+        // STATE MANAGEMENT
         // ============================================
         const state = {
             config: null,
             isLoggedIn: false
         };
 
-        function getConfig() {
-            return state.config;
-        }
-
         // ============================================
-        // CORS PROXIES - MULTIPLE FALLBACKS
+        // PROXY HELPER FUNCTIONS
         // ============================================
-        // 🔥 REPLACE WITH YOUR PROXY URLs BELOW:
-        const YOUR_GOOGLE_SCRIPT = 'https://script.google.com/macros/s/AKfycbyRXc68PYSmDSCYPakAS8Gc9R00kRjmsMYoDujPYMItyquXfwMAJUtRqXLiDlNWbSfDQQ/exec';
-        const YOUR_CLOUDFLARE_WORKER = 'https://dhis2-proxy.YOUR-SUBDOMAIN.workers.dev/?url=';
-        
-        const CORS_PROXIES = [
-            null, // Try direct connection first (no proxy)
-            YOUR_GOOGLE_SCRIPT, // 🔥 YOUR Google Apps Script (replace above!)
-            YOUR_CLOUDFLARE_WORKER, // 🔥 YOUR Cloudflare Worker (if you made one)
-            'http://localhost:8080/', // Your local proxy (if running)
-            'https://corsproxy.io/?',
-            'https://api.allorigins.win/raw?url=',
-            'https://cors-anywhere.herokuapp.com/'
-        ];
-
-        let currentProxyIndex = 0;
-
-        function getProxyUrl(targetUrl) {
-            if (currentProxyIndex === 0 || !state.config.useCorsProxy) {
-                return targetUrl; // Direct connection
+        function makeProxyRequest(targetUrl, options = {}) {
+            const proxyUrl = `${GOOGLE_APPS_SCRIPT_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+            
+            // For GET requests
+            if (!options.method || options.method === 'GET') {
+                return fetch(proxyUrl, {
+                    method: 'GET',
+                    headers: options.headers || {}
+                });
             }
             
-            // Special handling for Google Apps Script
-            if (currentProxyIndex === 1 && YOUR_GOOGLE_SCRIPT.includes('script.google.com')) {
-                // Google Script needs auth passed differently
-                const url = new URL(targetUrl);
-                return CORS_PROXIES[currentProxyIndex] + encodeURIComponent(targetUrl);
+            // For POST requests
+            if (options.method === 'POST') {
+                return fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: options.headers || {},
+                    body: options.body
+                });
             }
             
-            return CORS_PROXIES[currentProxyIndex] + encodeURIComponent(targetUrl);
+            return fetch(proxyUrl, options);
         }
 
-        function getProxyName() {
-            if (currentProxyIndex === 0) return 'Direct Connection (No Proxy)';
-            if (currentProxyIndex === 1) return 'Your Google Apps Script Proxy';
-            if (currentProxyIndex === 2) return 'Your Cloudflare Worker';
-            if (currentProxyIndex === 3) return 'Local Proxy (localhost:8080)';
-            return CORS_PROXIES[currentProxyIndex];
-        }
-
-        // ============================================
-        // FETCH WITH AUTH - FIXED WITH FALLBACKS
-        // ============================================
         async function fetchWithAuth(url, options = {}) {
             if (!state.config) {
                 throw new Error('Not authenticated');
@@ -887,36 +869,21 @@
 
             const authHeader = 'Basic ' + btoa(`${state.config.username}:${state.config.password}`);
             
-            if (state.config.useCorsProxy) {
-                // For Google Apps Script proxy, we need to pass the full URL with auth in headers
-                const proxyUrl = getProxyUrl(url);
-                
-                return fetch(proxyUrl, {
-                    ...options,
-                    headers: {
-                        ...options.headers,
-                        'Authorization': authHeader,
-                        'Content-Type': 'application/json'
-                    }
-                });
-            } else {
-                // Direct connection
-                return fetch(url, {
-                    ...options,
-                    headers: {
-                        ...options.headers,
-                        'Authorization': authHeader,
-                        'Content-Type': 'application/json'
-                    }
-                });
-            }
+            const requestOptions = {
+                ...options,
+                headers: {
+                    'Authorization': authHeader,
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            };
+
+            return makeProxyRequest(url, requestOptions);
         }
 
-        async function fetchWithRetry(url, options = {}, maxRetries = 2) {
-            // Simple fetch using Google Apps Script proxy only
-            return fetchWithAuth(url, options);
-        }
-
+        // ============================================
+        // UI HELPER FUNCTIONS
+        // ============================================
         function showNotification(message, type) {
             const notification = document.getElementById('notification');
             if (!notification) return;
@@ -1205,7 +1172,7 @@
                 showNotification(`Loading ${type.label}...`, 'info');
 
                 const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fields}&paging=false`;
-                const response = await fetchWithRetry(url);
+                const response = await fetchWithAuth(url);
 
                 if (!response.ok) {
                     throw new Error(`Failed to fetch ${type.label} (Status: ${response.status})`);
@@ -1406,6 +1373,7 @@
                 const mergeMode = document.getElementById('mergeMode').value;
 
                 log('🔄 Starting metadata copy...', 'info');
+                log(`📡 Using Google Apps Script Proxy`, 'info');
                 setProgress(10);
 
                 const metadata = {};
@@ -1420,7 +1388,7 @@
                     if (type.copyAll) {
                         log(`  Fetching all ${type.label}...`, 'info');
                         const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=:all&paging=false`;
-                        const response = await fetchWithRetry(url);
+                        const response = await fetchWithAuth(url);
                         
                         if (response.ok) {
                             const data = await response.json();
@@ -1435,7 +1403,7 @@
                         for (const selectedItem of selectedItems[typeKey]) {
                             try {
                                 const url = `${state.config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all`;
-                                const response = await fetchWithRetry(url);
+                                const response = await fetchWithAuth(url);
                                 
                                 if (response.ok) {
                                     const item = await response.json();
@@ -1467,15 +1435,15 @@
                 setProgress(60);
 
                 const importUrl = targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=NONE';
-                const importUrlWithProxy = getProxyUrl(importUrl);
-
-                log(`Sending ${Object.keys(metadata).length} metadata type(s)...`, 'info');
-                log(`Using: ${getProxyName()}`, 'info');
                 
-                const importResponse = await fetch(importUrlWithProxy, {
+                log(`Sending ${Object.keys(metadata).length} metadata type(s)...`, 'info');
+                
+                const targetAuthHeader = 'Basic ' + btoa(`${targetUsername}:${targetPassword}`);
+                
+                const importResponse = await makeProxyRequest(importUrl, {
                     method: 'POST',
                     headers: {
-                        'Authorization': 'Basic ' + btoa(`${targetUsername}:${targetPassword}`),
+                        'Authorization': targetAuthHeader,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(metadata)
@@ -1550,7 +1518,7 @@
         }
 
         // ============================================
-        // LOGIN & MAIN APP - FIXED
+        // LOGIN & MAIN APP
         // ============================================
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1558,9 +1526,7 @@
             const instanceUrl = document.getElementById('instanceUrl').value.trim().replace(/\/$/, '');
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
-            const useCorsProxy = true; // Set to false if DHIS2 has CORS enabled
 
-            // Validate URL format
             if (!instanceUrl.startsWith('http://') && !instanceUrl.startsWith('https://')) {
                 showNotification('URL must start with http:// or https://', 'error');
                 return;
@@ -1573,27 +1539,23 @@
             const config = {
                 instanceUrl,
                 username,
-                password,
-                useCorsProxy
+                password
             };
 
             try {
                 console.log('Attempting to connect to:', instanceUrl);
                 console.log('Using Google Apps Script proxy...');
                 
-                const testUrl = useCorsProxy 
-                    ? getProxyUrl(instanceUrl + '/api/me')
-                    : `${instanceUrl}/api/me`;
-
-                console.log(`Connecting via: ${getProxyName()}`);
+                showNotification('Connecting via Google Apps Script...', 'info');
                 
-                showNotification(`Connecting via ${getProxyName()}...`, 'info');
+                const testUrl = `${instanceUrl}/api/me`;
+                const authHeader = 'Basic ' + btoa(`${username}:${password}`);
                 
-                const response = await fetch(testUrl, {
+                const response = await makeProxyRequest(testUrl, {
+                    method: 'GET',
                     headers: {
-                        'Authorization': 'Basic ' + btoa(`${username}:${password}`)
-                    },
-                    signal: AbortSignal.timeout(15000) // 15 second timeout
+                        'Authorization': authHeader
+                    }
                 });
 
                 console.log(`Response status:`, response.status);
@@ -1606,7 +1568,7 @@
                     state.isLoggedIn = true;
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
-                    showNotification(`✅ Connected successfully!`, 'success');
+                    showNotification(`✅ Connected successfully as ${userData.displayName || userData.username}!`, 'success');
                 } else if (response.status === 401) {
                     showNotification('❌ Invalid username or password', 'error');
                 } else if (response.status === 403) {
