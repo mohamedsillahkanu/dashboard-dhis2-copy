@@ -1573,7 +1573,41 @@
                                 log(`    ⚠️ Could not analyze dashboard: ${dashboard.displayName || dashboard.name}`, 'error');
                             }
                         }
-                        log(`    ✓ Found ${allDataElementIds.size} data elements, ${indicatorValuesToFetch.length} indicators, ${allOrgUnitIds.size} org units`, 'success');
+                        
+                        // Now fetch the data elements from the indicators we found
+                        if (indicatorValuesToFetch.length > 0) {
+                            log(`\n  Extracting data elements from ${indicatorValuesToFetch.length} indicators in dashboards...`, 'info');
+                            for (const indicatorId of indicatorValuesToFetch) {
+                                try {
+                                    const indUrl = `${state.config.instanceUrl}/api/indicators/${indicatorId}.json?fields=:owner,numerator,denominator`;
+                                    const indResponse = await fetchWithAuth(indUrl);
+                                    if (indResponse.ok) {
+                                        const indData = await indResponse.json();
+                                        // Extract data element IDs from formulas (format: #{dataElementId} or #{dataElementId.categoryOptionComboId})
+                                        const numeratorMatches = (indData.numerator || '').match(/#{([^.}]+)/g);
+                                        const denominatorMatches = (indData.denominator || '').match(/#{([^.}]+)/g);
+                                        
+                                        if (numeratorMatches) {
+                                            numeratorMatches.forEach(match => {
+                                                const deId = match.replace('#{', '');
+                                                allDataElementIds.add(deId);
+                                            });
+                                        }
+                                        if (denominatorMatches) {
+                                            denominatorMatches.forEach(match => {
+                                                const deId = match.replace('#{', '');
+                                                allDataElementIds.add(deId);
+                                            });
+                                        }
+                                    }
+                                } catch (err) {
+                                    log(`    ⚠️ Could not fetch indicator formula`, 'error');
+                                }
+                            }
+                            log(`    ✓ Extracted ${allDataElementIds.size} data elements from indicator formulas`, 'success');
+                        }
+                        
+                        log(`    ✅ Total: ${allDataElementIds.size} data elements, ${indicatorValuesToFetch.length} indicators, ${allOrgUnitIds.size} org units`, 'success');
                     }
                     
                     // For indicators - add them to fetch list
