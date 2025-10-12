@@ -952,8 +952,7 @@
                 endpoint: 'organisationUnits',
                 fields: 'id,displayName,name,level,parent',
                 copyAll: true,
-                fetchFields: ':owner',
-                autoLoad: true // Special flag: automatically load and select all
+                fetchFields: ':owner'
             },
             dataElements: {
                 label: 'Data Elements',
@@ -1145,21 +1144,14 @@
             document.querySelector(`[data-type="${typeKey}"]`).classList.add('active');
 
             availableItems[typeKey] = null;
-            
-            // For Organisation Units: auto-load immediately
-            if (type.autoLoad) {
-                loadCurrentTypeItems();
-                showNotification(`${type.label} will copy ALL items (all levels required)`, 'info');
-            } else {
-                document.getElementById('loadItemsBtn').disabled = false;
-                document.getElementById('addAllBtn').disabled = true;
-            }
+            document.getElementById('loadItemsBtn').disabled = false;
+            document.getElementById('addAllBtn').disabled = true;
 
             renderAvailableItems();
             renderSelectedItems();
 
-            if (type.copyAll && !type.autoLoad) {
-                showNotification(`${type.label} will be copied automatically (all items)`, 'info');
+            if (type.copyAll) {
+                showNotification(`${type.label} - use "Add All" to select all items with complete hierarchy`, 'info');
             }
         }
 
@@ -1190,20 +1182,10 @@
                     selectedItems[currentMetadataType] = [];
                 }
 
-                // For Organisation Units: automatically select ALL items
-                if (type.autoLoad) {
-                    selectedItems[currentMetadataType] = [...items];
-                    showNotification(`✅ Auto-selected ALL ${items.length} ${type.label} (all levels)`, 'success');
-                } else {
-                    document.getElementById('addAllBtn').disabled = false;
-                }
-
                 renderAvailableItems();
-                renderSelectedItems();
                 
-                if (!type.autoLoad) {
-                    showNotification(`Loaded ${items.length} ${type.label}`, 'success');
-                }
+                document.getElementById('addAllBtn').disabled = false;
+                showNotification(`Loaded ${items.length} ${type.label}`, 'success');
 
             } catch (error) {
                 showNotification(`Failed to load ${type.label}: ${error.message}`, 'error');
@@ -1228,22 +1210,8 @@
                 return;
             }
 
-            const type = METADATA_TYPES[currentMetadataType];
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
-            
-            // For Organisation Units with autoLoad: show that all are selected
-            if (type.autoLoad) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">✅</div>
-                        <div><strong>All ${items.length} Organisation Units selected</strong><br>
-                        All levels are required for proper hierarchy</div>
-                    </div>
-                `;
-                document.getElementById('availableCount').textContent = `${items.length} items (all selected)`;
-                return;
-            }
             
             const filteredItems = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
@@ -1333,6 +1301,7 @@
         function addAllAvailableItems() {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
 
+            const type = METADATA_TYPES[currentMetadataType];
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
             
@@ -1352,7 +1321,12 @@
             renderAvailableItems();
             renderSelectedItems();
             
-            showNotification(`Added ${itemsToAdd.length} items`, 'success');
+            // Special message for Organisation Units
+            if (currentMetadataType === 'organisationUnits') {
+                showNotification(`✅ Added all ${itemsToAdd.length} Organisation Units (complete hierarchy)`, 'success');
+            } else {
+                showNotification(`Added ${itemsToAdd.length} items`, 'success');
+            }
         }
 
         function clearAllSelectedItems() {
@@ -1844,19 +1818,41 @@
 
                     if (result.stats) {
                         log('📊 Import Statistics:', 'success');
-                        log(`  ✓ Created: ${itemsCreated}`, 'success');
-                        log(`  ✓ Updated: ${itemsUpdated}`, 'success');
-                        if (itemsIgnored > 0) {
-                            log(`  ℹ️  Ignored: ${itemsIgnored} (already exist with same data)`, 'info');
+                        if (itemsCreated > 0) {
+                            log(`  ✓ Created: ${itemsCreated} new items`, 'success');
                         }
+                        if (itemsUpdated > 0) {
+                            log(`  ✓ Updated: ${itemsUpdated} existing items`, 'success');
+                        }
+                        if (itemsIgnored > 0) {
+                            log(`  ℹ️  Ignored: ${itemsIgnored} (already up to date)`, 'info');
+                        }
+                        log(`  📦 Total processed: ${itemsCreated + itemsUpdated + itemsIgnored}`, 'success');
                     }
 
-                    showNotification('✅ Metadata copied successfully!', 'success');
+                    // Build success message
+                    let successMsg = '✅ Copy successful! ';
+                    const parts = [];
+                    if (itemsCreated > 0) parts.push(`${itemsCreated} created`);
+                    if (itemsUpdated > 0) parts.push(`${itemsUpdated} updated`);
+                    if (itemsIgnored > 0) parts.push(`${itemsIgnored} already exist`);
+                    successMsg += parts.join(', ');
+                    
+                    showNotification(successMsg, 'success');
                 } else {
-                    // Nothing was created or updated
-                    log(`❌ Import completed but no items were created or updated`, 'error');
-                    log(`Status: ${result.status}`, 'error');
-                    showNotification('Import completed but nothing was changed', 'error');
+                    // Nothing was created or updated - check if items were ignored
+                    if (itemsIgnored > 0) {
+                        log('\n═══════════════════════════════════════', 'success');
+                        log('✅ COPY SUCCESSFUL!', 'success');
+                        log('═══════════════════════════════════════', 'success');
+                        log(`📊 All ${itemsIgnored} items already exist in target (up to date)`, 'success');
+                        showNotification(`✅ Copy successful! All ${itemsIgnored} items already exist`, 'success');
+                    } else {
+                        log(`❌ Import completed but no items were processed`, 'error');
+                        log(`Status: ${result.status}`, 'error');
+                        log(`Total in stats: ${totalProcessed}`, 'error');
+                        showNotification('Import completed but nothing was changed', 'error');
+                    }
                 }
 
                 setProgress(100);
