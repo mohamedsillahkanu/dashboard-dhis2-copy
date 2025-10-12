@@ -995,13 +995,16 @@
                     </div>
                 </div>
 
-                <div class="data-section" id="dataSection" style="display: none;">
+                <div class="data-section" id="dataSection">
                     <div class="data-section-header">
-                        <h3>📊 Raw Data Options</h3>
+                        <h3>📊 Raw Data Options (Optional)</h3>
                         <div class="checkbox-wrapper">
                             <input type="checkbox" id="includeDataCheckbox">
-                            <label for="includeDataCheckbox">Include Raw Data</label>
+                            <label for="includeDataCheckbox">Include Raw Data Values</label>
                         </div>
+                    </div>
+                    <div class="help-text" style="margin-bottom: 15px; padding: 10px; background: rgba(124, 58, 237, 0.1); border-radius: 6px; border-left: 3px solid #7c3aed;">
+                        💡 <strong>Tip:</strong> Enable this to copy actual data values along with metadata. This ensures dashboards display properly, indicators calculate correctly, and your target instance has complete data for the selected period.
                     </div>
                     <div id="dataOptions" style="display: none;">
                         <div class="form-row">
@@ -1074,16 +1077,11 @@
             renderAvailableItems();
             renderSelectedItems();
             
-            const dataSection = document.getElementById('dataSection');
-            if (type.hasData) {
-                dataSection.style.display = 'block';
-            } else {
-                dataSection.style.display = 'none';
-                document.getElementById('includeDataCheckbox').checked = false;
-                document.getElementById('dataOptions').style.display = 'none';
-            }
-            
             if (type.copyAll) showNotification(`${type.label} - use "Add All" to select all items with complete hierarchy`, 'info');
+        }
+
+        function updateDataSectionVisibility() {
+            // Data section is always visible now - no need to toggle
         }
 
         async function loadCurrentTypeItems() {
@@ -1158,6 +1156,7 @@
             selectedItems[currentMetadataType].push(item);
             renderAvailableItems();
             renderSelectedItems();
+            updateDataSectionVisibility();
         }
 
         function removeItem(itemId) {
@@ -1165,6 +1164,7 @@
             selectedItems[currentMetadataType] = selectedItems[currentMetadataType].filter(item => item.id !== itemId);
             renderAvailableItems();
             renderSelectedItems();
+            updateDataSectionVisibility();
         }
 
         function addAllAvailableItems() {
@@ -1181,6 +1181,7 @@
             selectedItems[currentMetadataType].push(...itemsToAdd);
             renderAvailableItems();
             renderSelectedItems();
+            updateDataSectionVisibility();
             if (currentMetadataType === 'organisationUnits') {
                 showNotification(`✅ Added all ${itemsToAdd.length} Organisation Units (complete hierarchy)`, 'success');
             } else {
@@ -1193,6 +1194,7 @@
             selectedItems[currentMetadataType] = [];
             renderAvailableItems();
             renderSelectedItems();
+            updateDataSectionVisibility();
             showNotification('Cleared all selected items', 'info');
         }
 
@@ -1496,9 +1498,22 @@
                     const orgUnitLevel = document.getElementById('orgUnitLevel').value.trim();
                     
                     log(`  Period: ${startPeriod} to ${endPeriod}`, 'info');
+                    log(`  Data Elements: ${selectedDataElementIds.length}`, 'info');
                     
                     let orgUnitsToUse = selectedOrgUnitIds;
-                    if (orgUnitLevel && selectedOrgUnitIds.length > 0) {
+                    
+                    if (selectedOrgUnitIds.length === 0) {
+                        log(`  No org units selected, fetching all org units...`, 'info');
+                        const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id&paging=false`;
+                        const ouResponse = await fetchWithAuth(ouUrl);
+                        if (ouResponse.ok) {
+                            const ouData = await ouResponse.json();
+                            orgUnitsToUse = ouData.organisationUnits.map(ou => ou.id);
+                            log(`  ✓ Found ${orgUnitsToUse.length} org units`, 'success');
+                        }
+                    }
+                    
+                    if (orgUnitLevel && orgUnitsToUse.length > 0) {
                         log(`  Filtering org units by level ${orgUnitLevel}...`, 'info');
                         const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id&level=${orgUnitLevel}&paging=false`;
                         const ouResponse = await fetchWithAuth(ouUrl);
@@ -1509,47 +1524,54 @@
                         }
                     }
                     
-                    const dataValues = await fetchDataValues(selectedDataElementIds, orgUnitsToUse, startPeriod, endPeriod);
-                    
-                    if (dataValues.length > 0) {
-                        log(`\n✅ Total data values fetched: ${dataValues.length}`, 'success');
-                        setProgress(85);
+                    if (orgUnitsToUse.length === 0) {
+                        log(`  ⚠️ No organisation units available for data fetch`, 'error');
+                    } else {
+                        const dataValues = await fetchDataValues(selectedDataElementIds, orgUnitsToUse, startPeriod, endPeriod);
                         
-                        log(`🚀 Importing ${dataValues.length} data values to target...`, 'info');
-                        const dataUrl = targetUrl + '/api/dataValueSets';
-                        const dataPayload = JSON.stringify({ dataValues: dataValues });
-                        
-                        const dataResponse = await makeProxyRequest(dataUrl, {
-                            method: 'POST',
-                            headers: { 'Authorization': targetAuthHeader, 'Content-Type': 'application/json' },
-                            body: dataPayload
-                        });
-                        
-                        setProgress(95);
-                        
-                        if (dataResponse.ok) {
-                            const dataResult = await dataResponse.json();
-                            console.log('DHIS2 Data Response:', dataResult);
+                        if (dataValues.length > 0) {
+                            log(`\n✅ Total data values fetched: ${dataValues.length}`, 'success');
+                            setProgress(85);
                             
-                            const dataImportSummary = dataResult.response || dataResult;
-                            const dataImported = dataImportSummary.importCount?.imported || 0;
-                            const dataUpdated = dataImportSummary.importCount?.updated || 0;
-                            const dataIgnored = dataImportSummary.importCount?.ignored || 0;
+                            log(`🚀 Importing ${dataValues.length} data values to target...`, 'info');
+                            const dataUrl = targetUrl + '/api/dataValueSets';
+                            const dataPayload = JSON.stringify({ dataValues: dataValues });
                             
-                            log(`\n📊 Data Import Statistics:`, 'success');
-                            log(`  Imported: ${dataImported}`, 'success');
-                            log(`  Updated: ${dataUpdated}`, 'success');
-                            log(`  Ignored: ${dataIgnored}`, 'info');
+                            const dataResponse = await makeProxyRequest(dataUrl, {
+                                method: 'POST',
+                                headers: { 'Authorization': targetAuthHeader, 'Content-Type': 'application/json' },
+                                body: dataPayload
+                            });
                             
-                            if (dataImported > 0 || dataUpdated > 0) {
-                                log(`\n✅ Data values successfully imported!`, 'success');
+                            setProgress(95);
+                            
+                            if (dataResponse.ok) {
+                                const dataResult = await dataResponse.json();
+                                console.log('DHIS2 Data Response:', dataResult);
+                                
+                                const dataImportSummary = dataResult.response || dataResult;
+                                const dataImported = dataImportSummary.importCount?.imported || 0;
+                                const dataUpdated = dataImportSummary.importCount?.updated || 0;
+                                const dataIgnored = dataImportSummary.importCount?.ignored || 0;
+                                
+                                log(`\n📊 Data Import Statistics:`, 'success');
+                                log(`  Imported: ${dataImported}`, 'success');
+                                log(`  Updated: ${dataUpdated}`, 'success');
+                                log(`  Ignored: ${dataIgnored}`, 'info');
+                                
+                                if (dataImported > 0 || dataUpdated > 0) {
+                                    log(`\n✅ Data values successfully imported!`, 'success');
+                                }
+                            } else {
+                                log(`⚠️ Data import failed (Status ${dataResponse.status})`, 'error');
                             }
                         } else {
-                            log(`⚠️ Data import failed (Status ${dataResponse.status})`, 'error');
+                            log(`\n⚠️ No data values found for the specified period`, 'info');
                         }
-                    } else {
-                        log(`\n⚠️ No data values found for the specified period`, 'info');
                     }
+                } else if (includeData && selectedDataElementIds.length === 0) {
+                    log(`\n⚠️ Data copy requested but no data elements available`, 'info');
+                    log(`   Tip: Include Data Elements or Datasets to copy their data values`, 'info');
                 }
 
                 setProgress(100);
