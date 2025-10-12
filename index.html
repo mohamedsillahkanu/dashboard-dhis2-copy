@@ -1451,6 +1451,9 @@
 
                 const result = await importResponse.json();
                 
+                // Log the full response for debugging
+                console.log('Full import response:', result);
+                
                 if (!importResponse.ok) {
                     log(`❌ Import failed (Status ${importResponse.status})`, 'error');
                     
@@ -1490,6 +1493,32 @@
                 const itemsCreated = result.stats ? (result.stats.created || 0) : 0;
                 const itemsUpdated = result.stats ? (result.stats.updated || 0) : 0;
                 const itemsIgnored = result.stats ? (result.stats.ignored || 0) : 0;
+                
+                // Log detailed error reports even on ERROR status
+                if (result.status === 'ERROR') {
+                    log(`❌ Import returned ERROR status`, 'error');
+                    
+                    if (result.typeReports) {
+                        result.typeReports.forEach(report => {
+                            log(`\n📦 Type: ${report.klass}`, 'error');
+                            log(`  Total: ${report.stats.total || 0}, Imported: ${report.stats.created + report.stats.updated || 0}, Ignored: ${report.stats.ignored || 0}`, 'error');
+                            
+                            if (report.objectReports) {
+                                report.objectReports.forEach(objReport => {
+                                    if (objReport.errorReports && objReport.errorReports.length > 0) {
+                                        log(`\n  ⚠️ Object: ${objReport.displayName || objReport.uid}`, 'error');
+                                        objReport.errorReports.forEach(err => {
+                                            log(`    - [${err.errorCode}] ${err.message}`, 'error');
+                                            if (err.errorProperty) {
+                                                log(`      Property: ${err.errorProperty}`, 'error');
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }
                 
                 if (itemsCreated > 0 || itemsUpdated > 0) {
                     // Success if anything was created or updated
