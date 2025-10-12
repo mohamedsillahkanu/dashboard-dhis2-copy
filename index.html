@@ -885,16 +885,21 @@
             if (options.headers && options.headers.Authorization) {
                 proxyUrl += `&Authorization=${encodeURIComponent(options.headers.Authorization)}`;
             }
+            
+            const fetchOptions = { method: 'POST' };
+            
             if (!options.method || options.method === 'GET') {
-                return fetch(proxyUrl, { method: 'GET' });
+                proxyUrl += '&method=GET';
+            } else if (options.method === 'POST') {
+                proxyUrl += '&method=POST';
+                if (options.body) {
+                    fetchOptions.body = options.body;
+                }
+            } else if (options.method === 'DELETE') {
+                proxyUrl += '&method=DELETE';
             }
-            if (options.method === 'POST') {
-                return fetch(proxyUrl, { method: 'POST', body: options.body });
-            }
-            if (options.method === 'DELETE') {
-                return fetch(proxyUrl, { method: 'DELETE' });
-            }
-            return fetch(proxyUrl);
+            
+            return fetch(proxyUrl, fetchOptions);
         }
 
         async function fetchWithAuth(url, options = {}) {
@@ -1308,12 +1313,13 @@
             try {
                 log('🗑️ Starting metadata deletion...', 'info');
                 log(`⚠️ Target: ${state.config.instanceUrl}`, 'error');
-                log(`📝 Mode: DELETE (permanent removal)`, 'error');
+                log(`📝 Mode: DELETE (using metadata API)`, 'error');
                 setProgress(10);
 
                 let itemsDeleted = 0;
                 let itemsFailed = 0;
 
+                // Delete using metadata import API with IMPORT_MODE: DELETE
                 const deletionOrder = ['dashboards', 'indicators', 'dataSets', 'dataElements', 'validationRules', 'programs', 'categoryOptions', 'organisationUnits'];
                 
                 for (const typeKey of deletionOrder) {
@@ -1324,28 +1330,81 @@
                     
                     log(`\n🗑️ Deleting ${items.length} ${type.label}...`, 'info');
                     
-                    for (const item of items) {
+                    // Process in batches of 50 to avoid overwhelming the API
+                    const batchSize = 50;
+                    for (let i = 0; i < items.length; i += batchSize) {
+                        const batch = items.slice(i, i + batchSize);
+                        const batchNum = Math.floor(i / batchSize) + 1;
+                        const totalBatches = Math.ceil(items.length / batchSize);
+                        
+                        log(`  Processing batch ${batchNum}/${totalBatches} (${batch.length} items)...`, 'info');
+                        
+                        // Create metadata object with just IDs for deletion
+                        const metadataToDelete = {};
+                        metadataToDelete[type.endpoint] = batch.map(item => ({ id: item.id }));
+                        
                         try {
-                            const deleteUrl = `${state.config.instanceUrl}/api/${type.endpoint}/${item.id}`;
-                            const response = await fetchWithAuth(deleteUrl, { method: 'DELETE' });
+                            // Use metadata import API with importMode=DELETE
+                            const deleteUrl = `${state.config.instanceUrl}/api/metadata?importMode=DELETE&atomicMode=NONE`;
+                            const deletePayload = JSON.stringify(metadataToDelete);
+                            
+                            const response = await fetchWithAuth(deleteUrl, {
+                                method: 'POST',
+                                body: deletePayload
+                            });
                             
                             if (response.ok) {
-                                itemsDeleted++;
-                                log(`  ✓ Deleted: ${item.displayName || item.name}`, 'success');
+                                const result = await response.json();
+                                const deleteResult = result.response || result;
+                                
+                                // Parse the result
+                                if (deleteResult.typeReports && Array.isArray(deleteResult.typeReports)) {
+                                    deleteResult.typeReports.forEach(report => {
+                                        const deleted = report.stats?.deleted || 0;
+                                        const ignored = report.stats?.ignored || 0;
+                                        
+                                        itemsDeleted += deleted;
+                                        itemsFailed += (batch.length - deleted - ignored);
+                                        
+                                        if (deleted > 0) {
+                                            log(`    ✓ Deleted ${deleted} items`, 'success');
+                                        }
+                                        if (ignored > 0) {
+                                            log(`    ⓘ Ignored ${ignored} items (may not exist)`, 'info');
+                                        }
+                                        
+                                        // Log any errors
+                                        if (report.objectReports) {
+                                            report.objectReports.forEach(objReport => {
+                                                if (objReport.errorReports && objReport.errorReports.length > 0) {
+                                                    const itemName = batch.find(it => it.id === objReport.uid)?.displayName || objReport.uid;
+                                                    objReport.errorReports.forEach(err => {
+                                                        log(`    ✗ ${itemName}: ${err.message}`, 'error');
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    });
+                                } else {
+                                    // Fallback if structure is different
+                                    const deleted = deleteResult.stats?.deleted || 0;
+                                    itemsDeleted += deleted;
+                                    itemsFailed += (batch.length - deleted);
+                                    log(`    ✓ Batch processed: ${deleted} deleted`, deleted > 0 ? 'success' : 'error');
+                                }
                             } else {
-                                itemsFailed++;
                                 const errorText = await response.text();
-                                log(`  ✗ Failed: ${item.displayName || item.name} (${response.status})`, 'error');
-                                try {
-                                    const errorJson = JSON.parse(errorText);
-                                    if (errorJson.message) {
-                                        log(`    Reason: ${errorJson.message}`, 'error');
-                                    }
-                                } catch (e) {}
+                                log(`    ✗ Batch failed (HTTP ${response.status}): ${errorText.substring(0, 200)}`, 'error');
+                                itemsFailed += batch.length;
                             }
                         } catch (error) {
-                            itemsFailed++;
-                            log(`  ✗ Error deleting ${item.displayName || item.name}: ${error.message}`, 'error');
+                            log(`    ✗ Batch error: ${error.message}`, 'error');
+                            itemsFailed += batch.length;
+                        }
+                        
+                        // Small delay between batches
+                        if (i + batchSize < items.length) {
+                            await new Promise(resolve => setTimeout(resolve, 500));
                         }
                     }
                     
@@ -1363,7 +1422,8 @@
                     log(`\nCommon reasons for failure:`, 'info');
                     log(`  • Item is referenced by other metadata`, 'info');
                     log(`  • Insufficient permissions`, 'info');
-                    log(`  • Item doesn't exist`, 'info');
+                    log(`  • Item doesn't exist or already deleted`, 'info');
+                    log(`  • Delete order matters (delete dependent items first)`, 'info');
                 }
 
                 const successMsg = itemsFailed > 0 
