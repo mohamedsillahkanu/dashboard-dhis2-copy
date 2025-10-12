@@ -1004,7 +1004,7 @@
                         </div>
                     </div>
                     <div class="help-text" style="margin-bottom: 15px; padding: 10px; background: rgba(124, 58, 237, 0.1); border-radius: 6px; border-left: 3px solid #7c3aed;">
-                        💡 <strong>Tip:</strong> Enable this to copy actual data values along with metadata. This ensures dashboards display properly, indicators calculate correctly, and your target instance has complete data for the selected period.
+                        💡 <strong>Tip:</strong> Enable this to copy actual data values along with metadata. This ensures dashboards display properly, indicators calculate correctly, and your target instance has complete data for the selected period. All related data elements and org units will be automatically included.
                     </div>
                     <div id="dataOptions" style="display: none;">
                         <div class="form-row">
@@ -1018,11 +1018,6 @@
                                 <input type="text" class="form-input" id="endPeriod" placeholder="e.g., 2024-12 or 202412">
                                 <div class="help-text">Format: Same as start period</div>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Organisation Unit Level (optional)</label>
-                            <input type="number" class="form-input" id="orgUnitLevel" placeholder="Leave empty for all levels" min="1">
-                            <div class="help-text">Specify level to filter org units (1=highest level)</div>
                         </div>
                     </div>
                 </div>
@@ -1488,46 +1483,182 @@
                 log(`  Updated: ${itemsUpdated}`, 'info');
                 log(`  Ignored: ${itemsIgnored}`, 'info');
 
-                if (includeData && selectedDataElementIds.length > 0) {
+                if (includeData) {
                     setProgress(70);
                     log(`\n═══════════════════════════════════════`, 'info');
-                    log(`📊 Starting data values import...`, 'info');
+                    log(`📊 Analyzing dependencies for data import...`, 'info');
                     
                     const startPeriod = document.getElementById('startPeriod').value.trim();
                     const endPeriod = document.getElementById('endPeriod').value.trim();
-                    const orgUnitLevel = document.getElementById('orgUnitLevel').value.trim();
                     
                     log(`  Period: ${startPeriod} to ${endPeriod}`, 'info');
-                    log(`  Data Elements: ${selectedDataElementIds.length}`, 'info');
                     
-                    let orgUnitsToUse = selectedOrgUnitIds;
+                    // Collect all data elements from various sources
+                    const allDataElementIds = new Set(selectedDataElementIds);
+                    const allOrgUnitIds = new Set(selectedOrgUnitIds);
                     
-                    if (selectedOrgUnitIds.length === 0) {
-                        log(`  No org units selected, fetching all org units...`, 'info');
+                    // Extract data elements and org units from dashboards
+                    if (selectedItems['dashboards'] && selectedItems['dashboards'].length > 0) {
+                        log(`\n  Analyzing ${selectedItems['dashboards'].length} dashboards for dependencies...`, 'info');
+                        for (const dashboard of selectedItems['dashboards']) {
+                            try {
+                                const dashUrl = `${state.config.instanceUrl}/api/dashboards/${dashboard.id}.json?fields=:owner,dashboardItems[*,visualization[*,dataDimensionItems[*],organisationUnits[id],organisationUnitGroups[id]]]`;
+                                const dashResponse = await fetchWithAuth(dashUrl);
+                                if (dashResponse.ok) {
+                                    const dashData = await dashResponse.json();
+                                    if (dashData.dashboardItems) {
+                                        dashData.dashboardItems.forEach(item => {
+                                            // Extract data elements
+                                            if (item.visualization && item.visualization.dataDimensionItems) {
+                                                item.visualization.dataDimensionItems.forEach(dimItem => {
+                                                    if (dimItem.dataElement && dimItem.dataElement.id) {
+                                                        allDataElementIds.add(dimItem.dataElement.id);
+                                                    }
+                                                    if (dimItem.indicator && dimItem.indicator.id) {
+                                                        relatedIndicators.add(dimItem.indicator.id);
+                                                    }
+                                                });
+                                            }
+                                            // Extract org units
+                                            if (item.visualization && item.visualization.organisationUnits) {
+                                                item.visualization.organisationUnits.forEach(ou => {
+                                                    if (ou.id) allOrgUnitIds.add(ou.id);
+                                                });
+                                            }
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                log(`    ⚠️ Could not analyze dashboard: ${dashboard.displayName || dashboard.name}`, 'error');
+                            }
+                        }
+                        log(`    ✓ Found ${allDataElementIds.size} data elements and ${allOrgUnitIds.size} org units from dashboards`, 'success');
+                    }
+                    
+                    // Extract data elements from indicators
+                    if (selectedItems['indicators'] && selectedItems['indicators'].length > 0) {
+                        log(`\n  Analyzing ${selectedItems['indicators'].length} indicators for dependencies...`, 'info');
+                        for (const indicator of selectedItems['indicators']) {
+                            try {
+                                const indUrl = `${state.config.instanceUrl}/api/indicators/${indicator.id}.json?fields=:owner,numerator,denominator`;
+                                const indResponse = await fetchWithAuth(indUrl);
+                                if (indResponse.ok) {
+                                    const indData = await indResponse.json();
+                                    // Extract data element IDs from formulas (format: #{dataElementId.categoryOptionComboId})
+                                    const numeratorMatches = (indData.numerator || '').match(/#{([^.}]+)/g);
+                                    const denominatorMatches = (indData.denominator || '').match(/#{([^.}]+)/g);
+                                    
+                                    if (numeratorMatches) {
+                                        numeratorMatches.forEach(match => {
+                                            const deId = match.replace('#{', '');
+                                            allDataElementIds.add(deId);
+                                        });
+                                    }
+                                    if (denominatorMatches) {
+                                        denominatorMatches.forEach(match => {
+                                            const deId = match.replace('#{', '');
+                                            allDataElementIds.add(deId);
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                log(`    ⚠️ Could not analyze indicator: ${indicator.displayName || indicator.name}`, 'error');
+                            }
+                        }
+                        log(`    ✓ Found ${allDataElementIds.size} total data elements including indicators`, 'success');
+                    }
+                    
+                    // Extract data elements from validation rules
+                    if (selectedItems['validationRules'] && selectedItems['validationRules'].length > 0) {
+                        log(`\n  Analyzing ${selectedItems['validationRules'].length} validation rules for dependencies...`, 'info');
+                        for (const rule of selectedItems['validationRules']) {
+                            try {
+                                const ruleUrl = `${state.config.instanceUrl}/api/validationRules/${rule.id}.json?fields=:owner,leftSide,rightSide`;
+                                const ruleResponse = await fetchWithAuth(ruleUrl);
+                                if (ruleResponse.ok) {
+                                    const ruleData = await ruleResponse.json();
+                                    // Extract data element IDs from expressions
+                                    const leftMatches = (ruleData.leftSide?.expression || '').match(/#{([^.}]+)/g);
+                                    const rightMatches = (ruleData.rightSide?.expression || '').match(/#{([^.}]+)/g);
+                                    
+                                    if (leftMatches) {
+                                        leftMatches.forEach(match => {
+                                            const deId = match.replace('#{', '');
+                                            allDataElementIds.add(deId);
+                                        });
+                                    }
+                                    if (rightMatches) {
+                                        rightMatches.forEach(match => {
+                                            const deId = match.replace('#{', '');
+                                            allDataElementIds.add(deId);
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                log(`    ⚠️ Could not analyze validation rule: ${rule.displayName || rule.name}`, 'error');
+                            }
+                        }
+                        log(`    ✓ Found ${allDataElementIds.size} total data elements including validation rules`, 'success');
+                    }
+                    
+                    // Extract org units from datasets
+                    if (selectedItems['dataSets'] && selectedItems['dataSets'].length > 0) {
+                        log(`\n  Analyzing ${selectedItems['dataSets'].length} datasets for org unit assignments...`, 'info');
+                        for (const dataset of selectedItems['dataSets']) {
+                            try {
+                                const dsUrl = `${state.config.instanceUrl}/api/dataSets/${dataset.id}.json?fields=organisationUnits[id]`;
+                                const dsResponse = await fetchWithAuth(dsUrl);
+                                if (dsResponse.ok) {
+                                    const dsData = await dsResponse.json();
+                                    if (dsData.organisationUnits) {
+                                        dsData.organisationUnits.forEach(ou => {
+                                            if (ou.id) allOrgUnitIds.add(ou.id);
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                log(`    ⚠️ Could not analyze dataset: ${dataset.displayName || dataset.name}`, 'error');
+                            }
+                        }
+                        log(`    ✓ Found ${allOrgUnitIds.size} total org units including from datasets`, 'success');
+                    }
+                    
+                    const finalDataElementIds = Array.from(allDataElementIds);
+                    let finalOrgUnitIds = Array.from(allOrgUnitIds);
+                    
+                    if (finalDataElementIds.length === 0) {
+                        log(`\n  No specific data elements found, fetching all data elements...`, 'info');
+                        const allDeUrl = `${state.config.instanceUrl}/api/dataElements.json?fields=id&paging=false`;
+                        const allDeResponse = await fetchWithAuth(allDeUrl);
+                        if (allDeResponse.ok) {
+                            const allDeData = await allDeResponse.json();
+                            finalDataElementIds.push(...allDeData.dataElements.map(de => de.id));
+                            log(`  ✓ Found ${finalDataElementIds.length} data elements in source instance`, 'success');
+                        }
+                    } else {
+                        log(`\n  ✅ Total data elements to fetch: ${finalDataElementIds.length}`, 'success');
+                    }
+                    
+                    if (finalOrgUnitIds.length === 0) {
+                        log(`  No specific org units found, fetching all org units...`, 'info');
                         const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id&paging=false`;
                         const ouResponse = await fetchWithAuth(ouUrl);
                         if (ouResponse.ok) {
                             const ouData = await ouResponse.json();
-                            orgUnitsToUse = ouData.organisationUnits.map(ou => ou.id);
-                            log(`  ✓ Found ${orgUnitsToUse.length} org units`, 'success');
+                            finalOrgUnitIds = ouData.organisationUnits.map(ou => ou.id);
+                            log(`  ✓ Found ${finalOrgUnitIds.length} org units in source instance`, 'success');
                         }
-                    }
-                    
-                    if (orgUnitLevel && orgUnitsToUse.length > 0) {
-                        log(`  Filtering org units by level ${orgUnitLevel}...`, 'info');
-                        const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id&level=${orgUnitLevel}&paging=false`;
-                        const ouResponse = await fetchWithAuth(ouUrl);
-                        if (ouResponse.ok) {
-                            const ouData = await ouResponse.json();
-                            orgUnitsToUse = ouData.organisationUnits.map(ou => ou.id);
-                            log(`  ✓ Found ${orgUnitsToUse.length} org units at level ${orgUnitLevel}`, 'success');
-                        }
-                    }
-                    
-                    if (orgUnitsToUse.length === 0) {
-                        log(`  ⚠️ No organisation units available for data fetch`, 'error');
                     } else {
-                        const dataValues = await fetchDataValues(selectedDataElementIds, orgUnitsToUse, startPeriod, endPeriod);
+                        log(`  ✅ Total org units to fetch from: ${finalOrgUnitIds.length}`, 'success');
+                    }
+                    
+                    if (finalDataElementIds.length === 0) {
+                        log(`\n  ⚠️ No data elements found in source instance`, 'error');
+                    } else if (finalOrgUnitIds.length === 0) {
+                        log(`\n  ⚠️ No organisation units available for data fetch`, 'error');
+                    } else {
+                        log(`\n  📊 Fetching data for ${finalDataElementIds.length} data elements across ${finalOrgUnitIds.length} org units...`, 'info');
+                        const dataValues = await fetchDataValues(finalDataElementIds, finalOrgUnitIds, startPeriod, endPeriod);
                         
                         if (dataValues.length > 0) {
                             log(`\n✅ Total data values fetched: ${dataValues.length}`, 'success');
@@ -1569,9 +1700,6 @@
                             log(`\n⚠️ No data values found for the specified period`, 'info');
                         }
                     }
-                } else if (includeData && selectedDataElementIds.length === 0) {
-                    log(`\n⚠️ Data copy requested but no data elements available`, 'info');
-                    log(`   Tip: Include Data Elements or Datasets to copy their data values`, 'info');
                 }
 
                 setProgress(100);
