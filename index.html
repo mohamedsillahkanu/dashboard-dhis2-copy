@@ -1716,14 +1716,18 @@
 
                 const result = await importResponse.json();
                 
+                // DHIS2 response has nested structure: result.response contains the actual data
+                const importResult = result.response || result;
+                
                 // Log full response to browser console (F12)
                 console.log('═══════════════════════════════════════');
                 console.log('DHIS2 IMPORT RESPONSE:');
                 console.log('═══════════════════════════════════════');
                 console.log('Full Response Object:', result);
-                console.log('Status:', result.status);
-                console.log('Stats:', result.stats);
-                console.log('TypeReports:', result.typeReports);
+                console.log('Import Result:', importResult);
+                console.log('Status:', importResult.status);
+                console.log('Stats:', importResult.stats);
+                console.log('TypeReports:', importResult.typeReports);
                 console.log('═══════════════════════════════════════');
                 
                 log('📄 Raw response received from target DHIS2', 'info');
@@ -1880,7 +1884,11 @@
                 setProgress(100);
 
             } catch (error) {
+                console.error('Copy error:', error);
                 log(`❌ ERROR: ${error.message}`, 'error');
+                if (error.stack) {
+                    console.error('Error stack:', error.stack);
+                }
                 showNotification(`Error: ${error.message}`, 'error');
             } finally {
                 copyBtn.disabled = false;
