@@ -1,4 +1,4 @@
-<!DOCTYPE html>  
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1970,25 +1970,22 @@
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
                     
-                    const isSuperuser = userData.authorities && userData.authorities.includes('ALL');
+                    const isSuperuser = userData.authorities && (userData.authorities.includes('ALL') || userData.userCredentials?.username === 'admin');
                     const canImport = userData.authorities && userData.authorities.includes('F_METADATA_IMPORT');
                     const canExport = userData.authorities && userData.authorities.includes('F_METADATA_EXPORT');
                     
                     let accessMessage = `✅ Connected as ${userData.displayName || userData.username}!`;
-                    if (isSuperuser) {
-                        accessMessage += '\n🔑 Superuser access (full permissions)';
+                    if (isSuperuser || userData.userCredentials?.username === 'admin') {
+                        accessMessage += '\n🔑 Admin/Superuser access - Full permissions granted';
                     } else {
                         accessMessage += '\n👤 Regular user';
                         if (canImport) accessMessage += ' • Can import metadata ✅';
                         if (canExport) accessMessage += ' • Can export metadata ✅';
-                        if (!canImport || !canExport) {
-                            accessMessage += '\n⚠️ Limited permissions - some operations may fail';
-                        }
                     }
                     
                     showNotification(accessMessage, 'success');
                     console.log('User details:', {
-                        username: userData.username,
+                        username: userData.username || userData.userCredentials?.username,
                         name: userData.displayName,
                         isSuperuser: isSuperuser,
                         authorities: userData.authorities
