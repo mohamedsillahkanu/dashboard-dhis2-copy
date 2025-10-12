@@ -951,56 +951,64 @@
                 icon: '🏢',
                 endpoint: 'organisationUnits',
                 fields: 'id,displayName,name,level,parent',
-                copyAll: true
+                copyAll: true,
+                fetchFields: ':owner' // Fetch with all dependencies
             },
             dataElements: {
                 label: 'Data Elements',
                 icon: '📊',
                 endpoint: 'dataElements',
                 fields: 'id,displayName,name,valueType,aggregationType',
-                copyAll: false
+                copyAll: false,
+                fetchFields: ':owner' // Includes categoryCombo, etc.
             },
             dataSets: {
                 label: 'Datasets',
                 icon: '📋',
                 endpoint: 'dataSets',
                 fields: 'id,displayName,name,periodType',
-                copyAll: false
+                copyAll: false,
+                fetchFields: ':owner' // Includes dataElements, sections, etc.
             },
             indicators: {
                 label: 'Indicators',
                 icon: '📈',
                 endpoint: 'indicators',
                 fields: 'id,displayName,name,indicatorType',
-                copyAll: false
+                copyAll: false,
+                fetchFields: ':owner' // Includes indicatorType, numerator, denominator
             },
             dashboards: {
                 label: 'Dashboards',
                 icon: '📱',
                 endpoint: 'dashboards',
                 fields: 'id,displayName,name',
-                copyAll: false
+                copyAll: false,
+                fetchFields: ':owner' // Includes dashboardItems, charts, etc.
             },
             programs: {
                 label: 'Programs',
                 icon: '🎯',
                 endpoint: 'programs',
                 fields: 'id,displayName,name,programType',
-                copyAll: false
+                copyAll: false,
+                fetchFields: ':owner' // Includes programStages, attributes, etc.
             },
             categoryOptions: {
                 label: 'Category Options',
                 icon: '🏷️',
                 endpoint: 'categoryOptions',
                 fields: 'id,displayName,name',
-                copyAll: false
+                copyAll: false,
+                fetchFields: ':owner'
             },
             validationRules: {
                 label: 'Validation Rules',
                 icon: '✅',
                 endpoint: 'validationRules',
                 fields: 'id,displayName,name',
-                copyAll: false
+                copyAll: false,
+                fetchFields: ':owner' // Includes left/right expressions
             }
         };
 
@@ -1087,24 +1095,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Import Strategy</label>
-                    <select class="form-select" id="importStrategy">
-                        <option value="CREATE_AND_UPDATE" selected>Create and Update (Override existing + Add new)</option>
-                        <option value="CREATE">Create Only</option>
-                        <option value="UPDATE">Update Only</option>
-                        <option value="DELETE">Delete</option>
-                    </select>
-                </div>
 
-                <div class="form-group">
-                    <label class="form-label">Merge Mode</label>
-                    <select class="form-select" id="mergeMode">
-                        <option value="REPLACE" selected>Replace (Override existing completely)</option>
-                        <option value="MERGE">Merge (Keep existing + add new)</option>
-                    </select>
-                    <div class="help-text">Default: Replace mode will override any existing data and add new items</div>
-                </div>
 
                 <div class="progress-section" id="progressSection">
                     <h3 style="color: #58a6ff; margin-bottom: 15px;">Progress</h3>
@@ -1373,11 +1364,14 @@
                 const targetUrl = document.getElementById('targetUrl').value.trim().replace(/\/$/, '');
                 const targetUsername = document.getElementById('targetUsername').value.trim();
                 const targetPassword = document.getElementById('targetPassword').value.trim();
-                const importStrategy = document.getElementById('importStrategy').value;
-                const mergeMode = document.getElementById('mergeMode').value;
+                
+                // Fixed strategy: always override existing and create new
+                const importStrategy = 'CREATE_AND_UPDATE';
+                const mergeMode = 'REPLACE';
 
                 log('🔄 Starting metadata copy...', 'info');
                 log(`📡 Using Google Apps Script Proxy`, 'info');
+                log(`📝 Strategy: Override existing + Create new`, 'info');
                 setProgress(10);
 
                 const metadata = {};
@@ -1390,39 +1384,40 @@
                     log(`📦 Processing ${type.label}: ${itemCount} items`, 'info');
 
                     if (type.copyAll) {
-                        log(`  Fetching all ${type.label}...`, 'info');
-                        const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=:all&paging=false`;
+                        log(`  Fetching all ${type.label} with dependencies...`, 'info');
+                        const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fetchFields}&paging=false`;
                         const response = await fetchWithAuth(url);
                         
                         if (response.ok) {
                             const data = await response.json();
                             const items = data[type.endpoint] || [];
                             metadata[type.endpoint] = items;
-                            log(`  ✓ Added ${items.length} ${type.label}`, 'success');
+                            log(`  ✓ Added ${items.length} ${type.label} with all dependencies`, 'success');
                         }
                     } else {
                         const items = [];
-                        log(`  Fetching ${itemCount} selected items individually...`, 'info');
+                        log(`  Fetching ${itemCount} items with all dependencies...`, 'info');
                         
                         for (const selectedItem of selectedItems[typeKey]) {
                             try {
-                                const url = `${state.config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all`;
+                                const url = `${state.config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=${type.fetchFields}`;
                                 const response = await fetchWithAuth(url);
                                 
                                 if (response.ok) {
                                     const item = await response.json();
                                     items.push(item);
+                                    log(`  ✓ ${selectedItem.displayName || selectedItem.name}`, 'success');
                                 } else {
-                                    log(`  ⚠️ Failed to fetch item: ${selectedItem.displayName || selectedItem.name}`, 'error');
+                                    log(`  ⚠️ Failed: ${selectedItem.displayName || selectedItem.name}`, 'error');
                                 }
                             } catch (err) {
-                                log(`  ⚠️ Error fetching item: ${selectedItem.displayName || selectedItem.name}`, 'error');
+                                log(`  ⚠️ Error: ${selectedItem.displayName || selectedItem.name}`, 'error');
                             }
                         }
                         
                         if (items.length > 0) {
                             metadata[type.endpoint] = items;
-                            log(`  ✓ Added ${items.length} ${type.label}`, 'success');
+                            log(`  ✓ Added ${items.length} ${type.label} with dependencies`, 'success');
                         } else {
                             log(`  ❌ No items fetched for ${type.label}`, 'error');
                         }
@@ -1435,12 +1430,11 @@
 
                 setProgress(50);
                 log(`🚀 Importing to ${targetUrl}...`, 'info');
-                log(`Import Strategy: ${importStrategy}, Merge Mode: ${mergeMode}`, 'info');
                 setProgress(60);
 
                 const importUrl = targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=NONE';
                 
-                log(`Sending ${Object.keys(metadata).length} metadata type(s)...`, 'info');
+                log(`Sending ${Object.keys(metadata).length} metadata type(s) with all dependencies...`, 'info');
                 
                 const targetAuthHeader = 'Basic ' + btoa(`${targetUsername}:${targetPassword}`);
                 
@@ -1492,22 +1486,32 @@
                     throw new Error(`Import failed with status ${importResponse.status}. Check logs for details.`);
                 }
 
-                if (result.status === 'OK' || result.status === 'SUCCESS') {
+                // Check if anything was actually created or updated
+                const itemsCreated = result.stats ? (result.stats.created || 0) : 0;
+                const itemsUpdated = result.stats ? (result.stats.updated || 0) : 0;
+                const itemsIgnored = result.stats ? (result.stats.ignored || 0) : 0;
+                
+                if (itemsCreated > 0 || itemsUpdated > 0) {
+                    // Success if anything was created or updated
                     log('\n═══════════════════════════════════════', 'success');
-                    log('✅ IMPORT SUCCESSFUL!', 'success');
+                    log('✅ COPY SUCCESSFUL!', 'success');
                     log('═══════════════════════════════════════', 'success');
 
                     if (result.stats) {
                         log('📊 Import Statistics:', 'success');
-                        log(`  ✓ Created: ${result.stats.created || 0}`, 'success');
-                        log(`  ✓ Updated: ${result.stats.updated || 0}`, 'success');
-                        log(`  ℹ️  Ignored: ${result.stats.ignored || 0}`, 'info');
+                        log(`  ✓ Created: ${itemsCreated}`, 'success');
+                        log(`  ✓ Updated: ${itemsUpdated}`, 'success');
+                        if (itemsIgnored > 0) {
+                            log(`  ℹ️  Ignored: ${itemsIgnored} (already exist with same data)`, 'info');
+                        }
                     }
 
-                    showNotification('Metadata copied successfully!', 'success');
+                    showNotification('✅ Metadata copied successfully!', 'success');
                 } else {
-                    log(`⚠ Import status: ${result.status}`, 'info');
-                    showNotification('Import completed with warnings - check logs', 'info');
+                    // Nothing was created or updated
+                    log(`❌ Import completed but no items were created or updated`, 'error');
+                    log(`Status: ${result.status}`, 'error');
+                    showNotification('Import completed but nothing was changed', 'error');
                 }
 
                 setProgress(100);
