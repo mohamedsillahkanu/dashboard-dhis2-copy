@@ -1196,29 +1196,54 @@
         async function fetchDataValues(dataElementIds, orgUnitIds, startPeriod, endPeriod) {
             log('📊 Fetching raw data values...', 'info');
             const dataValues = [];
-            const batchSize = 50;
+            const deBatchSize = 20; // Smaller batches for data elements
+            const ouBatchSize = 100; // Batch org units too to avoid URL length issues
             
-            for (let i = 0; i < dataElementIds.length; i += batchSize) {
-                const deBatch = dataElementIds.slice(i, i + batchSize);
-                const deParam = deBatch.join(',');
-                const ouParam = orgUnitIds.join(',');
+            let totalBatches = Math.ceil(dataElementIds.length / deBatchSize) * Math.ceil(orgUnitIds.length / ouBatchSize);
+            let currentBatch = 0;
+            
+            log(`  Processing ${dataElementIds.length} data elements across ${orgUnitIds.length} org units in ${totalBatches} batches...`, 'info');
+            
+            // Batch data elements
+            for (let i = 0; i < dataElementIds.length; i += deBatchSize) {
+                const deBatch = dataElementIds.slice(i, i + deBatchSize);
                 
-                const url = `${state.config.instanceUrl}/api/dataValueSets.json?dataElement=${deParam}&orgUnit=${ouParam}&startDate=${startPeriod}&endDate=${endPeriod}`;
-                
-                try {
-                    const response = await fetchWithAuth(url);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.dataValues && data.dataValues.length > 0) {
-                            dataValues.push(...data.dataValues);
-                            log(`  ✓ Fetched ${data.dataValues.length} data values (batch ${Math.floor(i/batchSize) + 1})`, 'success');
+                // Batch org units within each data element batch
+                for (let j = 0; j < orgUnitIds.length; j += ouBatchSize) {
+                    const ouBatch = orgUnitIds.slice(j, j + ouBatchSize);
+                    currentBatch++;
+                    
+                    const deParam = deBatch.join(';');
+                    const ouParam = ouBatch.join(';');
+                    
+                    // Use analytics API which is more efficient for bulk data
+                    const url = `${state.config.instanceUrl}/api/dataValueSets.json?dataElement=${deParam}&orgUnit=${ouParam}&startDate=${startPeriod}&endDate=${endPeriod}`;
+                    
+                    try {
+                        const response = await fetchWithAuth(url);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.dataValues && data.dataValues.length > 0) {
+                                dataValues.push(...data.dataValues);
+                                log(`  ✓ Batch ${currentBatch}/${totalBatches}: Fetched ${data.dataValues.length} values (${deBatch.length} DEs × ${ouBatch.length} OUs)`, 'success');
+                            } else {
+                                log(`  ⓘ Batch ${currentBatch}/${totalBatches}: No data found`, 'info');
+                            }
+                        } else {
+                            log(`  ⚠️ Batch ${currentBatch}/${totalBatches} failed: HTTP ${response.status}`, 'error');
                         }
+                    } catch (error) {
+                        log(`  ⚠️ Batch ${currentBatch}/${totalBatches} error: ${error.message}`, 'error');
                     }
-                } catch (error) {
-                    log(`  ⚠️ Failed to fetch data batch: ${error.message}`, 'error');
+                    
+                    // Small delay to avoid overwhelming the server
+                    if (currentBatch % 10 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
                 }
             }
             
+            log(`  ✅ Completed all batches. Total values: ${dataValues.length}`, 'success');
             return dataValues;
         }
 
