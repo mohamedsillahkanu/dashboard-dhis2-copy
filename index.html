@@ -952,7 +952,8 @@
                 endpoint: 'organisationUnits',
                 fields: 'id,displayName,name,level,parent',
                 copyAll: true,
-                fetchFields: ':owner' // Fetch with all dependencies
+                fetchFields: ':owner',
+                autoLoad: true // Special flag: automatically load and select all
             },
             dataElements: {
                 label: 'Data Elements',
@@ -1144,13 +1145,20 @@
             document.querySelector(`[data-type="${typeKey}"]`).classList.add('active');
 
             availableItems[typeKey] = null;
-            document.getElementById('loadItemsBtn').disabled = false;
-            document.getElementById('addAllBtn').disabled = true;
+            
+            // For Organisation Units: auto-load immediately
+            if (type.autoLoad) {
+                loadCurrentTypeItems();
+                showNotification(`${type.label} will copy ALL items (all levels required)`, 'info');
+            } else {
+                document.getElementById('loadItemsBtn').disabled = false;
+                document.getElementById('addAllBtn').disabled = true;
+            }
 
             renderAvailableItems();
             renderSelectedItems();
 
-            if (type.copyAll) {
+            if (type.copyAll && !type.autoLoad) {
                 showNotification(`${type.label} will be copied automatically (all items)`, 'info');
             }
         }
@@ -1182,10 +1190,20 @@
                     selectedItems[currentMetadataType] = [];
                 }
 
+                // For Organisation Units: automatically select ALL items
+                if (type.autoLoad) {
+                    selectedItems[currentMetadataType] = [...items];
+                    showNotification(`✅ Auto-selected ALL ${items.length} ${type.label} (all levels)`, 'success');
+                } else {
+                    document.getElementById('addAllBtn').disabled = false;
+                }
+
                 renderAvailableItems();
+                renderSelectedItems();
                 
-                document.getElementById('addAllBtn').disabled = false;
-                showNotification(`Loaded ${items.length} ${type.label}`, 'success');
+                if (!type.autoLoad) {
+                    showNotification(`Loaded ${items.length} ${type.label}`, 'success');
+                }
 
             } catch (error) {
                 showNotification(`Failed to load ${type.label}: ${error.message}`, 'error');
@@ -1210,8 +1228,22 @@
                 return;
             }
 
+            const type = METADATA_TYPES[currentMetadataType];
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
+            
+            // For Organisation Units with autoLoad: show that all are selected
+            if (type.autoLoad) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✅</div>
+                        <div><strong>All ${items.length} Organisation Units selected</strong><br>
+                        All levels are required for proper hierarchy</div>
+                    </div>
+                `;
+                document.getElementById('availableCount').textContent = `${items.length} items (all selected)`;
+                return;
+            }
             
             const filteredItems = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
@@ -1375,6 +1407,13 @@
                 setProgress(10);
 
                 const metadata = {};
+                const relatedDataElements = new Set();
+                const relatedIndicators = new Set();
+                const relatedCategoryCombos = new Set();
+                const relatedOptionSets = new Set();
+                const relatedIndicatorTypes = new Set();
+                const relatedProgramStages = new Set();
+                const relatedTrackedEntityAttributes = new Set();
 
                 for (const typeKey in selectedItems) {
                     if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
@@ -1406,6 +1445,97 @@
                                 if (response.ok) {
                                     const item = await response.json();
                                     items.push(item);
+                                    
+                                    // === EXTRACT DEPENDENCIES FROM DATASETS ===
+                                    if (typeKey === 'dataSets') {
+                                        if (item.dataSetElements) {
+                                            item.dataSetElements.forEach(dse => {
+                                                if (dse.dataElement && dse.dataElement.id) {
+                                                    relatedDataElements.add(dse.dataElement.id);
+                                                }
+                                                if (dse.categoryCombo && dse.categoryCombo.id) {
+                                                    relatedCategoryCombos.add(dse.categoryCombo.id);
+                                                }
+                                            });
+                                        }
+                                        if (item.indicators) {
+                                            item.indicators.forEach(ind => {
+                                                if (ind.id) relatedIndicators.add(ind.id);
+                                            });
+                                        }
+                                        // Don't fetch org units - user will assign them later in DHIS2
+                                    }
+                                    
+                                    // === EXTRACT DEPENDENCIES FROM DATA ELEMENTS ===
+                                    if (typeKey === 'dataElements') {
+                                        if (item.categoryCombo && item.categoryCombo.id) {
+                                            relatedCategoryCombos.add(item.categoryCombo.id);
+                                        }
+                                        if (item.optionSet && item.optionSet.id) {
+                                            relatedOptionSets.add(item.optionSet.id);
+                                        }
+                                    }
+                                    
+                                    // === EXTRACT DEPENDENCIES FROM INDICATORS ===
+                                    if (typeKey === 'indicators') {
+                                        if (item.indicatorType && item.indicatorType.id) {
+                                            relatedIndicatorTypes.add(item.indicatorType.id);
+                                        }
+                                        // Extract data elements from numerator/denominator expressions
+                                        if (item.numerator) {
+                                            const deMatches = item.numerator.match(/#{([^}]+)}/g);
+                                            if (deMatches) {
+                                                deMatches.forEach(match => {
+                                                    const deId = match.replace(/#{|}/g, '').split('.')[0];
+                                                    relatedDataElements.add(deId);
+                                                });
+                                            }
+                                        }
+                                        if (item.denominator) {
+                                            const deMatches = item.denominator.match(/#{([^}]+)}/g);
+                                            if (deMatches) {
+                                                deMatches.forEach(match => {
+                                                    const deId = match.replace(/#{|}/g, '').split('.')[0];
+                                                    relatedDataElements.add(deId);
+                                                });
+                                            }
+                                        }
+                                    }
+                                    
+                                    // === EXTRACT DEPENDENCIES FROM PROGRAMS ===
+                                    if (typeKey === 'programs') {
+                                        if (item.programStages) {
+                                            item.programStages.forEach(ps => {
+                                                if (ps.id) relatedProgramStages.add(ps.id);
+                                            });
+                                        }
+                                        if (item.programTrackedEntityAttributes) {
+                                            item.programTrackedEntityAttributes.forEach(ptea => {
+                                                if (ptea.trackedEntityAttribute && ptea.trackedEntityAttribute.id) {
+                                                    relatedTrackedEntityAttributes.add(ptea.trackedEntityAttribute.id);
+                                                }
+                                            });
+                                        }
+                                        // Don't fetch org units - user will assign them later in DHIS2
+                                    }
+                                    
+                                    // === EXTRACT DEPENDENCIES FROM DASHBOARDS ===
+                                    if (typeKey === 'dashboards') {
+                                        if (item.dashboardItems) {
+                                            item.dashboardItems.forEach(di => {
+                                                // Extract visualizations, maps, etc.
+                                                if (di.visualization && di.visualization.id) {
+                                                    // Visualizations will be included via :owner
+                                                }
+                                            });
+                                        }
+                                    }
+                                    
+                                    // === EXTRACT CATEGORY COMBOS FROM ANY ITEM ===
+                                    if (item.categoryCombo && item.categoryCombo.id) {
+                                        relatedCategoryCombos.add(item.categoryCombo.id);
+                                    }
+                                    
                                     log(`  ✓ ${selectedItem.displayName || selectedItem.name}`, 'success');
                                 } else {
                                     log(`  ⚠️ Failed: ${selectedItem.displayName || selectedItem.name}`, 'error');
@@ -1421,6 +1551,161 @@
                         } else {
                             log(`  ❌ No items fetched for ${type.label}`, 'error');
                         }
+                    }
+                }
+
+                // === FETCH ALL RELATED DEPENDENCIES ===
+                
+                // Fetch related data elements
+                if (relatedDataElements.size > 0) {
+                    log(`\n📊 Fetching ${relatedDataElements.size} related Data Elements...`, 'info');
+                    const dataElements = [];
+                    
+                    for (const deId of relatedDataElements) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/dataElements/${deId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                const de = await response.json();
+                                dataElements.push(de);
+                                
+                                // Also get category combo and option set from data element
+                                if (de.categoryCombo && de.categoryCombo.id) {
+                                    relatedCategoryCombos.add(de.categoryCombo.id);
+                                }
+                                if (de.optionSet && de.optionSet.id) {
+                                    relatedOptionSets.add(de.optionSet.id);
+                                }
+                            }
+                        } catch (err) {
+                            log(`  ⚠️ Failed to fetch data element: ${deId}`, 'error');
+                        }
+                    }
+                    
+                    if (dataElements.length > 0) {
+                        metadata.dataElements = dataElements;
+                        log(`  ✓ Added ${dataElements.length} related Data Elements`, 'success');
+                    }
+                }
+
+                // Fetch related indicators
+                if (relatedIndicators.size > 0) {
+                    log(`\n📈 Fetching ${relatedIndicators.size} related Indicators...`, 'info');
+                    const indicators = [];
+                    
+                    for (const indId of relatedIndicators) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/indicators/${indId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                const ind = await response.json();
+                                indicators.push(ind);
+                                
+                                // Get indicator type
+                                if (ind.indicatorType && ind.indicatorType.id) {
+                                    relatedIndicatorTypes.add(ind.indicatorType.id);
+                                }
+                            }
+                        } catch (err) {
+                            log(`  ⚠️ Failed to fetch indicator: ${indId}`, 'error');
+                        }
+                    }
+                    
+                    if (indicators.length > 0) {
+                        metadata.indicators = indicators;
+                        log(`  ✓ Added ${indicators.length} related Indicators`, 'success');
+                    }
+                }
+
+                // Fetch related category combos
+                if (relatedCategoryCombos.size > 0) {
+                    log(`\n🏷️ Fetching ${relatedCategoryCombos.size} related Category Combos...`, 'info');
+                    const categoryCombos = [];
+                    
+                    for (const ccId of relatedCategoryCombos) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/categoryCombos/${ccId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                categoryCombos.push(await response.json());
+                            }
+                        } catch (err) {
+                            log(`  ⚠️ Failed to fetch category combo: ${ccId}`, 'error');
+                        }
+                    }
+                    
+                    if (categoryCombos.length > 0) {
+                        metadata.categoryCombos = categoryCombos;
+                        log(`  ✓ Added ${categoryCombos.length} related Category Combos`, 'success');
+                    }
+                }
+
+                // Fetch related option sets
+                if (relatedOptionSets.size > 0) {
+                    log(`\n📋 Fetching ${relatedOptionSets.size} related Option Sets...`, 'info');
+                    const optionSets = [];
+                    
+                    for (const osId of relatedOptionSets) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/optionSets/${osId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                optionSets.push(await response.json());
+                            }
+                        } catch (err) {
+                            log(`  ⚠️ Failed to fetch option set: ${osId}`, 'error');
+                        }
+                    }
+                    
+                    if (optionSets.length > 0) {
+                        metadata.optionSets = optionSets;
+                        log(`  ✓ Added ${optionSets.length} related Option Sets`, 'success');
+                    }
+                }
+
+                // Fetch related indicator types
+                if (relatedIndicatorTypes.size > 0) {
+                    log(`\n📊 Fetching ${relatedIndicatorTypes.size} related Indicator Types...`, 'info');
+                    const indicatorTypes = [];
+                    
+                    for (const itId of relatedIndicatorTypes) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/indicatorTypes/${itId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                indicatorTypes.push(await response.json());
+                            }
+                        } catch (err) {
+                            log(`  ⚠️ Failed to fetch indicator type: ${itId}`, 'error');
+                        }
+                    }
+                    
+                    if (indicatorTypes.length > 0) {
+                        metadata.indicatorTypes = indicatorTypes;
+                        log(`  ✓ Added ${indicatorTypes.length} related Indicator Types`, 'success');
+                    }
+                }
+
+                // Fetch related tracked entity attributes
+                if (relatedTrackedEntityAttributes.size > 0) {
+                    log(`\n🎯 Fetching ${relatedTrackedEntityAttributes.size} related Tracked Entity Attributes...`, 'info');
+                    const trackedEntityAttributes = [];
+                    
+                    for (const teaId of relatedTrackedEntityAttributes) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/trackedEntityAttributes/${teaId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                trackedEntityAttributes.push(await response.json());
+                            }
+                        } catch (err) {
+                            log(`  ⚠️ Failed to fetch tracked entity attribute: ${teaId}`, 'error');
+                        }
+                    }
+                    
+                    if (trackedEntityAttributes.length > 0) {
+                        metadata.trackedEntityAttributes = trackedEntityAttributes;
+                        log(`  ✓ Added ${trackedEntityAttributes.length} related Tracked Entity Attributes`, 'success');
                     }
                 }
 
