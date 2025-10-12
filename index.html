@@ -836,7 +836,31 @@
         }
 
         // ============================================
-        // FETCH WITH AUTH - FIXED
+        // CORS PROXIES - MULTIPLE FALLBACKS
+        // ============================================
+        const CORS_PROXIES = [
+            null, // Try direct connection first (no proxy)
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            'https://cors-anywhere.herokuapp.com/'
+        ];
+
+        let currentProxyIndex = 0;
+
+        function getProxyUrl(targetUrl) {
+            if (currentProxyIndex === 0 || !state.config.useCorsProxy) {
+                return targetUrl; // Direct connection
+            }
+            return CORS_PROXIES[currentProxyIndex] + encodeURIComponent(targetUrl);
+        }
+
+        function getProxyName() {
+            if (currentProxyIndex === 0) return 'Direct Connection (No Proxy)';
+            return CORS_PROXIES[currentProxyIndex];
+        }
+
+        // ============================================
+        // FETCH WITH AUTH - FIXED WITH FALLBACKS
         // ============================================
         async function fetchWithAuth(url, options = {}) {
             if (!state.config) {
@@ -844,7 +868,7 @@
             }
 
             const apiUrl = state.config.useCorsProxy 
-                ? `https://corsproxy.io/?${encodeURIComponent(url)}`
+                ? getProxyUrl(url)
                 : url;
             
             return fetch(apiUrl, {
@@ -855,6 +879,36 @@
                     'Content-Type': 'application/json'
                 }
             });
+        }
+
+        async function fetchWithRetry(url, options = {}, maxRetries = 2) {
+            let lastError;
+            
+            for (let i = 0; i < CORS_PROXIES.length && i <= maxRetries; i++) {
+                try {
+                    currentProxyIndex = i;
+                    console.log(`Trying proxy ${i + 1}/${CORS_PROXIES.length}: ${CORS_PROXIES[i]}`);
+                    
+                    const response = await fetchWithAuth(url, options);
+                    
+                    if (response.ok || response.status === 401 || response.status === 403) {
+                        return response;
+                    }
+                    
+                    if (response.status === 503) {
+                        console.log(`Proxy ${i + 1} returned 503, trying next...`);
+                        continue;
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    console.error(`Proxy ${i + 1} failed:`, error.message);
+                    lastError = error;
+                    continue;
+                }
+            }
+            
+            throw new Error(`All proxies failed. Last error: ${lastError?.message || 'Unknown error'}`);
         }
 
         function showNotification(message, type) {
@@ -1145,10 +1199,10 @@
                 showNotification(`Loading ${type.label}...`, 'info');
 
                 const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fields}&paging=false`;
-                const response = await fetchWithAuth(url);
+                const response = await fetchWithRetry(url);
 
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch ${type.label}`);
+                    throw new Error(`Failed to fetch ${type.label} (Status: ${response.status})`);
                 }
 
                 const data = await response.json();
@@ -1166,7 +1220,7 @@
                 showNotification(`Loaded ${items.length} ${type.label}`, 'success');
 
             } catch (error) {
-                showNotification(`Failed to load ${type.label}`, 'error');
+                showNotification(`Failed to load ${type.label}: ${error.message}`, 'error');
                 console.error(error);
             } finally {
                 document.getElementById('loadItemsBtn').disabled = false;
@@ -1360,7 +1414,7 @@
                     if (type.copyAll) {
                         log(`  Fetching all ${type.label}...`, 'info');
                         const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=:all&paging=false`;
-                        const response = await fetchWithAuth(url);
+                        const response = await fetchWithRetry(url);
                         
                         if (response.ok) {
                             const data = await response.json();
@@ -1375,7 +1429,7 @@
                         for (const selectedItem of selectedItems[typeKey]) {
                             try {
                                 const url = `${state.config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=:all`;
-                                const response = await fetchWithAuth(url);
+                                const response = await fetchWithRetry(url);
                                 
                                 if (response.ok) {
                                     const item = await response.json();
@@ -1406,9 +1460,12 @@
                 log(`Import Strategy: ${importStrategy}, Merge Mode: ${mergeMode}`, 'info');
                 setProgress(60);
 
-                const importUrlWithProxy = `https://corsproxy.io/?${encodeURIComponent(targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=NONE')}`;
+                const importUrl = targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=NONE';
+                const importUrlWithProxy = getProxyUrl(importUrl);
 
                 log(`Sending ${Object.keys(metadata).length} metadata type(s)...`, 'info');
+                log(`Using: ${getProxyName()}`, 'info');
+                
                 const importResponse = await fetch(importUrlWithProxy, {
                     method: 'POST',
                     headers: {
@@ -1515,37 +1572,90 @@
             };
 
             try {
-                const testUrl = useCorsProxy 
-                    ? `https://corsproxy.io/?${encodeURIComponent(instanceUrl + '/api/me')}`
-                    : `${instanceUrl}/api/me`;
-
                 console.log('Attempting to connect to:', instanceUrl);
+                console.log('Will try direct connection first, then fallback to proxies if needed...');
                 
-                const response = await fetch(testUrl, {
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(`${username}:${password}`)
-                    }
-                });
+                let response;
+                let lastError;
+                
+                for (let i = 0; i < CORS_PROXIES.length; i++) {
+                    try {
+                        currentProxyIndex = i;
+                        const testUrl = useCorsProxy 
+                            ? getProxyUrl(instanceUrl + '/api/me')
+                            : `${instanceUrl}/api/me`;
 
-                console.log('Response status:', response.status);
+                        const proxyName = getProxyName();
+                        console.log(`Attempt ${i + 1}/${CORS_PROXIES.length}: ${proxyName}`);
+                        
+                        showNotification(`Trying ${proxyName}...`, 'info');
+                        
+                        response = await fetch(testUrl, {
+                            headers: {
+                                'Authorization': 'Basic ' + btoa(`${username}:${password}`)
+                            },
+                            signal: AbortSignal.timeout(8000) // 8 second timeout
+                        });
+
+                        console.log(`${proxyName} response status:`, response.status);
+
+                        // If we get a valid response (even if auth fails), use this proxy
+                        if (response.status !== 503 && response.status !== 502) {
+                            console.log(`✅ Using: ${proxyName}`);
+                            break;
+                        }
+                        
+                        console.log(`${proxyName} returned ${response.status}, trying next...`);
+                        lastError = new Error(`Proxy returned ${response.status}`);
+                        
+                    } catch (error) {
+                        console.error(`${getProxyName()} failed:`, error.message);
+                        lastError = error;
+                        
+                        // If this is the last proxy and all failed
+                        if (i === CORS_PROXIES.length - 1) {
+                            throw new Error(`❌ All connection methods failed!\n\n` +
+                                `Tried:\n` +
+                                `1. Direct connection (no proxy)\n` +
+                                `2. corsproxy.io\n` +
+                                `3. allorigins.win\n` +
+                                `4. cors-anywhere\n\n` +
+                                `Solutions:\n` +
+                                `• Check DHIS2 URL is correct\n` +
+                                `• Verify your internet connection\n` +
+                                `• Try again in a few minutes\n` +
+                                `• Contact your DHIS2 administrator to enable CORS`);
+                        }
+                        continue;
+                    }
+                }
+
+                if (!response) {
+                    throw new Error(`Could not connect through any method. Last error: ${lastError?.message}`);
+                }
 
                 if (response.ok) {
                     const userData = await response.json();
-                    console.log('Logged in as:', userData.displayName || userData.username);
+                    console.log('✅ Login successful! User:', userData.displayName || userData.username);
+                    console.log(`✅ Connected using: ${getProxyName()}`);
                     
                     state.config = config;
                     state.isLoggedIn = true;
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
-                    showNotification('Connected successfully!', 'success');
+                    showNotification(`✅ Connected via ${getProxyName()}`, 'success');
+                } else if (response.status === 401) {
+                    showNotification('❌ Invalid username or password', 'error');
+                } else if (response.status === 403) {
+                    showNotification('❌ Access forbidden - check your permissions', 'error');
                 } else {
-                    const errorText = await response.text();
+                    const errorText = await response.text().catch(() => 'Unknown error');
                     console.error('Auth failed:', response.status, errorText);
-                    showNotification(`Authentication failed (${response.status}). Check credentials.`, 'error');
+                    showNotification(`Authentication failed (${response.status})`, 'error');
                 }
             } catch (error) {
                 console.error('Connection error:', error);
-                showNotification(`Connection failed: ${error.message}`, 'error');
+                showNotification(error.message, 'error');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Connect to DHIS2';
