@@ -1,4 +1,4 @@
-<!DOCTYPE html>       
+<!DOCTYPE html>   
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1436,15 +1436,21 @@
                 
                 log(`Sending ${Object.keys(metadata).length} metadata type(s) with all dependencies...`, 'info');
                 
+                // Log metadata size for debugging
+                const metadataJson = JSON.stringify(metadata);
+                log(`Metadata size: ${(metadataJson.length / 1024).toFixed(2)} KB`, 'info');
+                console.log('Metadata being sent:', metadata);
+                
                 const targetAuthHeader = 'Basic ' + btoa(`${targetUsername}:${targetPassword}`);
                 
+                // Use proxy for the import request too!
                 const importResponse = await makeProxyRequest(importUrl, {
                     method: 'POST',
                     headers: {
                         'Authorization': targetAuthHeader,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(metadata)
+                    body: metadataJson
                 });
 
                 setProgress(80);
@@ -1453,6 +1459,9 @@
                 
                 // Log the full response for debugging
                 console.log('Full import response:', result);
+                log('📄 Raw response received from target DHIS2', 'info');
+                log(`Response status code: ${importResponse.status}`, 'info');
+                log(`Response OK: ${importResponse.ok}`, 'info');
                 
                 if (!importResponse.ok) {
                     log(`❌ Import failed (Status ${importResponse.status})`, 'error');
@@ -1496,27 +1505,49 @@
                 
                 // Log detailed error reports even on ERROR status
                 if (result.status === 'ERROR') {
-                    log(`❌ Import returned ERROR status`, 'error');
+                    log(`\n❌ DHIS2 Import returned ERROR status`, 'error');
+                    log(`Full status: ${result.status}`, 'error');
+                    
+                    // Log message if exists
+                    if (result.message) {
+                        log(`\nError Message: ${result.message}`, 'error');
+                    }
                     
                     if (result.typeReports) {
+                        log(`\nFound ${result.typeReports.length} type report(s)`, 'info');
+                        
                         result.typeReports.forEach(report => {
-                            log(`\n📦 Type: ${report.klass}`, 'error');
-                            log(`  Total: ${report.stats.total || 0}, Imported: ${report.stats.created + report.stats.updated || 0}, Ignored: ${report.stats.ignored || 0}`, 'error');
+                            log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'error');
+                            log(`📦 Metadata Type: ${report.klass}`, 'error');
+                            
+                            if (report.stats) {
+                                log(`  Stats - Total: ${report.stats.total || 0}, Created: ${report.stats.created || 0}, Updated: ${report.stats.updated || 0}, Ignored: ${report.stats.ignored || 0}`, 'error');
+                            }
                             
                             if (report.objectReports) {
+                                log(`  Found ${report.objectReports.length} object report(s)`, 'error');
+                                
                                 report.objectReports.forEach(objReport => {
                                     if (objReport.errorReports && objReport.errorReports.length > 0) {
-                                        log(`\n  ⚠️ Object: ${objReport.displayName || objReport.uid}`, 'error');
+                                        log(`\n  ⚠️ ERRORS for: ${objReport.displayName || objReport.uid || 'Unknown'}`, 'error');
+                                        
                                         objReport.errorReports.forEach(err => {
-                                            log(`    - [${err.errorCode}] ${err.message}`, 'error');
+                                            log(`    ❌ [${err.errorCode}] ${err.message}`, 'error');
                                             if (err.errorProperty) {
-                                                log(`      Property: ${err.errorProperty}`, 'error');
+                                                log(`       Property causing error: "${err.errorProperty}"`, 'error');
+                                            }
+                                            if (err.value) {
+                                                log(`       Value: ${err.value}`, 'error');
                                             }
                                         });
                                     }
                                 });
                             }
                         });
+                        log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`, 'error');
+                    } else {
+                        log(`\n⚠️ No typeReports found in response`, 'error');
+                        log(`Full response keys: ${Object.keys(result).join(', ')}`, 'error');
                     }
                 }
                 
