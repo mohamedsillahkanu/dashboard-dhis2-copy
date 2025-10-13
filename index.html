@@ -1,4 +1,4 @@
-<!DOCTYPE html>   
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1215,6 +1215,8 @@
                 showNotification(`Loading ${type.label}...`, 'info');
                 
                 const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fields}&paging=false`;
+                console.log('Loading from URL:', url);
+                
                 const response = await fetchWithAuth(url);
                 
                 if (!response.ok) {
@@ -1222,13 +1224,18 @@
                 }
                 
                 const data = await response.json();
+                console.log('Response data:', data);
+                
                 const items = data[type.endpoint] || [];
+                console.log(`Loaded ${items.length} items for ${type.endpoint}`);
                 
                 availableItems[currentMetadataType] = items;
                 
                 if (!selectedItems[currentMetadataType]) {
                     selectedItems[currentMetadataType] = [];
                 }
+                
+                console.log('availableItems state:', availableItems);
                 
                 renderAvailableItems();
                 
@@ -1237,11 +1244,11 @@
                     addAllBtn.disabled = false;
                 }
                 
-                showNotification(`Loaded ${items.length} ${type.label}`, 'success');
+                showNotification(`✅ Loaded ${items.length} ${type.label}`, 'success');
                 
             } catch (error) {
+                console.error('Load error:', error);
                 showNotification(`Failed to load ${type.label}: ${error.message}`, 'error');
-                console.error(error);
             } finally {
                 if (loadBtn) {
                     loadBtn.disabled = false;
@@ -2102,7 +2109,11 @@
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
                     
-                    showNotification(`✅ Connected successfully as ${userData.displayName || userData.username}!`, 'success');
+                    const firstName = userData.firstName || '';
+                    const surname = userData.surname || '';
+                    const fullName = `${firstName} ${surname}`.trim() || 'User';
+                    
+                    showNotification(`✅ Connected successfully! Welcome ${fullName}`, 'success');
                 } else if (response.status === 401) {
                     showNotification('❌ Invalid username or password', 'error');
                 } else if (response.status === 403) {
