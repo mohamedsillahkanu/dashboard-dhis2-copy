@@ -1,9 +1,9 @@
-<!DOCTYPE html>         
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DHIS2 Management</title>
+    <title>DHIS2 Universal Copy with Data</title>
     <style>
         * {
             margin: 0;
@@ -156,14 +156,6 @@
             cursor: not-allowed;
         }
 
-        .btn-danger {
-            background: linear-gradient(135deg, #f85149 0%, #da3633 100%);
-        }
-
-        .btn-danger:hover:not(:disabled) {
-            box-shadow: 0 8px 25px rgba(248, 81, 73, 0.4);
-        }
-
         .main-content {
             display: none;
             padding: 20px;
@@ -225,14 +217,6 @@
             color: #e6edf3;
         }
 
-        .cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 30px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
         .card {
             background: linear-gradient(135deg, #161b22 0%, #1a1f26 100%);
             border: 2px solid #30363d;
@@ -243,6 +227,8 @@
             position: relative;
             overflow: hidden;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         .card::before {
@@ -252,30 +238,15 @@
             left: 0;
             right: 0;
             height: 4px;
+            background: linear-gradient(90deg, #2ea043, #58a6ff, #7c3aed);
             opacity: 0;
             transition: opacity 0.3s ease;
         }
 
-        .card.copy::before {
-            background: linear-gradient(90deg, #2ea043, #58a6ff, #7c3aed);
-        }
-
-        .card.delete::before {
-            background: linear-gradient(90deg, #f85149, #da3633, #bd2c00);
-        }
-
         .card:hover {
-            transform: translateY(-5px);
-        }
-
-        .card.copy:hover {
             border-color: #58a6ff;
+            transform: translateY(-5px);
             box-shadow: 0 12px 35px rgba(88, 166, 255, 0.3);
-        }
-
-        .card.delete:hover {
-            border-color: #f85149;
-            box-shadow: 0 12px 35px rgba(248, 81, 73, 0.3);
         }
 
         .card:hover::before {
@@ -292,16 +263,9 @@
         .card-title {
             font-size: 28px;
             font-weight: 700;
+            color: #58a6ff;
             margin-bottom: 15px;
             text-align: center;
-        }
-
-        .card.copy .card-title {
-            color: #58a6ff;
-        }
-
-        .card.delete .card-title {
-            color: #f85149;
         }
 
         .card-description {
@@ -357,10 +321,6 @@
             font-size: 28px;
             font-weight: 700;
             color: #58a6ff;
-        }
-
-        .modal-title.delete-mode {
-            color: #f85149;
         }
 
         .close-btn {
@@ -442,11 +402,6 @@
             min-height: 500px;
         }
 
-        .single-panel-container {
-            margin-bottom: 30px;
-            min-height: 500px;
-        }
-
         .panel {
             background: #21262d;
             border: 2px solid #30363d;
@@ -474,10 +429,6 @@
             gap: 10px;
         }
 
-        .panel-title.delete-mode {
-            color: #f85149;
-        }
-
         .panel-count {
             background: rgba(88, 166, 255, 0.1);
             color: #58a6ff;
@@ -485,11 +436,6 @@
             border-radius: 12px;
             font-size: 12px;
             font-weight: 600;
-        }
-
-        .panel-count.delete-mode {
-            background: rgba(248, 81, 73, 0.1);
-            color: #f85149;
         }
 
         .metadata-type-selector {
@@ -582,10 +528,6 @@
             transform: translateX(3px);
         }
 
-        .item-row.delete-mode:hover {
-            border-color: #f85149;
-        }
-
         .item-name {
             flex: 1;
             font-size: 13px;
@@ -662,6 +604,11 @@
             background: #57606a;
         }
 
+        .panel-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .empty-state {
             display: flex;
             flex-direction: column;
@@ -676,6 +623,47 @@
             font-size: 48px;
             margin-bottom: 15px;
             opacity: 0.5;
+        }
+
+        .data-section {
+            background: #21262d;
+            border: 2px solid #7c3aed;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .data-section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #30363d;
+        }
+
+        .data-section-header h3 {
+            color: #7c3aed;
+            font-size: 20px;
+            flex: 1;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-wrapper label {
+            color: #e6edf3;
+            font-weight: 600;
+            cursor: pointer;
         }
 
         .progress-section {
@@ -704,10 +692,6 @@
             height: 100%;
             transition: width 0.3s ease;
             animation: progressPulse 2s ease-in-out infinite;
-        }
-
-        .progress-fill.delete-mode {
-            background: linear-gradient(90deg, #f85149, #da3633, #bd2c00);
         }
 
         .log-container {
@@ -742,27 +726,6 @@
         .log-entry.info {
             color: #58a6ff;
             border-left-color: #58a6ff;
-        }
-
-        .warning-box {
-            background: rgba(248, 81, 73, 0.1);
-            border: 2px solid #f85149;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .warning-box h3 {
-            color: #f85149;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .warning-box p {
-            color: #e6edf3;
-            line-height: 1.6;
         }
 
         @keyframes fadeIn {
@@ -813,10 +776,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .cards-grid {
-                grid-template-columns: 1fr;
-            }
-
             .form-row {
                 grid-template-columns: 1fr;
             }
@@ -850,8 +809,8 @@
             </div>
 
             <div class="login-header">
-                <h1>DHIS2 Management</h1>
-                <p>Copy & Delete Metadata Between DHIS2 Instances</p>
+                <h1>🚀 DHIS2 Universal Copy</h1>
+                <p>Copy Metadata & Raw Data Between DHIS2 Instances</p>
             </div>
 
             <form id="loginForm">
@@ -881,26 +840,28 @@
 
         <div class="container">
             <div class="header">
-                <h1>⚡ DHIS2 Management Center</h1>
-                <p>Copy & Delete Metadata with Complete Control</p>
+                <h1>🔄 Universal Metadata & Data Copy</h1>
+                <p>Copy or Delete Organisation Units, Data Elements, Datasets, Indicators, Dashboards & Raw Data</p>
             </div>
 
-            <div class="cards-grid">
-                <div class="card copy" onclick="openCopyMetadata()">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1200px; margin: 0 auto;">
+                <div class="card" onclick="openCopyMetadata()">
                     <span class="card-icon">🔄</span>
-                    <h3 class="card-title">Copy Metadata</h3>
+                    <h3 class="card-title">Copy Metadata with Data</h3>
                     <p class="card-description">
-                        Select and copy any metadata type between DHIS2 instances:<br>
-                        Org Units • Data Elements • Datasets • Indicators • Dashboards • Programs • Categories • Validation Rules
+                        Select and copy any metadata type with raw data between DHIS2 instances:<br>
+                        Org Units • Data Elements • Datasets • Indicators • Dashboards • Programs • Categories • Validation Rules<br>
+                        <strong style="color: #7c3aed;">+ Actual Data Values for specified time period</strong>
                     </p>
                 </div>
 
-                <div class="card delete" onclick="openDeleteMetadata()">
+                <div class="card" onclick="openDeleteMetadata()" style="border-color: #f85149;">
                     <span class="card-icon">🗑️</span>
-                    <h3 class="card-title">Delete Metadata</h3>
+                    <h3 class="card-title" style="color: #f85149;">Delete Metadata</h3>
                     <p class="card-description">
-                        Remove unwanted metadata from your DHIS2 instance:<br>
-                        Clean up old data elements, remove unused org units, delete obsolete datasets, and more
+                        Select and delete metadata from your DHIS2 instance:<br>
+                        Remove unwanted items safely<br>
+                        <strong style="color: #f85149;">⚠️ Warning: This action cannot be undone!</strong>
                     </p>
                 </div>
             </div>
@@ -910,7 +871,7 @@
     <div class="modal" id="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title" id="modalTitle">🔄 Universal Copy Metadata</h2>
+                <h2 class="modal-title" id="modalTitleText">🔄 Universal Copy with Data</h2>
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             <div id="modalBody"></div>
@@ -922,24 +883,49 @@
     <script>
         const GOOGLE_APPS_SCRIPT_PROXY = 'https://script.google.com/macros/s/AKfycbyRXc68PYSmDSCYPakAS8Gc9R00kRjmsMYoDujPYMItyquXfwMAJUtRqXLiDlNWbSfDQQ/exec';
         
-        const state = { config: null, isLoggedIn: false };
-        let currentMode = 'copy'; // 'copy' or 'delete'
+        const state = { 
+            config: null, 
+            isLoggedIn: false 
+        };
+        
+        let availableItems = {};
+        let selectedItems = {};
+        let currentMetadataType = null;
+        let availableSearchTerm = '';
+        let selectedSearchTerm = '';
+        let currentMode = null;
+
+        const METADATA_TYPES = {
+            organisationUnits: { label: 'Organisation Units', icon: '🏢', endpoint: 'organisationUnits', fields: 'id,displayName,name,level,parent', copyAll: true, fetchFields: ':owner', hasData: false },
+            dataElements: { label: 'Data Elements', icon: '📊', endpoint: 'dataElements', fields: 'id,displayName,name,valueType,aggregationType', copyAll: false, fetchFields: ':owner', hasData: true },
+            dataSets: { label: 'Datasets', icon: '📋', endpoint: 'dataSets', fields: 'id,displayName,name,periodType', copyAll: false, fetchFields: ':owner', hasData: true },
+            indicators: { label: 'Indicators', icon: '📈', endpoint: 'indicators', fields: 'id,displayName,name,indicatorType', copyAll: false, fetchFields: ':owner', hasData: false },
+            dashboards: { label: 'Dashboards', icon: '📱', endpoint: 'dashboards', fields: 'id,displayName,name', copyAll: false, fetchFields: ':owner', hasData: false },
+            programs: { label: 'Programs', icon: '🎯', endpoint: 'programs', fields: 'id,displayName,name,programType', copyAll: false, fetchFields: ':owner', hasData: true },
+            categoryOptions: { label: 'Category Options', icon: '🏷️', endpoint: 'categoryOptions', fields: 'id,displayName,name', copyAll: false, fetchFields: ':owner', hasData: false },
+            validationRules: { label: 'Validation Rules', icon: '✅', endpoint: 'validationRules', fields: 'id,displayName,name', copyAll: false, fetchFields: ':owner', hasData: false }
+        };
         
         function makeProxyRequest(targetUrl, options = {}) {
             let proxyUrl = `${GOOGLE_APPS_SCRIPT_PROXY}?url=${encodeURIComponent(targetUrl)}`;
             if (options.headers && options.headers.Authorization) {
                 proxyUrl += `&Authorization=${encodeURIComponent(options.headers.Authorization)}`;
             }
+            
+            const fetchOptions = { method: 'POST' };
+            
             if (!options.method || options.method === 'GET') {
-                return fetch(proxyUrl, { method: 'GET' });
+                proxyUrl += '&method=GET';
+            } else if (options.method === 'POST') {
+                proxyUrl += '&method=POST';
+                if (options.body) {
+                    fetchOptions.body = options.body;
+                }
+            } else if (options.method === 'DELETE') {
+                proxyUrl += '&method=DELETE';
             }
-            if (options.method === 'POST') {
-                return fetch(proxyUrl, { method: 'POST', body: options.body });
-            }
-            if (options.method === 'DELETE') {
-                return fetch(proxyUrl, { method: 'DELETE' });
-            }
-            return fetch(proxyUrl);
+            
+            return fetch(proxyUrl, fetchOptions);
         }
 
         async function fetchWithAuth(url, options = {}) {
@@ -989,47 +975,37 @@
             document.getElementById('modal').classList.remove('show');
         }
 
-        let availableItems = {};
-        let selectedItems = {};
-        let currentMetadataType = null;
-        let searchTerm = '';
-
-        const METADATA_TYPES = {
-            organisationUnits: { label: 'Organisation Units', icon: '🏢', endpoint: 'organisationUnits', fields: 'id,displayName,name,level,parent', copyAll: true, fetchFields: ':owner' },
-            dataElements: { label: 'Data Elements', icon: '📊', endpoint: 'dataElements', fields: 'id,displayName,name,valueType,aggregationType', copyAll: false, fetchFields: ':owner' },
-            dataSets: { label: 'Datasets', icon: '📋', endpoint: 'dataSets', fields: 'id,displayName,name,periodType', copyAll: false, fetchFields: ':owner' },
-            indicators: { label: 'Indicators', icon: '📈', endpoint: 'indicators', fields: 'id,displayName,name,indicatorType', copyAll: false, fetchFields: ':owner' },
-            dashboards: { label: 'Dashboards', icon: '📱', endpoint: 'dashboards', fields: 'id,displayName,name', copyAll: false, fetchFields: ':owner' },
-            programs: { label: 'Programs', icon: '🎯', endpoint: 'programs', fields: 'id,displayName,name,programType', copyAll: false, fetchFields: ':owner' },
-            categoryOptions: { label: 'Category Options', icon: '🏷️', endpoint: 'categoryOptions', fields: 'id,displayName,name', copyAll: false, fetchFields: ':owner' },
-            validationRules: { label: 'Validation Rules', icon: '✅', endpoint: 'validationRules', fields: 'id,displayName,name', copyAll: false, fetchFields: ':owner' }
-        };
-
         function openCopyMetadata() {
             currentMode = 'copy';
-            document.getElementById('modalTitle').textContent = '🔄 Universal Copy Metadata';
-            document.getElementById('modalTitle').classList.remove('delete-mode');
-            document.getElementById('modalBody').innerHTML = getCopyHTML();
+            document.getElementById('modalTitleText').textContent = '🔄 Universal Copy with Data';
+            document.getElementById('modalBody').innerHTML = getTwoPanelHTML('copy');
             document.getElementById('modal').classList.add('show');
-            availableItems = {};
-            selectedItems = {};
+            
             currentMetadataType = null;
-            setupCopyListeners();
+            availableSearchTerm = '';
+            selectedSearchTerm = '';
+            
+            setupTwoPanelListeners('copy');
         }
 
         function openDeleteMetadata() {
             currentMode = 'delete';
-            document.getElementById('modalTitle').textContent = '🗑️ Delete Metadata';
-            document.getElementById('modalTitle').classList.add('delete-mode');
-            document.getElementById('modalBody').innerHTML = getDeleteHTML();
+            document.getElementById('modalTitleText').textContent = '🗑️ Delete Metadata';
+            document.getElementById('modalBody').innerHTML = getTwoPanelHTML('delete');
             document.getElementById('modal').classList.add('show');
-            availableItems = {};
-            selectedItems = {};
+            
             currentMetadataType = null;
-            setupDeleteListeners();
+            availableSearchTerm = '';
+            selectedSearchTerm = '';
+            
+            setupTwoPanelListeners('delete');
         }
 
-        function getCopyHTML() {
+        function getTwoPanelHTML(mode) {
+            const isDelete = mode === 'delete';
+            const buttonText = isDelete ? '🗑️ Delete Selected Metadata' : '🚀 Copy Selected Metadata & Data';
+            const buttonColor = isDelete ? 'background: linear-gradient(135deg, #f85149 0%, #da3633 100%);' : '';
+            
             return `
                 <div class="metadata-type-selector">
                     <label class="form-label">Select Metadata Type</label>
@@ -1057,7 +1033,7 @@
                     </div>
                     <div class="panel">
                         <div class="panel-header">
-                            <div class="panel-title">✅ Selected to Copy</div>
+                            <div class="panel-title">${isDelete ? '🗑️' : '✅'} Selected to ${isDelete ? 'Delete' : 'Copy'}</div>
                             <div class="panel-count" id="selectedCount">0 items</div>
                         </div>
                         <input type="text" class="search-box" id="searchSelected" placeholder="🔍 Search selected items...">
@@ -1069,6 +1045,37 @@
                         </div>
                     </div>
                 </div>
+
+                ${!isDelete ? `
+                <div class="data-section" id="dataSection">
+                    <div class="data-section-header">
+                        <h3>📊 Raw Data Options (Optional)</h3>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="includeDataCheckbox">
+                            <label for="includeDataCheckbox">Include Raw Data Values</label>
+                        </div>
+                    </div>
+                    <div class="help-text" style="margin-bottom: 15px; padding: 10px; background: rgba(124, 58, 237, 0.1); border-radius: 6px; border-left: 3px solid #7c3aed;">
+                        💡 <strong>Tip:</strong> Enable this to copy actual data values along with metadata. For dashboards/indicators, pre-calculated values are copied. For data elements/datasets, specify a time period. All related dependencies will be automatically included.
+                    </div>
+                    <div id="dataOptions" style="display: none;">
+                        <div id="timePeriodSection">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Start Period</label>
+                                    <input type="text" class="form-input" id="startPeriod" placeholder="e.g., 2024-01 or 202401">
+                                    <div class="help-text">Leave empty to copy all available data. Format: YYYY-MM, YYYYQQ, or YYYY</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">End Period</label>
+                                    <input type="text" class="form-input" id="endPeriod" placeholder="e.g., 2024-12 or 202412">
+                                    <div class="help-text">Leave empty to copy all available data</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label class="form-label">Target Instance URL <span class="required">*</span></label>
                     <input type="url" class="form-input" id="targetUrl" placeholder="https://target-instance.dhis2.org" required>
@@ -1083,274 +1090,287 @@
                         <input type="password" class="form-input" id="targetPassword" required>
                     </div>
                 </div>
+                ` : `
+                <div class="help-text" style="margin: 20px 0; padding: 15px; background: rgba(248, 81, 73, 0.1); border-radius: 6px; border-left: 3px solid #f85149;">
+                    ⚠️ <strong>Warning:</strong> Deleting metadata is permanent and cannot be undone! Make sure you have a backup before proceeding. Items will be deleted from your current instance: <strong>${state.config.instanceUrl}</strong>
+                </div>
+                `}
+                
                 <div class="progress-section" id="progressSection">
                     <h3 style="color: #58a6ff; margin-bottom: 15px;">Progress</h3>
                     <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
                     <div class="log-container" id="logContainer"></div>
                 </div>
-                <button type="button" class="btn-primary" id="copyMetadataBtn">🚀 Copy Selected Metadata</button>
+                <button type="button" class="btn-primary" id="actionBtn" style="${buttonColor}" data-mode="${mode}">${buttonText}</button>
             `;
         }
 
-        function getDeleteHTML() {
-            return `
-                <div class="warning-box">
-                    <h3>⚠️ Warning: Irreversible Action</h3>
-                    <p>Deleting metadata is <strong>permanent and cannot be undone</strong>. Make sure you have a backup of your DHIS2 instance before proceeding. Deleting certain metadata types may affect data integrity and system functionality.</p>
-                </div>
-                <div class="metadata-type-selector">
-                    <label class="form-label">Select Metadata Type to Delete</label>
-                    <div class="metadata-type-tabs">
-                        ${Object.keys(METADATA_TYPES).map(key => {
-                            const type = METADATA_TYPES[key];
-                            return `<div class="metadata-type-tab" data-type="${key}">${type.icon} ${type.label}</div>`;
-                        }).join('')}
-                    </div>
-                </div>
-                <div class="single-panel-container">
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="panel-title delete-mode">🗑️ Select Items to Delete</div>
-                            <div class="panel-count delete-mode" id="selectedCount">0 items</div>
-                        </div>
-                        <input type="text" class="search-box" id="searchItems" placeholder="🔍 Search items...">
-                        <div class="items-area" id="itemsArea">
-                            <div class="empty-state"><div class="empty-state-icon">📦</div><div>Select a metadata type and click "Load Items"</div></div>
-                        </div>
-                        <div class="panel-actions">
-                            <button class="panel-btn load" id="loadItemsBtn" disabled>📥 Load Items</button>
-                            <button class="panel-btn clear" id="clearAllBtn" disabled>✗ Clear Selection</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="progress-section" id="progressSection">
-                    <h3 style="color: #f85149; margin-bottom: 15px;">Deletion Progress</h3>
-                    <div class="progress-bar"><div class="progress-fill delete-mode" id="progressFill" style="width: 0%"></div></div>
-                    <div class="log-container" id="logContainer"></div>
-                </div>
-                <button type="button" class="btn-primary btn-danger" id="deleteMetadataBtn">🗑️ Delete Selected Metadata</button>
-            `;
-        }
-
-        function setupCopyListeners() {
+        function setupTwoPanelListeners(mode) {
             document.querySelectorAll('.metadata-type-tab').forEach(tab => {
                 tab.addEventListener('click', function() { selectMetadataType(this.dataset.type); });
             });
-            document.getElementById('loadItemsBtn').addEventListener('click', loadCurrentTypeItems);
-            document.getElementById('addAllBtn').addEventListener('click', addAllAvailableItems);
-            document.getElementById('clearAllBtn').addEventListener('click', clearAllSelectedItems);
-            document.getElementById('searchAvailable').addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); renderAvailableItems(); });
-            document.getElementById('searchSelected').addEventListener('input', (e) => renderSelectedItems(e.target.value.toLowerCase()));
-            document.getElementById('copyMetadataBtn').addEventListener('click', handleCopyMetadata);
-        }
-
-        function setupDeleteListeners() {
-            document.querySelectorAll('.metadata-type-tab').forEach(tab => {
-                tab.addEventListener('click', function() { selectMetadataTypeDelete(this.dataset.type); });
-            });
-            document.getElementById('loadItemsBtn').addEventListener('click', loadItemsForDelete);
-            document.getElementById('clearAllBtn').addEventListener('click', clearDeleteSelection);
-            document.getElementById('searchItems').addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); renderDeleteItems(); });
-            document.getElementById('deleteMetadataBtn').addEventListener('click', handleDeleteMetadata);
+            
+            const loadBtn = document.getElementById('loadItemsBtn');
+            const addAllBtn = document.getElementById('addAllBtn');
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            const searchAvailable = document.getElementById('searchAvailable');
+            const searchSelected = document.getElementById('searchSelected');
+            const actionBtn = document.getElementById('actionBtn');
+            
+            if (loadBtn) {
+                loadBtn.addEventListener('click', loadCurrentTypeItems);
+            }
+            
+            if (addAllBtn) {
+                addAllBtn.addEventListener('click', addAllAvailableItems);
+            }
+            
+            if (clearAllBtn) {
+                clearAllBtn.addEventListener('click', clearAllSelectedItems);
+            }
+            
+            if (searchAvailable) {
+                searchAvailable.addEventListener('input', (e) => { 
+                    availableSearchTerm = e.target.value.toLowerCase(); 
+                    renderAvailableItems(); 
+                });
+            }
+            
+            if (searchSelected) {
+                searchSelected.addEventListener('input', (e) => {
+                    selectedSearchTerm = e.target.value.toLowerCase();
+                    renderSelectedItems();
+                });
+            }
+            
+            if (actionBtn) {
+                if (mode === 'delete') {
+                    actionBtn.addEventListener('click', handleDeleteMetadata);
+                } else {
+                    actionBtn.addEventListener('click', handleCopyMetadata);
+                }
+            }
+            
+            const includeDataCheckbox = document.getElementById('includeDataCheckbox');
+            if (includeDataCheckbox) {
+                includeDataCheckbox.addEventListener('change', function() {
+                    const dataOptions = document.getElementById('dataOptions');
+                    if (dataOptions) {
+                        dataOptions.style.display = this.checked ? 'block' : 'none';
+                    }
+                });
+            }
         }
 
         function selectMetadataType(typeKey) {
             currentMetadataType = typeKey;
             const type = METADATA_TYPES[typeKey];
+            
             document.querySelectorAll('.metadata-type-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelector(`[data-type="${typeKey}"]`).classList.add('active');
-            availableItems[typeKey] = null;
-            document.getElementById('loadItemsBtn').disabled = false;
-            document.getElementById('addAllBtn').disabled = true;
+            const selectedTab = document.querySelector(`[data-type="${typeKey}"]`);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
+            
+            const loadBtn = document.getElementById('loadItemsBtn');
+            const addAllBtn = document.getElementById('addAllBtn');
+            
+            if (loadBtn) {
+                loadBtn.disabled = false;
+            }
+            
+            if (addAllBtn) {
+                addAllBtn.disabled = !availableItems[typeKey];
+            }
+            
+            availableSearchTerm = '';
+            selectedSearchTerm = '';
+            
+            const searchAvailableInput = document.getElementById('searchAvailable');
+            const searchSelectedInput = document.getElementById('searchSelected');
+            
+            if (searchAvailableInput) searchAvailableInput.value = '';
+            if (searchSelectedInput) searchSelectedInput.value = '';
+            
             renderAvailableItems();
             renderSelectedItems();
-            if (type.copyAll) showNotification(`${type.label} - use "Add All" to select all items with complete hierarchy`, 'info');
-        }
-
-        function selectMetadataTypeDelete(typeKey) {
-            currentMetadataType = typeKey;
-            const type = METADATA_TYPES[typeKey];
-            document.querySelectorAll('.metadata-type-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelector(`[data-type="${typeKey}"]`).classList.add('active');
-            availableItems[typeKey] = null;
-            selectedItems[typeKey] = [];
-            document.getElementById('loadItemsBtn').disabled = false;
-            document.getElementById('clearAllBtn').disabled = true;
-            renderDeleteItems();
+            
+            if (type.copyAll) {
+                showNotification(`${type.label} - use "Add All" to select all items with complete hierarchy`, 'info');
+            }
         }
 
         async function loadCurrentTypeItems() {
             if (!currentMetadataType) return;
+            
             const type = METADATA_TYPES[currentMetadataType];
+            const loadBtn = document.getElementById('loadItemsBtn');
+            
             try {
-                document.getElementById('loadItemsBtn').disabled = true;
-                document.getElementById('loadItemsBtn').textContent = '⏳ Loading...';
+                if (loadBtn) {
+                    loadBtn.disabled = true;
+                    loadBtn.textContent = '⏳ Loading...';
+                }
+                
                 showNotification(`Loading ${type.label}...`, 'info');
+                
                 const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fields}&paging=false`;
                 const response = await fetchWithAuth(url);
-                if (!response.ok) throw new Error(`Failed to fetch ${type.label} (Status: ${response.status})`);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch ${type.label} (Status: ${response.status})`);
+                }
+                
                 const data = await response.json();
                 const items = data[type.endpoint] || [];
+                
                 availableItems[currentMetadataType] = items;
-                if (!selectedItems[currentMetadataType]) selectedItems[currentMetadataType] = [];
+                
+                if (!selectedItems[currentMetadataType]) {
+                    selectedItems[currentMetadataType] = [];
+                }
+                
                 renderAvailableItems();
-                document.getElementById('addAllBtn').disabled = false;
+                
+                const addAllBtn = document.getElementById('addAllBtn');
+                if (addAllBtn) {
+                    addAllBtn.disabled = false;
+                }
+                
                 showNotification(`Loaded ${items.length} ${type.label}`, 'success');
+                
             } catch (error) {
                 showNotification(`Failed to load ${type.label}: ${error.message}`, 'error');
                 console.error(error);
             } finally {
-                document.getElementById('loadItemsBtn').disabled = false;
-                document.getElementById('loadItemsBtn').textContent = '📥 Load Items';
-            }
-        }
-
-        async function loadItemsForDelete() {
-            if (!currentMetadataType) return;
-            const type = METADATA_TYPES[currentMetadataType];
-            try {
-                document.getElementById('loadItemsBtn').disabled = true;
-                document.getElementById('loadItemsBtn').textContent = '⏳ Loading...';
-                showNotification(`Loading ${type.label}...`, 'info');
-                const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fields}&paging=false`;
-                const response = await fetchWithAuth(url);
-                if (!response.ok) throw new Error(`Failed to fetch ${type.label} (Status: ${response.status})`);
-                const data = await response.json();
-                const items = data[type.endpoint] || [];
-                availableItems[currentMetadataType] = items;
-                if (!selectedItems[currentMetadataType]) selectedItems[currentMetadataType] = [];
-                renderDeleteItems();
-                showNotification(`Loaded ${items.length} ${type.label}`, 'success');
-            } catch (error) {
-                showNotification(`Failed to load ${type.label}: ${error.message}`, 'error');
-                console.error(error);
-            } finally {
-                document.getElementById('loadItemsBtn').disabled = false;
-                document.getElementById('loadItemsBtn').textContent = '📥 Load Items';
+                if (loadBtn) {
+                    loadBtn.disabled = false;
+                    loadBtn.textContent = '📥 Load Items';
+                }
             }
         }
 
         function renderAvailableItems() {
             const container = document.getElementById('availableItemsArea');
+            const countElement = document.getElementById('availableCount');
+            
+            if (!container) return;
+            
             if (!currentMetadataType || !availableItems[currentMetadataType]) {
                 container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div>Select a metadata type and click "Load Items"</div></div>';
-                document.getElementById('availableCount').textContent = '0 items';
+                if (countElement) countElement.textContent = '0 items';
                 return;
             }
+            
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
+            
             const filteredItems = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
-                const matchesSearch = !searchTerm || (item.displayName || item.name || '').toLowerCase().includes(searchTerm);
+                const matchesSearch = !availableSearchTerm || (item.displayName || item.name || '').toLowerCase().includes(availableSearchTerm);
                 return notSelected && matchesSearch;
             });
+            
             if (filteredItems.length === 0) {
-                container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><div>${searchTerm ? 'No items match your search' : 'All items have been added'}</div></div>`;
-                document.getElementById('availableCount').textContent = '0 items';
+                container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><div>${availableSearchTerm ? 'No items match your search' : 'All items have been added'}</div></div>`;
+                if (countElement) countElement.textContent = '0 items';
                 return;
             }
-            container.innerHTML = filteredItems.map(item => `<div class="item-row" data-id="${item.id}"><div class="item-name">${item.displayName || item.name}</div><button class="item-action-btn" onclick="addItem('${item.id}')">➡️ Add</button></div>`).join('');
-            document.getElementById('availableCount').textContent = `${filteredItems.length} items`;
+            
+            container.innerHTML = filteredItems.map(item => 
+                `<div class="item-row" data-id="${item.id}">
+                    <div class="item-name">${item.displayName || item.name}</div>
+                    <button class="item-action-btn" onclick="addItem('${item.id}')">➡️ Add</button>
+                </div>`
+            ).join('');
+            
+            if (countElement) {
+                countElement.textContent = `${filteredItems.length} items`;
+            }
         }
 
-        function renderSelectedItems(search = '') {
+        function renderSelectedItems() {
             const container = document.getElementById('selectedItemsArea');
+            const countElement = document.getElementById('selectedCount');
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            
+            if (!container) return;
+            
             if (!currentMetadataType || !selectedItems[currentMetadataType] || selectedItems[currentMetadataType].length === 0) {
                 container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✨</div><div>Add items from the left panel</div></div>';
-                document.getElementById('selectedCount').textContent = '0 items';
-                document.getElementById('clearAllBtn').disabled = true;
+                if (countElement) countElement.textContent = '0 items';
+                if (clearAllBtn) clearAllBtn.disabled = true;
                 return;
             }
+            
             const items = selectedItems[currentMetadataType];
-            const filteredItems = search ? items.filter(item => (item.displayName || item.name || '').toLowerCase().includes(search.toLowerCase())) : items;
-            container.innerHTML = filteredItems.map(item => `<div class="item-row" data-id="${item.id}"><div class="item-name">${item.displayName || item.name}</div><button class="item-action-btn remove" onclick="removeItem('${item.id}')">✗ Remove</button></div>`).join('');
-            document.getElementById('selectedCount').textContent = `${items.length} items`;
-            document.getElementById('clearAllBtn').disabled = false;
-        }
-
-        function renderDeleteItems() {
-            const container = document.getElementById('itemsArea');
-            if (!currentMetadataType || !availableItems[currentMetadataType]) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div>Select a metadata type and click "Load Items"</div></div>';
-                document.getElementById('selectedCount').textContent = '0 items';
-                document.getElementById('clearAllBtn').disabled = true;
-                return;
+            
+            const filteredItems = selectedSearchTerm 
+                ? items.filter(item => (item.displayName || item.name || '').toLowerCase().includes(selectedSearchTerm))
+                : items;
+            
+            container.innerHTML = filteredItems.map(item => 
+                `<div class="item-row" data-id="${item.id}">
+                    <div class="item-name">${item.displayName || item.name}</div>
+                    <button class="item-action-btn remove" onclick="removeItem('${item.id}')">✗ Remove</button>
+                </div>`
+            ).join('');
+            
+            if (countElement) {
+                countElement.textContent = `${items.length} items`;
             }
-            const items = availableItems[currentMetadataType];
-            const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
-            const filteredItems = items.filter(item => {
-                const matchesSearch = !searchTerm || (item.displayName || item.name || '').toLowerCase().includes(searchTerm);
-                return matchesSearch;
-            });
-            if (filteredItems.length === 0) {
-                container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><div>No items match your search</div></div>`;
-                document.getElementById('selectedCount').textContent = '0 items';
-                return;
+            
+            if (clearAllBtn) {
+                clearAllBtn.disabled = false;
             }
-            container.innerHTML = filteredItems.map(item => {
-                const isSelected = selectedIds.includes(item.id);
-                return `<div class="item-row delete-mode ${isSelected ? 'selected' : ''}" onclick="toggleDeleteItem('${item.id}')">
-                    <div class="item-name">${isSelected ? '✓ ' : ''}${item.displayName || item.name}</div>
-                    <button class="item-action-btn ${isSelected ? 'remove' : ''}" onclick="event.stopPropagation(); toggleDeleteItem('${item.id}')">${isSelected ? '✗ Deselect' : '➕ Select'}</button>
-                </div>`;
-            }).join('');
-            const selectedCount = selectedItems[currentMetadataType] ? selectedItems[currentMetadataType].length : 0;
-            document.getElementById('selectedCount').textContent = `${selectedCount} items`;
-            document.getElementById('clearAllBtn').disabled = selectedCount === 0;
-        }
-
-        function toggleDeleteItem(itemId) {
-            if (!currentMetadataType || !availableItems[currentMetadataType]) return;
-            const item = availableItems[currentMetadataType].find(i => i.id === itemId);
-            if (!item) return;
-            if (!selectedItems[currentMetadataType]) selectedItems[currentMetadataType] = [];
-            const index = selectedItems[currentMetadataType].findIndex(i => i.id === itemId);
-            if (index >= 0) {
-                selectedItems[currentMetadataType].splice(index, 1);
-            } else {
-                selectedItems[currentMetadataType].push(item);
-            }
-            renderDeleteItems();
-        }
-
-        function clearDeleteSelection() {
-            if (!currentMetadataType) return;
-            selectedItems[currentMetadataType] = [];
-            renderDeleteItems();
-            showNotification('Selection cleared', 'info');
         }
 
         function addItem(itemId) {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
+            
             const item = availableItems[currentMetadataType].find(i => i.id === itemId);
             if (!item) return;
-            if (!selectedItems[currentMetadataType]) selectedItems[currentMetadataType] = [];
+            
+            if (!selectedItems[currentMetadataType]) {
+                selectedItems[currentMetadataType] = [];
+            }
+            
             selectedItems[currentMetadataType].push(item);
+            
             renderAvailableItems();
             renderSelectedItems();
         }
 
         function removeItem(itemId) {
             if (!currentMetadataType || !selectedItems[currentMetadataType]) return;
+            
             selectedItems[currentMetadataType] = selectedItems[currentMetadataType].filter(item => item.id !== itemId);
+            
             renderAvailableItems();
             renderSelectedItems();
         }
 
         function addAllAvailableItems() {
             if (!currentMetadataType || !availableItems[currentMetadataType]) return;
-            const type = METADATA_TYPES[currentMetadataType];
+            
             const items = availableItems[currentMetadataType];
             const selectedIds = (selectedItems[currentMetadataType] || []).map(item => item.id);
+            
             const itemsToAdd = items.filter(item => {
                 const notSelected = !selectedIds.includes(item.id);
-                const matchesSearch = !searchTerm || (item.displayName || item.name || '').toLowerCase().includes(searchTerm);
+                const matchesSearch = !availableSearchTerm || (item.displayName || item.name || '').toLowerCase().includes(availableSearchTerm);
                 return notSelected && matchesSearch;
             });
-            if (!selectedItems[currentMetadataType]) selectedItems[currentMetadataType] = [];
+            
+            if (!selectedItems[currentMetadataType]) {
+                selectedItems[currentMetadataType] = [];
+            }
+            
             selectedItems[currentMetadataType].push(...itemsToAdd);
+            
             renderAvailableItems();
             renderSelectedItems();
+            
             if (currentMetadataType === 'organisationUnits') {
                 showNotification(`✅ Added all ${itemsToAdd.length} Organisation Units (complete hierarchy)`, 'success');
             } else {
@@ -1360,128 +1380,225 @@
 
         function clearAllSelectedItems() {
             if (!currentMetadataType) return;
+            
             selectedItems[currentMetadataType] = [];
+            
             renderAvailableItems();
             renderSelectedItems();
+            
             showNotification('Cleared all selected items', 'info');
+        }
+
+        async function fetchDataValues(dataElementIds, orgUnitIds, startPeriod, endPeriod) {
+            log('📊 Fetching raw data values...', 'info');
+            const dataValues = [];
+            const deBatchSize = 20;
+            const ouBatchSize = 100;
+            
+            let totalBatches = Math.ceil(dataElementIds.length / deBatchSize) * Math.ceil(orgUnitIds.length / ouBatchSize);
+            let currentBatch = 0;
+            
+            log(`  Processing ${dataElementIds.length} data elements across ${orgUnitIds.length} org units in ${totalBatches} batches...`, 'info');
+            
+            for (let i = 0; i < dataElementIds.length; i += deBatchSize) {
+                const deBatch = dataElementIds.slice(i, i + deBatchSize);
+                
+                for (let j = 0; j < orgUnitIds.length; j += ouBatchSize) {
+                    const ouBatch = orgUnitIds.slice(j, j + ouBatchSize);
+                    currentBatch++;
+                    
+                    const deParam = deBatch.join(';');
+                    const ouParam = ouBatch.join(';');
+                    
+                    const url = `${state.config.instanceUrl}/api/dataValueSets.json?dataElement=${deParam}&orgUnit=${ouParam}&startDate=${startPeriod}&endDate=${endPeriod}`;
+                    
+                    try {
+                        const response = await fetchWithAuth(url);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.dataValues && data.dataValues.length > 0) {
+                                dataValues.push(...data.dataValues);
+                                log(`  ✓ Batch ${currentBatch}/${totalBatches}: Fetched ${data.dataValues.length} values (${deBatch.length} DEs × ${ouBatch.length} OUs)`, 'success');
+                            } else {
+                                log(`  ⓘ Batch ${currentBatch}/${totalBatches}: No data found`, 'info');
+                            }
+                        } else {
+                            log(`  ⚠️ Batch ${currentBatch}/${totalBatches} failed: HTTP ${response.status}`, 'error');
+                        }
+                    } catch (error) {
+                        log(`  ⚠️ Batch ${currentBatch}/${totalBatches} error: ${error.message}`, 'error');
+                    }
+                    
+                    if (currentBatch % 10 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+            }
+            
+            log(`  ✅ Completed all batches. Total values: ${dataValues.length}`, 'success');
+            return dataValues;
         }
 
         async function handleDeleteMetadata() {
             let totalSelected = 0;
             for (const typeKey in selectedItems) {
-                if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) totalSelected += selectedItems[typeKey].length;
+                if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) {
+                    totalSelected += selectedItems[typeKey].length;
+                }
             }
+            
             if (totalSelected === 0) {
                 showNotification('Please select at least one item to delete', 'error');
                 return;
             }
 
-            const confirmMsg = `⚠️ WARNING: You are about to permanently delete ${totalSelected} item(s).\n\nThis action CANNOT be undone!\n\nType "DELETE" to confirm:`;
+            const confirmMsg = `⚠️ ARE YOU SURE?\n\nYou are about to DELETE ${totalSelected} items from:\n${state.config.instanceUrl}\n\nThis action CANNOT be undone!\n\nType 'DELETE' to confirm:`;
             const userConfirm = prompt(confirmMsg);
+            
             if (userConfirm !== 'DELETE') {
-                showNotification('Deletion cancelled', 'info');
+                showNotification('Delete operation cancelled', 'info');
                 return;
             }
 
-            const deleteBtn = document.getElementById('deleteMetadataBtn');
-            deleteBtn.disabled = true;
-            deleteBtn.textContent = 'Deleting...';
+            const actionBtn = document.getElementById('actionBtn');
+            if (actionBtn) {
+                actionBtn.disabled = true;
+                actionBtn.textContent = 'Deleting...';
+            }
+            
             showProgress();
             clearLogs();
             setProgress(0);
 
             try {
                 log('🗑️ Starting metadata deletion...', 'info');
-                log(`⚠️ Deleting ${totalSelected} items`, 'error');
+                log(`⚠️ Target: ${state.config.instanceUrl}`, 'error');
+                log(`📝 Mode: DELETE (permanent removal)`, 'error');
                 setProgress(10);
 
-                let deletedCount = 0;
-                let failedCount = 0;
-                let processedCount = 0;
+                let itemsDeleted = 0;
+                let itemsFailed = 0;
 
-                for (const typeKey in selectedItems) {
+                const deletionOrder = ['dashboards', 'indicators', 'dataSets', 'dataElements', 'validationRules', 'programs', 'categoryOptions', 'organisationUnits'];
+                
+                for (const typeKey of deletionOrder) {
                     if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
+                    
                     const type = METADATA_TYPES[typeKey];
                     const items = selectedItems[typeKey];
-                    log(`\n📦 Processing ${type.label}: ${items.length} items`, 'info');
-
+                    
+                    log(`\n🗑️ Deleting ${items.length} ${type.label}...`, 'info');
+                    
                     for (const item of items) {
                         try {
                             const deleteUrl = `${state.config.instanceUrl}/api/${type.endpoint}/${item.id}`;
                             const response = await fetchWithAuth(deleteUrl, { method: 'DELETE' });
                             
                             if (response.ok) {
+                                itemsDeleted++;
                                 log(`  ✓ Deleted: ${item.displayName || item.name}`, 'success');
-                                deletedCount++;
                             } else {
+                                itemsFailed++;
                                 const errorText = await response.text();
-                                log(`  ✗ Failed to delete ${item.displayName || item.name}: ${errorText}`, 'error');
-                                failedCount++;
+                                log(`  ✗ Failed: ${item.displayName || item.name} (${response.status})`, 'error');
+                                try {
+                                    const errorJson = JSON.parse(errorText);
+                                    if (errorJson.message) {
+                                        log(`    Reason: ${errorJson.message}`, 'error');
+                                    }
+                                } catch (e) {}
                             }
-                        } catch (err) {
-                            log(`  ✗ Error deleting ${item.displayName || item.name}: ${err.message}`, 'error');
-                            failedCount++;
+                        } catch (error) {
+                            itemsFailed++;
+                            log(`  ✗ Error deleting ${item.displayName || item.name}: ${error.message}`, 'error');
                         }
-                        
-                        processedCount++;
-                        const progress = 10 + (processedCount / totalSelected) * 80;
-                        setProgress(progress);
                     }
+                    
+                    setProgress(10 + (deletionOrder.indexOf(typeKey) / deletionOrder.length) * 80);
                 }
 
                 setProgress(100);
-                log('\n═══════════════════════════════════════', deletedCount > 0 ? 'success' : 'error');
-                log(`DELETION COMPLETE`, deletedCount > 0 ? 'success' : 'error');
-                log('═══════════════════════════════════════', deletedCount > 0 ? 'success' : 'error');
-                log(`  ✓ Successfully deleted: ${deletedCount}`, 'success');
-                if (failedCount > 0) log(`  ✗ Failed to delete: ${failedCount}`, 'error');
-                
-                showNotification(`Deleted ${deletedCount} items${failedCount > 0 ? `, ${failedCount} failed` : ''}`, deletedCount > 0 ? 'success' : 'error');
-                
-                // Clear selections and reload
-                selectedItems = {};
-                if (currentMetadataType) {
-                    await loadItemsForDelete();
+
+                log('\n═══════════════════════════════════════', itemsFailed > 0 ? 'error' : 'success');
+                log(itemsFailed > 0 ? '⚠️ DELETION COMPLETED WITH ERRORS' : '✅ DELETION SUCCESSFUL!', itemsFailed > 0 ? 'error' : 'success');
+                log('═══════════════════════════════════════', itemsFailed > 0 ? 'error' : 'success');
+                log(`  🗑️ Deleted: ${itemsDeleted} items`, 'success');
+                if (itemsFailed > 0) {
+                    log(`  ✗ Failed: ${itemsFailed} items`, 'error');
+                    log(`\nCommon reasons for failure:`, 'info');
+                    log(`  • Item is referenced by other metadata`, 'info');
+                    log(`  • Insufficient permissions`, 'info');
+                    log(`  • Item doesn't exist`, 'info');
                 }
+
+                const successMsg = itemsFailed > 0 
+                    ? `⚠️ Deleted ${itemsDeleted} items, ${itemsFailed} failed`
+                    : `✅ Successfully deleted ${itemsDeleted} items`;
+                showNotification(successMsg, itemsFailed > 0 ? 'error' : 'success');
 
             } catch (error) {
                 console.error('Delete error:', error);
                 log(`❌ ERROR: ${error.message}`, 'error');
                 showNotification(`Error: ${error.message}`, 'error');
             } finally {
-                deleteBtn.disabled = false;
-                deleteBtn.textContent = '🗑️ Delete Selected Metadata';
+                if (actionBtn) {
+                    actionBtn.disabled = false;
+                    actionBtn.textContent = '🗑️ Delete Selected Metadata';
+                }
             }
         }
 
         async function handleCopyMetadata() {
             let totalSelected = 0;
             for (const typeKey in selectedItems) {
-                if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) totalSelected += selectedItems[typeKey].length;
+                if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) {
+                    totalSelected += selectedItems[typeKey].length;
+                }
             }
+            
             const copyAllTypes = Object.keys(METADATA_TYPES).filter(key => METADATA_TYPES[key].copyAll);
             const hasCopyAllSelected = copyAllTypes.some(key => selectedItems[key] !== undefined && selectedItems[key] !== null);
+            
             if (totalSelected === 0 && !hasCopyAllSelected) {
                 showNotification('Please select at least one item to copy', 'error');
                 return;
             }
-            const copyBtn = document.getElementById('copyMetadataBtn');
-            copyBtn.disabled = true;
-            copyBtn.textContent = 'Processing...';
+
+            const includeDataCheckbox = document.getElementById('includeDataCheckbox');
+            const includeData = includeDataCheckbox ? includeDataCheckbox.checked : false;
+
+            const copyBtn = document.getElementById('actionBtn');
+            if (copyBtn) {
+                copyBtn.disabled = true;
+                copyBtn.textContent = 'Processing...';
+            }
+            
             showProgress();
             clearLogs();
             setProgress(0);
 
             try {
-                const targetUrl = document.getElementById('targetUrl').value.trim().replace(/\/$/, '');
-                const targetUsername = document.getElementById('targetUsername').value.trim();
-                const targetPassword = document.getElementById('targetPassword').value.trim();
+                const targetUrlInput = document.getElementById('targetUrl');
+                const targetUsernameInput = document.getElementById('targetUsername');
+                const targetPasswordInput = document.getElementById('targetPassword');
+                
+                const targetUrl = targetUrlInput ? targetUrlInput.value.trim().replace(/\/$/, '') : '';
+                const targetUsername = targetUsernameInput ? targetUsernameInput.value.trim() : '';
+                const targetPassword = targetPasswordInput ? targetPasswordInput.value.trim() : '';
+                
+                if (!targetUrl || !targetUsername || !targetPassword) {
+                    throw new Error('Please fill in all target instance details');
+                }
+                
                 const importStrategy = 'CREATE_AND_UPDATE';
                 const mergeMode = 'REPLACE';
+                const atomicMode = 'OBJECT';
 
                 log('🔄 Starting metadata copy...', 'info');
                 log(`📡 Using Google Apps Script Proxy`, 'info');
-                log(`📝 Strategy: Override existing + Create new`, 'info');
+                log(`📝 Import Strategy: ${importStrategy} (create new + update existing)`, 'info');
+                log(`📝 Merge Mode: ${mergeMode} (replace existing data)`, 'info');
+                log(`📝 Atomic Mode: ${atomicMode} (show all errors, validate everything)`, 'info');
                 setProgress(10);
 
                 const metadata = {};
@@ -1490,6 +1607,10 @@
                 const relatedCategoryCombos = new Set();
                 const relatedOptionSets = new Set();
                 const relatedIndicatorTypes = new Set();
+                const relatedUserGroups = new Set();
+                const relatedUsers = new Set();
+                const selectedDataElementIds = [];
+                const selectedOrgUnitIds = [];
 
                 for (const typeKey in selectedItems) {
                     if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
@@ -1505,6 +1626,11 @@
                             const data = await response.json();
                             const items = data[type.endpoint] || [];
                             metadata[type.endpoint] = items;
+                            
+                            if (typeKey === 'organisationUnits') {
+                                items.forEach(ou => selectedOrgUnitIds.push(ou.id));
+                            }
+                            
                             log(`  ✓ Added ${items.length} ${type.label}`, 'success');
                         }
                     } else {
@@ -1517,8 +1643,36 @@
                                 if (response.ok) {
                                     const item = await response.json();
                                     items.push(item);
+                                    
+                                    if (item.sharing) {
+                                        if (item.sharing.userGroups) {
+                                            Object.keys(item.sharing.userGroups).forEach(ugId => {
+                                                relatedUserGroups.add(ugId);
+                                            });
+                                        }
+                                        if (item.sharing.users) {
+                                            Object.keys(item.sharing.users).forEach(userId => {
+                                                relatedUsers.add(userId);
+                                            });
+                                        }
+                                    }
+                                    
+                                    if (typeKey === 'organisationUnits') {
+                                        selectedOrgUnitIds.push(item.id);
+                                    }
+                                    
+                                    if (typeKey === 'dataElements') {
+                                        selectedDataElementIds.push(item.id);
+                                    }
+                                    
                                     if (typeKey === 'dataSets') {
-                                        if (item.dataSetElements) item.dataSetElements.forEach(dse => { if (dse.dataElement?.id) relatedDataElements.add(dse.dataElement.id); if (dse.categoryCombo?.id) relatedCategoryCombos.add(dse.categoryCombo.id); });
+                                        if (item.dataSetElements) item.dataSetElements.forEach(dse => { 
+                                            if (dse.dataElement?.id) {
+                                                relatedDataElements.add(dse.dataElement.id);
+                                                selectedDataElementIds.push(dse.dataElement.id);
+                                            }
+                                            if (dse.categoryCombo?.id) relatedCategoryCombos.add(dse.categoryCombo.id);
+                                        });
                                         if (item.indicators) item.indicators.forEach(ind => { if (ind.id) relatedIndicators.add(ind.id); });
                                     }
                                     if (typeKey === 'dataElements') {
@@ -1629,13 +1783,57 @@
                     }
                 }
 
+                if (relatedUserGroups.size > 0) {
+                    log(`\n👥 Fetching ${relatedUserGroups.size} related User Groups...`, 'info');
+                    const userGroups = [];
+                    for (const ugId of relatedUserGroups) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/userGroups/${ugId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                const ug = await response.json();
+                                userGroups.push(ug);
+                                if (ug.users) {
+                                    ug.users.forEach(user => {
+                                        if (user.id) relatedUsers.add(user.id);
+                                    });
+                                }
+                            }
+                        } catch (err) {}
+                    }
+                    if (userGroups.length > 0) {
+                        metadata.userGroups = userGroups;
+                        log(`  ✓ Added ${userGroups.length} related User Groups`, 'success');
+                    }
+                }
+
+                if (relatedUsers.size > 0) {
+                    log(`\n👤 Fetching ${relatedUsers.size} related Users...`, 'info');
+                    const users = [];
+                    for (const userId of relatedUsers) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/users/${userId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) users.push(await response.json());
+                        } catch (err) {}
+                    }
+                    if (users.length > 0) {
+                        metadata.users = users;
+                        log(`  ✓ Added ${users.length} related Users`, 'success');
+                    }
+                }
+
                 if (Object.keys(metadata).length === 0) throw new Error('No items to copy');
 
-                setProgress(50);
-                log(`🚀 Importing to ${targetUrl}...`, 'info');
-                setProgress(60);
+                log(`\n📋 Metadata Package Summary:`, 'info');
+                Object.keys(metadata).forEach(key => {
+                    log(`  • ${key}: ${metadata[key].length} items`, 'info');
+                });
 
-                const importUrl = targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=NONE';
+                setProgress(40);
+                log(`\n🚀 Importing metadata to ${targetUrl}...`, 'info');
+
+                const importUrl = targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=' + atomicMode;
                 const metadataJson = JSON.stringify(metadata);
                 log(`Sending ${Object.keys(metadata).length} metadata types (${(metadataJson.length / 1024).toFixed(2)} KB)...`, 'info');
                 
@@ -1646,23 +1844,22 @@
                     body: metadataJson
                 });
 
-                setProgress(80);
+                setProgress(60);
                 const result = await importResponse.json();
                 const importResult = result.response || result;
                 
-                console.log('DHIS2 Response:', importResult);
+                console.log('DHIS2 Metadata Response:', importResult);
                 
-                log('📄 Response received from target DHIS2', 'info');
+                log('📄 Metadata import response received', 'info');
 
                 if (!importResponse.ok) {
-                    log(`❌ Import failed (Status ${importResponse.status})`, 'error');
-                    throw new Error(`Import failed with status ${importResponse.status}`);
+                    log(`❌ Metadata import failed (Status ${importResponse.status})`, 'error');
+                    throw new Error(`Metadata import failed with status ${importResponse.status}`);
                 }
 
                 let itemsCreated = 0;
                 let itemsUpdated = 0;
                 let itemsIgnored = 0;
-                let itemsDeleted = 0;
 
                 if (importResult.typeReports && Array.isArray(importResult.typeReports) && importResult.typeReports.length > 0) {
                     log(`\n📦 Processing ${importResult.typeReports.length} type reports...`, 'info');
@@ -1670,11 +1867,9 @@
                         const created = (report.stats?.created) || 0;
                         const updated = (report.stats?.updated) || 0;
                         const ignored = (report.stats?.ignored) || 0;
-                        const deleted = (report.stats?.deleted) || 0;
                         itemsCreated += created;
                         itemsUpdated += updated;
                         itemsIgnored += ignored;
-                        itemsDeleted += deleted;
                         if (created > 0 || updated > 0 || ignored > 0) {
                             log(`  ${report.klass}: Created=${created}, Updated=${updated}, Ignored=${ignored}`, 'info');
                         }
@@ -1683,48 +1878,197 @@
                     itemsCreated = importResult.stats.created || 0;
                     itemsUpdated = importResult.stats.updated || 0;
                     itemsIgnored = importResult.stats.ignored || 0;
-                    itemsDeleted = importResult.stats.deleted || 0;
                 }
 
-                log(`\n📊 Final Statistics:`, 'info');
-                log(`  Created: ${itemsCreated}`, 'info');
-                log(`  Updated: ${itemsUpdated}`, 'info');
-                log(`  Ignored: ${itemsIgnored}`, 'info');
+                log(`\n📊 Final Metadata Summary:`, 'info');
+                log(`  ✅ Created: ${itemsCreated} (new items)`, itemsCreated > 0 ? 'success' : 'info');
+                log(`  🔄 Updated: ${itemsUpdated} (already existed, now updated)`, itemsUpdated > 0 ? 'success' : 'info');
+                log(`  ⏭️ Ignored: ${itemsIgnored} (no changes needed)`, 'info');
 
                 if (itemsCreated > 0 || itemsUpdated > 0) {
                     log('\n═══════════════════════════════════════', 'success');
-                    log('✅ COPY SUCCESSFUL!', 'success');
+                    log('✅ METADATA IMPORT SUCCESSFUL!', 'success');
                     log('═══════════════════════════════════════', 'success');
-                    if (itemsCreated > 0) log(`  ✓ Created: ${itemsCreated} new items`, 'success');
-                    if (itemsUpdated > 0) log(`  ✓ Updated: ${itemsUpdated} existing items`, 'success');
-                    if (itemsIgnored > 0) log(`  ℹ️  Ignored: ${itemsIgnored} (already up to date)`, 'info');
-                    let successMsg = '✅ Copy successful! ';
-                    const parts = [];
-                    if (itemsCreated > 0) parts.push(`${itemsCreated} created`);
-                    if (itemsUpdated > 0) parts.push(`${itemsUpdated} updated`);
-                    if (itemsIgnored > 0) parts.push(`${itemsIgnored} already exist`);
-                    successMsg += parts.join(', ');
-                    showNotification(successMsg, 'success');
+                    if (itemsCreated > 0) log(`  • ${itemsCreated} new items created`, 'success');
+                    if (itemsUpdated > 0) log(`  • ${itemsUpdated} existing items updated`, 'success');
+                    if (itemsIgnored > 0) log(`  • ${itemsIgnored} items unchanged (already up to date)`, 'info');
                 } else if (itemsIgnored > 0) {
                     log('\n═══════════════════════════════════════', 'success');
-                    log('✅ COPY SUCCESSFUL!', 'success');
+                    log('✅ METADATA ALREADY EXISTS!', 'success');
                     log('═══════════════════════════════════════', 'success');
-                    log(`📊 All ${itemsIgnored} items already exist (up to date)`, 'success');
-                    showNotification(`✅ Copy successful! All ${itemsIgnored} items already exist`, 'success');
+                    log(`📊 All ${itemsIgnored} items already exist and are up to date`, 'success');
+                    log(`   No changes were needed`, 'info');
                 } else {
                     log(`\n⚠️ Import completed but no changes made`, 'error');
-                    showNotification('Import completed but nothing was changed', 'error');
+                }
+
+                if (includeData) {
+                    setProgress(70);
+                    log(`\n═══════════════════════════════════════`, 'info');
+                    log(`📊 Analyzing dependencies for data import...`, 'info');
+                    
+                    const startPeriodInput = document.getElementById('startPeriod');
+                    const endPeriodInput = document.getElementById('endPeriod');
+                    const startPeriod = startPeriodInput ? startPeriodInput.value.trim() : '';
+                    const endPeriod = endPeriodInput ? endPeriodInput.value.trim() : '';
+                    
+                    const allDataElementIds = new Set(selectedDataElementIds);
+                    const allOrgUnitIds = new Set(selectedOrgUnitIds);
+                    const allDataSetIds = new Set();
+                    
+                    if (selectedItems['dataSets'] && selectedItems['dataSets'].length > 0) {
+                        log(`\n  Analyzing ${selectedItems['dataSets'].length} datasets for org unit assignments...`, 'info');
+                        for (const dataset of selectedItems['dataSets']) {
+                            try {
+                                const dsUrl = `${state.config.instanceUrl}/api/dataSets/${dataset.id}.json?fields=organisationUnits[id]`;
+                                const dsResponse = await fetchWithAuth(dsUrl);
+                                if (dsResponse.ok) {
+                                    const dsData = await dsResponse.json();
+                                    if (dsData.organisationUnits) {
+                                        dsData.organisationUnits.forEach(ou => {
+                                            if (ou.id) allOrgUnitIds.add(ou.id);
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                log(`    ⚠️ Could not analyze dataset: ${dataset.displayName || dataset.name}`, 'error');
+                            }
+                        }
+                        log(`    ✓ Found ${allOrgUnitIds.size} total org units including from datasets`, 'success');
+                    }
+                    
+                    const finalDataElementIds = Array.from(allDataElementIds);
+                    let finalOrgUnitIds = Array.from(allOrgUnitIds);
+                    
+                    if (finalDataElementIds.length > 0) {
+                        log(`\n  🔍 Finding datasets that contain these ${finalDataElementIds.length} data elements...`, 'info');
+                        
+                        const allDatasetsUrl = `${state.config.instanceUrl}/api/dataSets.json?fields=id,displayName,dataSetElements[dataElement[id]],organisationUnits[id]&paging=false`;
+                        const allDatasetsResponse = await fetchWithAuth(allDatasetsUrl);
+                        
+                        if (allDatasetsResponse.ok) {
+                            const allDatasetsData = await allDatasetsResponse.json();
+                            const allDatasets = allDatasetsData.dataSets || [];
+                            
+                            allDatasets.forEach(dataset => {
+                                let hasMatchingDE = false;
+                                if (dataset.dataSetElements) {
+                                    dataset.dataSetElements.forEach(dse => {
+                                        if (dse.dataElement && finalDataElementIds.includes(dse.dataElement.id)) {
+                                            hasMatchingDE = true;
+                                        }
+                                    });
+                                }
+                                
+                                if (hasMatchingDE) {
+                                    allDataSetIds.add(dataset.id);
+                                    if (dataset.organisationUnits) {
+                                        dataset.organisationUnits.forEach(ou => {
+                                            if (ou.id) allOrgUnitIds.add(ou.id);
+                                        });
+                                    }
+                                    log(`    ✓ Dataset: ${dataset.displayName || dataset.id}`, 'success');
+                                }
+                            });
+                            
+                            finalOrgUnitIds = Array.from(allOrgUnitIds);
+                            log(`    ✅ Found ${allDataSetIds.size} datasets containing these data elements`, 'success');
+                            log(`    ✅ Total org units (including from datasets): ${finalOrgUnitIds.length}`, 'success');
+                        }
+                    }
+                    
+                    if (finalDataElementIds.length > 0 && allDataSetIds.size > 0) {
+                        if (finalOrgUnitIds.length === 0) {
+                            log(`\n  No specific org units found, fetching all org units...`, 'info');
+                            const ouUrl = `${state.config.instanceUrl}/api/organisationUnits.json?fields=id&paging=false`;
+                            const ouResponse = await fetchWithAuth(ouUrl);
+                            if (ouResponse.ok) {
+                                const ouData = await ouResponse.json();
+                                finalOrgUnitIds = ouData.organisationUnits.map(ou => ou.id);
+                                log(`  ✓ Found ${finalOrgUnitIds.length} org units in source instance`, 'success');
+                            }
+                        }
+                        
+                        if (finalOrgUnitIds.length > 0) {
+                            log(`\n  📊 Fetching data values from ${allDataSetIds.size} datasets...`, 'info');
+                            log(`     Data Elements: ${finalDataElementIds.length}`, 'info');
+                            log(`     Org Units: ${finalOrgUnitIds.length}`, 'info');
+                            
+                            const dataValues = await fetchDataValues(finalDataElementIds, finalOrgUnitIds, startPeriod || '', endPeriod || '');
+                            
+                            if (dataValues.length > 0) {
+                                log(`\n✅ Total raw data values fetched: ${dataValues.length}`, 'success');
+                                setProgress(85);
+                                
+                                log(`🚀 Importing ${dataValues.length} data values to target...`, 'info');
+                                const dataUrl = targetUrl + '/api/dataValueSets';
+                                const dataPayload = JSON.stringify({ dataValues: dataValues });
+                                
+                                const dataResponse = await makeProxyRequest(dataUrl, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': targetAuthHeader, 'Content-Type': 'application/json' },
+                                    body: dataPayload
+                                });
+                                
+                                setProgress(92);
+                                
+                                if (dataResponse.ok) {
+                                    const dataResult = await dataResponse.json();
+                                    console.log('DHIS2 Data Response:', dataResult);
+                                    
+                                    const dataImportSummary = dataResult.response || dataResult;
+                                    const dataImported = dataImportSummary.importCount?.imported || 0;
+                                    const dataUpdated = dataImportSummary.importCount?.updated || 0;
+                                    const dataIgnored = dataImportSummary.importCount?.ignored || 0;
+                                    
+                                    log(`\n📊 Raw Data Import Statistics:`, 'success');
+                                    log(`  Imported: ${dataImported}`, 'success');
+                                    log(`  Updated: ${dataUpdated}`, 'success');
+                                    log(`  Ignored: ${dataIgnored}`, 'info');
+                                } else {
+                                    log(`⚠️ Data import failed (Status ${dataResponse.status})`, 'error');
+                                }
+                            } else {
+                                log(`\n⚠️ No raw data values found for the specified criteria`, 'info');
+                                log(`   This could mean:`, 'info');
+                                log(`   - No data has been entered in these datasets`, 'info');
+                                log(`   - The time period specified has no data`, 'info');
+                                log(`   - The org units don't have data for these elements`, 'info');
+                            }
+                        }
+                    } else if (finalDataElementIds.length > 0 && allDataSetIds.size === 0) {
+                        log(`\n⚠️ Found ${finalDataElementIds.length} data elements but they are not in any datasets`, 'error');
+                        log(`   Data values in DHIS2 are stored per dataset, not per data element`, 'info');
+                        log(`   These data elements may not have any data values`, 'info');
+                    }
                 }
 
                 setProgress(100);
+
+                log('\n═══════════════════════════════════════', 'success');
+                log('✅ COPY SUCCESSFUL!', 'success');
+                log('═══════════════════════════════════════', 'success');
+                if (itemsCreated > 0) log(`  ✓ Metadata Created: ${itemsCreated} new items`, 'success');
+                if (itemsUpdated > 0) log(`  ✓ Metadata Updated: ${itemsUpdated} existing items`, 'success');
+                if (itemsIgnored > 0) log(`  ℹ️  Metadata Ignored: ${itemsIgnored} (already up to date)`, 'info');
+                
+                let successMsg = '✅ Copy successful! ';
+                const parts = [];
+                if (itemsCreated > 0) parts.push(`${itemsCreated} created`);
+                if (itemsUpdated > 0) parts.push(`${itemsUpdated} updated`);
+                if (includeData) parts.push('+ data values');
+                successMsg += parts.join(', ');
+                showNotification(successMsg, 'success');
 
             } catch (error) {
                 console.error('Copy error:', error);
                 log(`❌ ERROR: ${error.message}`, 'error');
                 showNotification(`Error: ${error.message}`, 'error');
             } finally {
-                copyBtn.disabled = false;
-                copyBtn.textContent = '🚀 Copy Selected Metadata';
+                if (copyBtn) {
+                    copyBtn.disabled = false;
+                    copyBtn.textContent = '🚀 Copy Selected Metadata & Data';
+                }
             }
         }
 
@@ -1733,26 +2077,54 @@
             const instanceUrl = document.getElementById('instanceUrl').value.trim().replace(/\/$/, '');
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
+            
             if (!instanceUrl.startsWith('http://') && !instanceUrl.startsWith('https://')) {
                 showNotification('URL must start with http:// or https://', 'error');
                 return;
             }
+            
             const submitBtn = e.target.querySelector('.btn-primary');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Connecting...';
+            
             const config = { instanceUrl, username, password };
+            
             try {
                 showNotification('Connecting via Google Apps Script...', 'info');
                 const testUrl = `${instanceUrl}/api/me`;
                 const authHeader = 'Basic ' + btoa(`${username}:${password}`);
                 const response = await makeProxyRequest(testUrl, { method: 'GET', headers: { 'Authorization': authHeader } });
+                
                 if (response.ok) {
                     const userData = await response.json();
                     state.config = config;
                     state.isLoggedIn = true;
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
-                    showNotification(`✅ Connected as ${userData.displayName || userData.username}!`, 'success');
+                    
+                    const isSuperuser = userData.authorities && userData.authorities.includes('ALL');
+                    const canImport = userData.authorities && userData.authorities.includes('F_METADATA_IMPORT');
+                    const canExport = userData.authorities && userData.authorities.includes('F_METADATA_EXPORT');
+                    
+                    let accessMessage = `✅ Connected as ${userData.displayName || userData.username}!`;
+                    if (isSuperuser) {
+                        accessMessage += '\n🔑 Superuser access (full permissions)';
+                    } else {
+                        accessMessage += '\n👤 Regular user';
+                        if (canImport) accessMessage += ' • Can import metadata ✅';
+                        if (canExport) accessMessage += ' • Can export metadata ✅';
+                        if (!canImport || !canExport) {
+                            accessMessage += '\n⚠️ Limited permissions - some operations may fail';
+                        }
+                    }
+                    
+                    showNotification(accessMessage, 'success');
+                    console.log('User details:', {
+                        username: userData.username,
+                        name: userData.displayName,
+                        isSuperuser: isSuperuser,
+                        authorities: userData.authorities
+                    });
                 } else if (response.status === 401) {
                     showNotification('❌ Invalid username or password', 'error');
                 } else if (response.status === 403) {
