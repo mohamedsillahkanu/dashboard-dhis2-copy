@@ -911,21 +911,17 @@
             if (options.headers && options.headers.Authorization) {
                 proxyUrl += `&Authorization=${encodeURIComponent(options.headers.Authorization)}`;
             }
-            
-            const fetchOptions = { method: 'POST' };
-            
             if (!options.method || options.method === 'GET') {
-                proxyUrl += '&method=GET';
-            } else if (options.method === 'POST') {
-                proxyUrl += '&method=POST';
-                if (options.body) {
-                    fetchOptions.body = options.body;
-                }
-            } else if (options.method === 'DELETE') {
-                proxyUrl += '&method=DELETE';
+                return fetch(proxyUrl, { method: 'GET' });
             }
-            
-            return fetch(proxyUrl, fetchOptions);
+            if (options.method === 'POST') {
+                return fetch(proxyUrl, { method: 'POST', body: options.body });
+            }
+            if (options.method === 'DELETE') {
+                proxyUrl += '&method=DELETE';
+                return fetch(proxyUrl, { method: 'POST' });
+            }
+            return fetch(proxyUrl);
         }
 
         async function fetchWithAuth(url, options = {}) {
@@ -1220,13 +1216,38 @@
                 const response = await fetchWithAuth(url);
                 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
                     throw new Error(`Failed to fetch ${type.label} (Status: ${response.status})`);
                 }
                 
                 const data = await response.json();
-                console.log('Response data:', data);
+                console.log('Full Response data:', data);
+                console.log('Looking for property:', type.endpoint);
+                console.log('Available properties:', Object.keys(data));
                 
-                const items = data[type.endpoint] || [];
+                let items = [];
+                
+                if (data[type.endpoint]) {
+                    items = data[type.endpoint];
+                    console.log(`Found items using direct property: ${type.endpoint}`);
+                }
+                else if (Array.isArray(data)) {
+                    items = data;
+                    console.log('Response itself is an array');
+                }
+                else if (data.items) {
+                    items = data.items;
+                    console.log('Found items using .items property');
+                }
+                else {
+                    const arrayProp = Object.keys(data).find(key => Array.isArray(data[key]));
+                    if (arrayProp) {
+                        items = data[arrayProp];
+                        console.log(`Found items using first array property: ${arrayProp}`);
+                    }
+                }
+                
                 console.log(`Loaded ${items.length} items for ${type.endpoint}`);
                 
                 availableItems[currentMetadataType] = items;
