@@ -1,4 +1,4 @@
-<!DOCTYPE html>   
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -2102,29 +2102,7 @@
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('show');
                     
-                    const isSuperuser = userData.authorities && userData.authorities.includes('ALL');
-                    const canImport = userData.authorities && userData.authorities.includes('F_METADATA_IMPORT');
-                    const canExport = userData.authorities && userData.authorities.includes('F_METADATA_EXPORT');
-                    
-                    let accessMessage = `✅ Connected as ${userData.displayName || userData.username}!`;
-                    if (isSuperuser) {
-                        accessMessage += '\n🔑 Superuser access (full permissions)';
-                    } else {
-                        accessMessage += '\n👤 Regular user';
-                        if (canImport) accessMessage += ' • Can import metadata ✅';
-                        if (canExport) accessMessage += ' • Can export metadata ✅';
-                        if (!canImport || !canExport) {
-                            accessMessage += '\n⚠️ Limited permissions - some operations may fail';
-                        }
-                    }
-                    
-                    showNotification(accessMessage, 'success');
-                    console.log('User details:', {
-                        username: userData.username,
-                        name: userData.displayName,
-                        isSuperuser: isSuperuser,
-                        authorities: userData.authorities
-                    });
+                    showNotification(`✅ Connected successfully as ${userData.displayName || userData.username}!`, 'success');
                 } else if (response.status === 401) {
                     showNotification('❌ Invalid username or password', 'error');
                 } else if (response.status === 403) {
