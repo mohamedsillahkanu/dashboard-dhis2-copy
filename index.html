@@ -1163,31 +1163,43 @@
         }
 
         async function handleCleanupInstance() {
+            console.log('🧹 Cleanup button clicked');
+            
             const confirmMsg = `⚠️⚠️⚠️ FINAL WARNING ⚠️⚠️⚠️\n\nYou are about to DELETE EVERYTHING from:\n${state.config.instanceUrl}\n\nThis includes:\n• ALL metadata (org units, data elements, programs, etc.)\n• ALL data values\n• ALL dashboards and visualizations\n• EVERYTHING in the system\n\nThis action is PERMANENT and IRREVERSIBLE!\n\nTo proceed, type exactly: DELETE EVERYTHING`;
             
+            console.log('📋 Showing first confirmation prompt');
             const userConfirm = prompt(confirmMsg);
             
             if (userConfirm !== 'DELETE EVERYTHING') {
+                console.log('❌ First confirmation failed:', userConfirm);
                 showNotification('Cleanup operation cancelled - thank you for being cautious!', 'info');
                 return;
             }
 
+            console.log('✅ First confirmation passed');
             const secondConfirm = prompt(`ARE YOU ABSOLUTELY SURE?\n\nInstance: ${state.config.instanceUrl}\n\nType the instance URL to confirm:`);
             
             if (secondConfirm !== state.config.instanceUrl) {
+                console.log('❌ Second confirmation failed. Expected:', state.config.instanceUrl, 'Got:', secondConfirm);
                 showNotification('URL mismatch - cleanup cancelled for safety', 'error');
                 return;
             }
 
+            console.log('✅ Second confirmation passed - starting cleanup');
             const cleanupBtn = document.getElementById('cleanupBtn');
+            console.log('Cleanup button element:', cleanupBtn);
+            
             if (cleanupBtn) {
                 cleanupBtn.disabled = true;
                 cleanupBtn.textContent = '☢️ CLEANUP IN PROGRESS - DO NOT CLOSE...';
             }
             
+            console.log('📊 Showing progress section');
             showProgress();
             clearLogs();
             setProgress(0);
+            
+            console.log('🎯 Starting actual cleanup operations...');
 
             try {
                 log('☢️ ==========================================', 'error');
@@ -1928,8 +1940,371 @@
         }
 
         async function handleCopyMetadata() {
-            // Copy implementation remains the same as original...
-            showNotification('Copy feature - same as original implementation', 'info');
+            let totalSelected = 0;
+            for (const typeKey in selectedItems) {
+                if (selectedItems[typeKey] && selectedItems[typeKey].length > 0) {
+                    totalSelected += selectedItems[typeKey].length;
+                }
+            }
+            
+            const copyAllTypes = Object.keys(METADATA_TYPES).filter(key => METADATA_TYPES[key].copyAll);
+            const hasCopyAllSelected = copyAllTypes.some(key => selectedItems[key] !== undefined && selectedItems[key] !== null);
+            
+            if (totalSelected === 0 && !hasCopyAllSelected) {
+                showNotification('Please select at least one item to copy', 'error');
+                return;
+            }
+
+            const includeDataCheckbox = document.getElementById('includeDataCheckbox');
+            const includeData = includeDataCheckbox ? includeDataCheckbox.checked : false;
+
+            const copyBtn = document.getElementById('actionBtn');
+            if (copyBtn) {
+                copyBtn.disabled = true;
+                copyBtn.textContent = 'Processing...';
+            }
+            
+            showProgress();
+            clearLogs();
+            setProgress(0);
+
+            try {
+                const targetUrlInput = document.getElementById('targetUrl');
+                const targetUsernameInput = document.getElementById('targetUsername');
+                const targetPasswordInput = document.getElementById('targetPassword');
+                
+                const targetUrl = targetUrlInput ? targetUrlInput.value.trim().replace(/\/$/, '') : '';
+                const targetUsername = targetUsernameInput ? targetUsernameInput.value.trim() : '';
+                const targetPassword = targetPasswordInput ? targetPasswordInput.value.trim() : '';
+                
+                if (!targetUrl || !targetUsername || !targetPassword) {
+                    throw new Error('Please fill in all target instance details');
+                }
+                
+                const importStrategy = 'CREATE_AND_UPDATE';
+                const mergeMode = 'REPLACE';
+                const atomicMode = 'OBJECT';
+
+                log('🔄 Starting metadata copy...', 'info');
+                log(`📡 Using Google Apps Script Proxy`, 'info');
+                log(`📝 Import Strategy: ${importStrategy}`, 'info');
+                log(`📝 Merge Mode: ${mergeMode}`, 'info');
+                log(`📝 Atomic Mode: ${atomicMode}`, 'info');
+                setProgress(10);
+
+                const metadata = {};
+                const relatedDataElements = new Set();
+                const relatedIndicators = new Set();
+                const relatedCategoryCombos = new Set();
+                const relatedOptionSets = new Set();
+                const relatedIndicatorTypes = new Set();
+                const relatedUserGroups = new Set();
+                const relatedUsers = new Set();
+                const selectedDataElementIds = [];
+                const selectedOrgUnitIds = [];
+
+                for (const typeKey in selectedItems) {
+                    if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
+                    const type = METADATA_TYPES[typeKey];
+                    const itemCount = selectedItems[typeKey].length;
+                    log(`📦 Processing ${type.label}: ${itemCount} items`, 'info');
+
+                    if (type.copyAll) {
+                        log(`  Fetching all ${type.label} with dependencies...`, 'info');
+                        const url = `${state.config.instanceUrl}/api/${type.endpoint}.json?fields=${type.fetchFields}&paging=false`;
+                        const response = await fetchWithAuth(url);
+                        if (response.ok) {
+                            const data = await response.json();
+                            const items = data[type.endpoint] || [];
+                            metadata[type.endpoint] = items;
+                            
+                            if (typeKey === 'organisationUnits') {
+                                items.forEach(ou => selectedOrgUnitIds.push(ou.id));
+                            }
+                            
+                            log(`  ✓ Added ${items.length} ${type.label}`, 'success');
+                        }
+                    } else {
+                        const items = [];
+                        log(`  Fetching ${itemCount} items with dependencies...`, 'info');
+                        for (const selectedItem of selectedItems[typeKey]) {
+                            try {
+                                const url = `${state.config.instanceUrl}/api/${type.endpoint}/${selectedItem.id}.json?fields=${type.fetchFields}`;
+                                const response = await fetchWithAuth(url);
+                                if (response.ok) {
+                                    const item = await response.json();
+                                    items.push(item);
+                                    
+                                    if (item.sharing) {
+                                        if (item.sharing.userGroups) {
+                                            Object.keys(item.sharing.userGroups).forEach(ugId => {
+                                                relatedUserGroups.add(ugId);
+                                            });
+                                        }
+                                        if (item.sharing.users) {
+                                            Object.keys(item.sharing.users).forEach(userId => {
+                                                relatedUsers.add(userId);
+                                            });
+                                        }
+                                    }
+                                    
+                                    if (typeKey === 'organisationUnits') {
+                                        selectedOrgUnitIds.push(item.id);
+                                    }
+                                    
+                                    if (typeKey === 'dataElements') {
+                                        selectedDataElementIds.push(item.id);
+                                    }
+                                    
+                                    if (typeKey === 'dataSets') {
+                                        if (item.dataSetElements) item.dataSetElements.forEach(dse => { 
+                                            if (dse.dataElement?.id) {
+                                                relatedDataElements.add(dse.dataElement.id);
+                                                selectedDataElementIds.push(dse.dataElement.id);
+                                            }
+                                            if (dse.categoryCombo?.id) relatedCategoryCombos.add(dse.categoryCombo.id);
+                                        });
+                                        if (item.indicators) item.indicators.forEach(ind => { if (ind.id) relatedIndicators.add(ind.id); });
+                                    }
+                                    if (typeKey === 'dataElements') {
+                                        if (item.categoryCombo?.id) relatedCategoryCombos.add(item.categoryCombo.id);
+                                        if (item.optionSet?.id) relatedOptionSets.add(item.optionSet.id);
+                                    }
+                                    if (typeKey === 'indicators') {
+                                        if (item.indicatorType?.id) relatedIndicatorTypes.add(item.indicatorType.id);
+                                    }
+                                    if (item.categoryCombo?.id) relatedCategoryCombos.add(item.categoryCombo.id);
+                                    log(`  ✓ ${selectedItem.displayName || selectedItem.name}`, 'success');
+                                }
+                            } catch (err) {}
+                        }
+                        if (items.length > 0) {
+                            metadata[type.endpoint] = items;
+                            log(`  ✓ Added ${items.length} ${type.label}`, 'success');
+                        }
+                    }
+                }
+
+                if (relatedDataElements.size > 0) {
+                    log(`\n📊 Fetching ${relatedDataElements.size} related Data Elements...`, 'info');
+                    const dataElements = [];
+                    for (const deId of relatedDataElements) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/dataElements/${deId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                const de = await response.json();
+                                dataElements.push(de);
+                                if (de.categoryCombo?.id) relatedCategoryCombos.add(de.categoryCombo.id);
+                                if (de.optionSet?.id) relatedOptionSets.add(de.optionSet.id);
+                            }
+                        } catch (err) {}
+                    }
+                    if (dataElements.length > 0) {
+                        metadata.dataElements = dataElements;
+                        log(`  ✓ Added ${dataElements.length} related Data Elements`, 'success');
+                    }
+                }
+
+                if (relatedIndicators.size > 0) {
+                    log(`\n📈 Fetching ${relatedIndicators.size} related Indicators...`, 'info');
+                    const indicators = [];
+                    for (const indId of relatedIndicators) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/indicators/${indId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                const ind = await response.json();
+                                indicators.push(ind);
+                                if (ind.indicatorType?.id) relatedIndicatorTypes.add(ind.indicatorType.id);
+                            }
+                        } catch (err) {}
+                    }
+                    if (indicators.length > 0) {
+                        metadata.indicators = indicators;
+                        log(`  ✓ Added ${indicators.length} related Indicators`, 'success');
+                    }
+                }
+
+                if (relatedCategoryCombos.size > 0) {
+                    log(`\n🏷️ Fetching ${relatedCategoryCombos.size} related Category Combos...`, 'info');
+                    const categoryCombos = [];
+                    for (const ccId of relatedCategoryCombos) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/categoryCombos/${ccId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) categoryCombos.push(await response.json());
+                        } catch (err) {}
+                    }
+                    if (categoryCombos.length > 0) {
+                        metadata.categoryCombos = categoryCombos;
+                        log(`  ✓ Added ${categoryCombos.length} related Category Combos`, 'success');
+                    }
+                }
+
+                if (relatedOptionSets.size > 0) {
+                    log(`\n📋 Fetching ${relatedOptionSets.size} related Option Sets...`, 'info');
+                    const optionSets = [];
+                    for (const osId of relatedOptionSets) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/optionSets/${osId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) optionSets.push(await response.json());
+                        } catch (err) {}
+                    }
+                    if (optionSets.length > 0) {
+                        metadata.optionSets = optionSets;
+                        log(`  ✓ Added ${optionSets.length} related Option Sets`, 'success');
+                    }
+                }
+
+                if (relatedIndicatorTypes.size > 0) {
+                    log(`\n📊 Fetching ${relatedIndicatorTypes.size} related Indicator Types...`, 'info');
+                    const indicatorTypes = [];
+                    for (const itId of relatedIndicatorTypes) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/indicatorTypes/${itId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) indicatorTypes.push(await response.json());
+                        } catch (err) {}
+                    }
+                    if (indicatorTypes.length > 0) {
+                        metadata.indicatorTypes = indicatorTypes;
+                        log(`  ✓ Added ${indicatorTypes.length} related Indicator Types`, 'success');
+                    }
+                }
+
+                if (relatedUserGroups.size > 0) {
+                    log(`\n👥 Fetching ${relatedUserGroups.size} related User Groups...`, 'info');
+                    const userGroups = [];
+                    for (const ugId of relatedUserGroups) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/userGroups/${ugId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) {
+                                const ug = await response.json();
+                                userGroups.push(ug);
+                                if (ug.users) {
+                                    ug.users.forEach(user => {
+                                        if (user.id) relatedUsers.add(user.id);
+                                    });
+                                }
+                            }
+                        } catch (err) {}
+                    }
+                    if (userGroups.length > 0) {
+                        metadata.userGroups = userGroups;
+                        log(`  ✓ Added ${userGroups.length} related User Groups`, 'success');
+                    }
+                }
+
+                if (relatedUsers.size > 0) {
+                    log(`\n👤 Fetching ${relatedUsers.size} related Users...`, 'info');
+                    const users = [];
+                    for (const userId of relatedUsers) {
+                        try {
+                            const url = `${state.config.instanceUrl}/api/users/${userId}.json?fields=:owner`;
+                            const response = await fetchWithAuth(url);
+                            if (response.ok) users.push(await response.json());
+                        } catch (err) {}
+                    }
+                    if (users.length > 0) {
+                        metadata.users = users;
+                        log(`  ✓ Added ${users.length} related Users`, 'success');
+                    }
+                }
+
+                if (Object.keys(metadata).length === 0) throw new Error('No items to copy');
+
+                log(`\n📋 Metadata Package Summary:`, 'info');
+                Object.keys(metadata).forEach(key => {
+                    log(`  • ${key}: ${metadata[key].length} items`, 'info');
+                });
+
+                setProgress(40);
+                log(`\n🚀 Importing metadata to ${targetUrl}...`, 'info');
+
+                const importUrl = targetUrl + '/api/metadata?importStrategy=' + importStrategy + '&mergeMode=' + mergeMode + '&atomicMode=' + atomicMode;
+                const metadataJson = JSON.stringify(metadata);
+                log(`Sending ${Object.keys(metadata).length} metadata types (${(metadataJson.length / 1024).toFixed(2)} KB)...`, 'info');
+                
+                const targetAuthHeader = 'Basic ' + btoa(`${targetUsername}:${targetPassword}`);
+                const importResponse = await makeProxyRequest(importUrl, {
+                    method: 'POST',
+                    headers: { 'Authorization': targetAuthHeader, 'Content-Type': 'application/json' },
+                    body: metadataJson
+                });
+
+                setProgress(60);
+                const result = await importResponse.json();
+                const importResult = result.response || result;
+                
+                console.log('DHIS2 Metadata Response:', importResult);
+                
+                log('📄 Metadata import response received', 'info');
+
+                if (!importResponse.ok) {
+                    log(`❌ Metadata import failed (Status ${importResponse.status})`, 'error');
+                    throw new Error(`Metadata import failed with status ${importResponse.status}`);
+                }
+
+                let itemsCreated = 0;
+                let itemsUpdated = 0;
+                let itemsIgnored = 0;
+
+                if (importResult.typeReports && Array.isArray(importResult.typeReports) && importResult.typeReports.length > 0) {
+                    log(`\n📦 Processing ${importResult.typeReports.length} type reports...`, 'info');
+                    importResult.typeReports.forEach(report => {
+                        const created = (report.stats?.created) || 0;
+                        const updated = (report.stats?.updated) || 0;
+                        const ignored = (report.stats?.ignored) || 0;
+                        itemsCreated += created;
+                        itemsUpdated += updated;
+                        itemsIgnored += ignored;
+                        if (created > 0 || updated > 0 || ignored > 0) {
+                            log(`  ${report.klass}: Created=${created}, Updated=${updated}, Ignored=${ignored}`, 'info');
+                        }
+                    });
+                } else if (importResult.stats) {
+                    itemsCreated = importResult.stats.created || 0;
+                    itemsUpdated = importResult.stats.updated || 0;
+                    itemsIgnored = importResult.stats.ignored || 0;
+                }
+
+                log(`\n📊 Final Metadata Summary:`, 'info');
+                log(`  ✅ Created: ${itemsCreated}`, itemsCreated > 0 ? 'success' : 'info');
+                log(`  🔄 Updated: ${itemsUpdated}`, itemsUpdated > 0 ? 'success' : 'info');
+                log(`  ⏭️ Ignored: ${itemsIgnored}`, 'info');
+
+                if (itemsCreated > 0 || itemsUpdated > 0) {
+                    log('\n═══════════════════════════════════════', 'success');
+                    log('✅ METADATA IMPORT SUCCESSFUL!', 'success');
+                    log('═══════════════════════════════════════', 'success');
+                } else if (itemsIgnored > 0) {
+                    log('\n═══════════════════════════════════════', 'success');
+                    log('✅ METADATA ALREADY EXISTS!', 'success');
+                    log('═══════════════════════════════════════', 'success');
+                }
+
+                setProgress(100);
+
+                let successMsg = '✅ Copy successful! ';
+                const parts = [];
+                if (itemsCreated > 0) parts.push(`${itemsCreated} created`);
+                if (itemsUpdated > 0) parts.push(`${itemsUpdated} updated`);
+                successMsg += parts.join(', ');
+                showNotification(successMsg, 'success');
+
+            } catch (error) {
+                console.error('Copy error:', error);
+                log(`❌ ERROR: ${error.message}`, 'error');
+                showNotification(`Error: ${error.message}`, 'error');
+            } finally {
+                if (copyBtn) {
+                    copyBtn.disabled = false;
+                    copyBtn.textContent = '🚀 Copy Selected Metadata & Data';
+                }
+            }
         }
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
