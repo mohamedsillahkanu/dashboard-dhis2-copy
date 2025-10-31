@@ -999,7 +999,7 @@
 
         function getTwoPanelHTML(mode) {
             const isDelete = mode === 'delete';
-            const buttonText = isDelete ? '🗑️ Delete Selected Metadata' : '🚀 Copy Selected Metadata & Data';
+            const buttonText = isDelete ? '🗑️ Force Delete Selected Metadata' : '🚀 Copy Selected Metadata & Data';
             const buttonColor = isDelete ? 'background: linear-gradient(135deg, #f85149 0%, #da3633 100%);' : '';
             
             return `
@@ -1088,7 +1088,7 @@
                 </div>
                 ` : `
                 <div class="help-text" style="margin: 20px 0; padding: 15px; background: rgba(248, 81, 73, 0.1); border-radius: 6px; border-left: 3px solid #f85149;">
-                    ⚠️ <strong>Warning:</strong> Deleting metadata is permanent and cannot be undone! Make sure you have a backup before proceeding. Items will be deleted from your current instance: <strong>${state.config.instanceUrl}</strong>
+                    ⚠️ <strong>Warning:</strong> FORCE DELETE will remove items and their dependencies. Children are deleted before parents. This action cannot be undone! Make sure you have a backup before proceeding. Items will be deleted from: <strong>${state.config.instanceUrl}</strong>
                 </div>
                 `}
                 
@@ -1480,7 +1480,7 @@
                 return;
             }
 
-            const confirmMsg = `⚠️ ARE YOU SURE?\n\nYou are about to DELETE ${totalSelected} items from:\n${state.config.instanceUrl}\n\nThis action CANNOT be undone!\n\nType 'DELETE' to confirm:`;
+            const confirmMsg = `⚠️ ARE YOU SURE?\n\nYou are about to FORCE DELETE ${totalSelected} items from:\n${state.config.instanceUrl}\n\nThis will delete CHILDREN FIRST, then PARENTS.\nThis action CANNOT be undone!\n\nType 'DELETE' to confirm:`;
             const userConfirm = prompt(confirmMsg);
             
             if (userConfirm !== 'DELETE') {
@@ -1491,7 +1491,7 @@
             const actionBtn = document.getElementById('actionBtn');
             if (actionBtn) {
                 actionBtn.disabled = true;
-                actionBtn.textContent = 'Deleting...';
+                actionBtn.textContent = 'Force Deleting...';
             }
             
             showProgress();
@@ -1499,46 +1499,156 @@
             setProgress(0);
 
             try {
-                log('🗑️ Starting metadata deletion...', 'info');
+                log('🗑️ Starting FORCE metadata deletion...', 'info');
                 log(`⚠️ Target: ${state.config.instanceUrl}`, 'error');
-                log(`📝 Mode: DELETE (permanent removal)`, 'error');
+                log(`📝 Mode: FORCE DELETE (children first, then parents)`, 'error');
                 setProgress(10);
 
                 let itemsDeleted = 0;
                 let itemsFailed = 0;
+                let itemsSkipped = 0;
 
-                const deletionOrder = ['dashboards', 'indicators', 'dataSets', 'dataElements', 'validationRules', 'programs', 'categoryOptions', 'organisationUnits'];
+                // CRITICAL: Reverse deletion order - delete children before parents
+                // Most dependent items first, foundational items last
+                const deletionOrder = [
+                    'dashboards',           // Most dependent (uses indicators, data elements, charts)
+                    'validationRules',      // Uses data elements
+                    'indicators',           // Uses indicator types, data elements
+                    'programs',             // Uses data elements, org units
+                    'dataSets',            // Uses data elements, org units
+                    'dataElements',        // Uses category combos, option sets
+                    'categoryOptions',     // Used by category combos
+                    'organisationUnits'    // Most foundational - delete last
+                ];
                 
+                log(`\n📋 Deletion Strategy: Children → Parents`, 'info');
+                log(`   Order: ${deletionOrder.join(' → ')}`, 'info');
+                
+                // Step 1: Collect all items with their dependencies
+                const itemsToDelete = {};
                 for (const typeKey of deletionOrder) {
                     if (!selectedItems[typeKey] || selectedItems[typeKey].length === 0) continue;
+                    itemsToDelete[typeKey] = selectedItems[typeKey];
+                }
+                
+                // Step 2: Delete in proper order (children first)
+                for (const typeKey of deletionOrder) {
+                    if (!itemsToDelete[typeKey] || itemsToDelete[typeKey].length === 0) continue;
                     
                     const type = METADATA_TYPES[typeKey];
-                    const items = selectedItems[typeKey];
+                    const items = itemsToDelete[typeKey];
                     
                     log(`\n🗑️ Deleting ${items.length} ${type.label}...`, 'info');
                     
-                    for (const item of items) {
-                        try {
-                            const deleteUrl = `${state.config.instanceUrl}/api/${type.endpoint}/${item.id}`;
-                            const response = await fetchWithAuth(deleteUrl, { method: 'DELETE' });
-                            
-                            if (response.ok) {
-                                itemsDeleted++;
-                                log(`  ✓ Deleted: ${item.displayName || item.name}`, 'success');
-                            } else {
-                                itemsFailed++;
-                                const errorText = await response.text();
-                                log(`  ✗ Failed: ${item.displayName || item.name} (${response.status})`, 'error');
-                                try {
-                                    const errorJson = JSON.parse(errorText);
-                                    if (errorJson.message) {
-                                        log(`    Reason: ${errorJson.message}`, 'error');
-                                    }
-                                } catch (e) {}
+                    // For organization units, we need to delete in reverse hierarchy order
+                    // (leaf nodes first, then parents)
+                    if (typeKey === 'organisationUnits') {
+                        log(`  📊 Analyzing org unit hierarchy...`, 'info');
+                        
+                        // Fetch full org unit details with hierarchy levels
+                        const ouDetails = [];
+                        for (const item of items) {
+                            try {
+                                const url = `${state.config.instanceUrl}/api/organisationUnits/${item.id}.json?fields=id,displayName,level,parent,children[id]`;
+                                const response = await fetchWithAuth(url);
+                                if (response.ok) {
+                                    const ouData = await response.json();
+                                    ouDetails.push(ouData);
+                                }
+                            } catch (err) {
+                                log(`  ⚠️ Could not fetch details for ${item.displayName || item.name}`, 'error');
                             }
-                        } catch (error) {
-                            itemsFailed++;
-                            log(`  ✗ Error deleting ${item.displayName || item.name}: ${error.message}`, 'error');
+                        }
+                        
+                        // Sort by level descending (highest level/deepest children first)
+                        ouDetails.sort((a, b) => (b.level || 0) - (a.level || 0));
+                        
+                        log(`  ✓ Sorted ${ouDetails.length} org units by hierarchy (deepest first)`, 'success');
+                        
+                        // Delete org units from deepest to shallowest
+                        for (const ouItem of ouDetails) {
+                            try {
+                                // Check if org unit has children
+                                if (ouItem.children && ouItem.children.length > 0) {
+                                    log(`  ⚠️ Skipping ${ouItem.displayName || ouItem.id} - has ${ouItem.children.length} children`, 'error');
+                                    log(`     Delete children first, then retry`, 'info');
+                                    itemsSkipped++;
+                                    continue;
+                                }
+                                
+                                // Try to delete with force parameter
+                                const deleteUrl = `${state.config.instanceUrl}/api/organisationUnits/${ouItem.id}?force=true`;
+                                const response = await fetchWithAuth(deleteUrl, { method: 'DELETE' });
+                                
+                                if (response.ok) {
+                                    itemsDeleted++;
+                                    log(`  ✓ Deleted: ${ouItem.displayName || ouItem.id} (Level ${ouItem.level || 'unknown'})`, 'success');
+                                } else {
+                                    // If force delete fails, try regular delete
+                                    const regularDeleteUrl = `${state.config.instanceUrl}/api/organisationUnits/${ouItem.id}`;
+                                    const regularResponse = await fetchWithAuth(regularDeleteUrl, { method: 'DELETE' });
+                                    
+                                    if (regularResponse.ok) {
+                                        itemsDeleted++;
+                                        log(`  ✓ Deleted: ${ouItem.displayName || ouItem.id} (regular delete)`, 'success');
+                                    } else {
+                                        itemsFailed++;
+                                        const errorText = await regularResponse.text();
+                                        log(`  ✗ Failed: ${ouItem.displayName || ouItem.id} (${regularResponse.status})`, 'error');
+                                        try {
+                                            const errorJson = JSON.parse(errorText);
+                                            if (errorJson.message) {
+                                                log(`    Reason: ${errorJson.message}`, 'error');
+                                            }
+                                        } catch (e) {}
+                                    }
+                                }
+                            } catch (error) {
+                                itemsFailed++;
+                                log(`  ✗ Error deleting ${ouItem.displayName || ouItem.id}: ${error.message}`, 'error');
+                            }
+                            
+                            // Small delay to avoid overwhelming the API
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                        }
+                    } else {
+                        // For non-org-unit items, delete normally
+                        for (const item of items) {
+                            try {
+                                // Try with force parameter first
+                                const deleteUrl = `${state.config.instanceUrl}/api/${type.endpoint}/${item.id}?force=true`;
+                                const response = await fetchWithAuth(deleteUrl, { method: 'DELETE' });
+                                
+                                if (response.ok) {
+                                    itemsDeleted++;
+                                    log(`  ✓ Deleted: ${item.displayName || item.name}`, 'success');
+                                } else {
+                                    // If force fails, try regular delete
+                                    const regularDeleteUrl = `${state.config.instanceUrl}/api/${type.endpoint}/${item.id}`;
+                                    const regularResponse = await fetchWithAuth(regularDeleteUrl, { method: 'DELETE' });
+                                    
+                                    if (regularResponse.ok) {
+                                        itemsDeleted++;
+                                        log(`  ✓ Deleted: ${item.displayName || item.name} (regular delete)`, 'success');
+                                    } else {
+                                        itemsFailed++;
+                                        const errorText = await regularResponse.text();
+                                        log(`  ✗ Failed: ${item.displayName || item.name} (${regularResponse.status})`, 'error');
+                                        try {
+                                            const errorJson = JSON.parse(errorText);
+                                            if (errorJson.message) {
+                                                log(`    Reason: ${errorJson.message}`, 'error');
+                                            }
+                                        } catch (e) {}
+                                    }
+                                }
+                            } catch (error) {
+                                itemsFailed++;
+                                log(`  ✗ Error deleting ${item.displayName || item.name}: ${error.message}`, 'error');
+                            }
+                            
+                            // Small delay between deletes
+                            await new Promise(resolve => setTimeout(resolve, 150));
                         }
                     }
                     
@@ -1548,19 +1658,27 @@
                 setProgress(100);
 
                 log('\n═══════════════════════════════════════', itemsFailed > 0 ? 'error' : 'success');
-                log(itemsFailed > 0 ? '⚠️ DELETION COMPLETED WITH ERRORS' : '✅ DELETION SUCCESSFUL!', itemsFailed > 0 ? 'error' : 'success');
+                log(itemsFailed > 0 ? '⚠️ DELETION COMPLETED WITH ISSUES' : '✅ DELETION SUCCESSFUL!', itemsFailed > 0 ? 'error' : 'success');
                 log('═══════════════════════════════════════', itemsFailed > 0 ? 'error' : 'success');
                 log(`  🗑️ Deleted: ${itemsDeleted} items`, 'success');
+                if (itemsSkipped > 0) {
+                    log(`  ⏭️ Skipped: ${itemsSkipped} items (have children - delete children first)`, 'info');
+                }
                 if (itemsFailed > 0) {
                     log(`  ✗ Failed: ${itemsFailed} items`, 'error');
                     log(`\nCommon reasons for failure:`, 'info');
+                    log(`  • Item has children that must be deleted first`, 'info');
                     log(`  • Item is referenced by other metadata`, 'info');
                     log(`  • Insufficient permissions`, 'info');
                     log(`  • Item doesn't exist`, 'info');
+                    log(`\n💡 Tips:`, 'info');
+                    log(`  • For org units: Delete from bottom of hierarchy upward`, 'info');
+                    log(`  • Run deletion multiple times if items have dependencies`, 'info');
+                    log(`  • Check logs for specific error messages`, 'info');
                 }
 
                 const successMsg = itemsFailed > 0 
-                    ? `⚠️ Deleted ${itemsDeleted} items, ${itemsFailed} failed`
+                    ? `⚠️ Deleted ${itemsDeleted}, ${itemsFailed} failed${itemsSkipped > 0 ? `, ${itemsSkipped} skipped` : ''}`
                     : `✅ Successfully deleted ${itemsDeleted} items`;
                 showNotification(successMsg, itemsFailed > 0 ? 'error' : 'success');
 
@@ -1571,7 +1689,7 @@
             } finally {
                 if (actionBtn) {
                     actionBtn.disabled = false;
-                    actionBtn.textContent = '🗑️ Delete Selected Metadata';
+                    actionBtn.textContent = '🗑️ Force Delete Selected Metadata';
                 }
             }
         }
